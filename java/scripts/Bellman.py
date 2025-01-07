@@ -107,9 +107,7 @@ public class BellmanFordNavigator extends Globals {{
         if ({' && '.join(f'!canVisit{id}' for id in inner_ring_ids)}) {{
             return null;
         }}
-        Team opponentTeam = rc.getTeam().opponent();
 
-        boolean checkOpponents = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, opponentTeam).length > 0;
     """.rstrip() + "\n"
 
     for dx, dy in offsets_by_distance:
