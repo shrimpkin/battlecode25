@@ -170,7 +170,7 @@ public class BellmanFordNavigator {{
             """.rstrip() + "\n"
 
     content += f"""
-        Direction bestDirection = null;
+        Direction bestDirection = Direction.CENTER;
         double maxScore = 0;
         int currentDistance = rc.getLocation().distanceSquaredTo(target);
     """.rstrip() + "\n"

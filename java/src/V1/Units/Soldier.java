@@ -8,18 +8,30 @@ import V1.Utils;
 import battlecode.common.*;
 
 public class Soldier {
-    static MapLocation tower_build_target = null;
+    static MapLocation tower_build_target = new MapLocation(0, 0);
     static final Random rng = new Random(6147);
     static String indicator;
 
     public static void run(RobotController rc) throws GameActionException{
         indicator = "";
-        find_ruin(rc);
+        //find_ruin(rc);
         
         if(tower_build_target != null) {
-            indicator += "has target";
-            Direction d = BellmanFordNavigator.getBestDirection(tower_build_target, rc);
-            if(rc.canMove(d)) rc.move(d);
+            indicator += "has target" + "(" + tower_build_target.x + "," + tower_build_target.y + ")";
+
+            rc.setIndicatorString(indicator);
+
+            try{
+                Direction d = BellmanFordNavigator.getBestDirection(tower_build_target, rc);
+                indicator += "\nBellman done";
+
+                if(rc.canMove(d)) {
+                    rc.move(d);
+                }
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+            
             
         } else {
             indicator += "looking for target";
