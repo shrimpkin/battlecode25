@@ -1,18 +1,15 @@
 package V1.Units;
+
 import java.util.Random;
-
-import V1.BellmanFordNavigator;
-import V1.Pathfinding;
-import V1.Utils;
-
+import V1.*;
 import battlecode.common.*;
 
-public class Soldier {
+public class Soldier extends Globals {
     static MapLocation tower_build_target = new MapLocation(0, 0);
     static final Random rng = new Random(6147);
     static String indicator;
 
-    public static void run(RobotController rc) throws GameActionException{
+    public static void run() throws GameActionException{
         indicator = "";
         //find_ruin(rc);
         
@@ -22,9 +19,9 @@ public class Soldier {
             rc.setIndicatorString(indicator);
 
             try{
-                Direction d = BellmanFordNavigator.getBestDirection(tower_build_target, rc);
+                Direction d = BellmanFordNavigator.getBestDirection(tower_build_target);
                 indicator += "\nBellman done";
-
+                
                 if(rc.canMove(d)) {
                     rc.move(d);
                 }

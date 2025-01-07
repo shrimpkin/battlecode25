@@ -2,7 +2,9 @@ package V1.Units;
 
 import battlecode.common.*;
 
-public class Tower {
+import V1.*;
+
+public class Tower extends Globals {
     public static int turn_num = 0;
 
     public static void run(RobotController rc) throws GameActionException {
