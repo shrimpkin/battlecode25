@@ -1,8 +1,5 @@
 package V1.Units;
 
-import static V1.Globals.rng;
-
-import java.util.Random;
 import V1.*;
 import battlecode.common.*;
 
@@ -15,14 +12,21 @@ public class Soldier extends Unit {
         indicator = "";
 
         get_target_location();
-        Navigator.moveTo(target_location);
+        move();
         paint();
 
         rc.setIndicatorString(indicator);
     }
 
+    /**
+     * Finds the robots next target location
+     * This method should contain all such logic
+     */
     public static void get_target_location() {
-        if(ruin_location == null) find_ruin(rc);
+        //attempts to add ruin as target location
+        if(ruin_location == null) find_ruin();
+
+        if(ruin_location == null) return;
 
         if(rc.canSenseLocation(ruin_location)) {
             target_location = new MapLocation(ruin_location.x - 2 + rng.nextInt(5), ruin_location.y - 2 + rng.nextInt(5));
@@ -31,7 +35,10 @@ public class Soldier extends Unit {
         }
     }
 
-    public static void find_ruin(RobotController rc) {
+    /**
+     * Updates the ruin_location field with any nearby ruins
+     */
+    public static void find_ruin() {
         if(ruin_location != null) return;
 
         MapInfo[] info = rc.senseNearbyMapInfos();
@@ -40,7 +47,22 @@ public class Soldier extends Unit {
         }
     }
 
+    /**
+     * Contains all logic for movement
+     */
+    public static void move() throws GameActionException {
+        if(target_location != null) {
+            Navigator.moveTo(target_location);
+        } else {
+            wander();
+        }
+    }
+
+    /**
+     * Contains all paint logic
+     */
     public static void paint() throws GameActionException {
+        //currently focuses on painting below the robot as fast as possible to reduce paint loss
         mark_tower();
         paint_below();
         paint_marks();
@@ -48,7 +70,6 @@ public class Soldier extends Unit {
 
     /**
      * Paints below the robot if possible
-     * @throws GameActionException
      */
     public static void paint_below() throws GameActionException {
         MapLocation loc = rc.getLocation();
@@ -69,7 +90,9 @@ public class Soldier extends Unit {
         }
     }
 
-
+    /**
+     * Iterates through map and paints a mark if possible
+     */
     public static void paint_marks() throws GameActionException {
         MapInfo[] locations = rc.senseNearbyMapInfos();
         for(MapInfo info : locations) {
@@ -77,7 +100,9 @@ public class Soldier extends Unit {
         }
     }
 
-    //this robot will be used to repeated rebuild a paint tower
+    /**
+     * Marks a tower pattern at the ruin_location field if possible
+     */
     public static void mark_tower() throws GameActionException{
         UnitType tower = has_tower_marked(ruin_location);
         
