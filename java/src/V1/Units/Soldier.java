@@ -40,7 +40,13 @@ public class Soldier extends Unit {
 
     //this robot will be used to repeated rebuild a paint tower
     public static void paint_tower() throws GameActionException{
-        if(ruin_location != null && has_tower_marked(ruin_location) == -1 && rc.canMarkTowerPattern(UnitType.LEVEL_ONE_DEFENSE_TOWER, ruin_location)) {
+        UnitType tower = has_tower_marked(ruin_location);
+        
+        if(ruin_location == null) return;
+
+        if( (tower == null || !tower.equals(UnitType.LEVEL_ONE_PAINT_TOWER))
+            && rc.canMarkTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location)) {
+
             rc.markTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location);
         }
 
@@ -48,74 +54,6 @@ public class Soldier extends Unit {
         for(MapInfo info : locations) {
             paint_mark(info.getMapLocation());
         }
-    }
-
-    /**
-     * Checks whether a tile has a specific pattern painted around it
-     * Returns 0 if the robot doesn't have enough information
-     * Returns 1 if the pattern is marked
-     * Returns -1 if the pattern is not marked
-     */
-    public static int has_tower_marked(MapLocation location) throws GameActionException{
-        System.out.println("In has_tower_marked.");
-        MapInfo[] locations = rc.senseNearbyMapInfos(location, 8);
-
-        for(MapInfo info : locations) {
-            rc.setIndicatorDot(info.getMapLocation(), 0, 0, 0);
-        }
-
-        if(locations.length != 25) {
-            System.out.println("Can't see all locations.");
-            return 0;
-        }
-
-        boolean[][] pattern = new boolean[5][5];
-
-        for(MapInfo info : locations) {
-            int x = (location.x - info.getMapLocation().x) + 2;
-            int y = (location.y - info.getMapLocation().y) + 2;
-
-            switch(info.getMark()) {
-                case PaintType.ALLY_PRIMARY : 
-                    pattern[x][y] = true;
-                    break;
-                case PaintType.ALLY_SECONDARY : 
-                    pattern[x][y] = false;
-                    break;
-                default: 
-                    if(info.getMapLocation().equals(location)) {
-                        continue;
-                    } else {
-                        System.out.println("At least one tile is not marked."); 
-                        return -1;
-                    }
-                    
-            }
-        }
-
-        boolean[][] paint_pattern = rc.getTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER);
-
-        String output = "\n";
-        for(int i = 0; i < 5; i++) {
-            for(int j = 0; j < 5; j++) {
-                output += pattern[i][j] + ", ";
-            }
-            output += "\n";
-        }
-        System.out.println(output);
-
-        for(int i = 0; i < 5; i++) {
-            for(int j = 0; j < 5; j++) {
-                if(i == 2 && j == 2) continue;
-                if(paint_pattern[i][j] == pattern[i][j]) {
-                    System.out.println(i + ", " + j + "\n");
-                    return -1;
-                }
-            }
-        }
-        System.out.println("Confirmed paint tower.");
-
-        return 1;
     }
 
     /**
