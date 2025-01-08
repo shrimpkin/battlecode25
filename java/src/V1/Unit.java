@@ -31,15 +31,7 @@ public class Unit extends Globals {
         }
 
         // attempt to move there TODO should be refactored
-        try {
-            Direction d = BellmanFordNavigator.getBestDirection(wanderTarget);
-            if (rc.canMove(d)) {
-                rc.move(d);
-            }
-        } catch (Exception e) {
-            System.out.println("ERROR in Unit.wander");
-            e.printStackTrace();
-        }
+        Navigator.moveTo(wanderTarget);
     }
 
     /**
