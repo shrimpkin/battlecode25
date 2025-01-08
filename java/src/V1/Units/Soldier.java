@@ -18,6 +18,7 @@ public class Soldier extends Unit {
             move();
             paint();
             complete_patterns();
+            attack();
         } catch(Exception e) {
             e.printStackTrace();
         }
@@ -81,12 +82,12 @@ public class Soldier extends Unit {
      * Contains all logic for movement
      */
     public static void move() throws GameActionException {
-        if(target_location == null) {
+        if(target_location == null || rc.getMoney() < 1000) {
             indicator += "wandering, ";
-            wander();
+            wander(true);
         } else {
             indicator += "move to target, ";
-            Navigator.moveTo(target_location);
+            Navigator.moveTo(target_location, true);
         }
     }
 
@@ -96,29 +97,28 @@ public class Soldier extends Unit {
     public static void paint() throws GameActionException {
         //currently focuses on painting below the robot as fast as possible to reduce paint loss
         mark_tower(false);
-        paint_below();
         paint_marks();
+        paint_below();
     }
 
     /**
      * Paints below the robot if possible
      */
     public static void paint_below() throws GameActionException {
-        MapLocation loc = rc.getLocation();
+        MapLocation loc = new MapLocation(rc.getLocation().x - 1 + rng.nextInt(2) , rc.getLocation().y - 1 + rng.nextInt(2));
         MapInfo info = rc.senseMapInfo(loc);
 
         switch (info.getPaint()) {
-            case PaintType.ALLY_PRIMARY:
-            case PaintType.ALLY_SECONDARY:
-                break;
-            default:
+            case PaintType.EMPTY:
                 if (rc.canAttack(loc)) {
+                    indicator += "pt below, ";
                     // paints the tile, if it can paint the mark it paints that
                     if (!paint_mark(loc)) {
                         rc.attack(loc);
                     }
                 }
                 break;
+            default: break;
         }
     }
 
@@ -212,9 +212,26 @@ public class Soldier extends Unit {
     public static void complete_patterns() throws GameActionException {
         if(ruin_location == null) return;
 
+        //TODO: this is hard coded and it shouldn't be
         if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location)) {
             rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location);
             ruin_location = null;
+        }
+    }
+
+    /**
+     * Attacks any nearby towers if possible
+     */
+    public static void attack() throws GameActionException {
+        RobotInfo[] robots = rc.senseNearbyRobots();
+
+        //TODO: update this to attack lower health tower?
+        //I don't think the robot will generally be able to sense multipe towers so eh?
+        for(RobotInfo robot : robots) {
+            if(rc.canAttack(robot.getLocation())) {
+                rc.attack(robot.getLocation());
+                rc.setIndicatorDot(ruin_location, 255, 0, 0);
+            }
         }
     }
 }

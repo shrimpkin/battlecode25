@@ -18,11 +18,11 @@ public class Splasher extends Globals {
         }
 
         if (rc.getPaint() < 50) {
-            Navigator.moveTo(Unit.paint_tower);
+            Navigator.moveTo(Unit.paint_tower, false);
             Unit.acquire_paint();
         }
-        
-        Unit.wander();
+
+        Unit.wander(false);
     }
 
     public static boolean shouldSplash() throws GameActionException {

@@ -16,7 +16,7 @@ public class Unit extends Globals {
 
     public static void run() throws GameActionException {
         spawnLocation = rc.getLocation();
-        wander();
+        wander(false);
     }
 
     /**
@@ -36,7 +36,7 @@ public class Unit extends Globals {
     /**
      * Unit picks a random location and moves towards it
      */
-    public static void wander() throws GameActionException {
+    public static void wander(boolean paint_target) throws GameActionException {
         if (!rc.isMovementReady()) {
             return;
         }
@@ -47,7 +47,7 @@ public class Unit extends Globals {
             wanderTarget = new MapLocation(nextInt(mapWidth), nextInt(mapHeight));
         }
 
-        Navigator.moveTo(wanderTarget);
+        Navigator.moveTo(wanderTarget, paint_target);
     }
 
     /**
@@ -148,10 +148,25 @@ public class Unit extends Globals {
         if(paint_tower == null) return; 
         if(rc.getPaint() > 100) return;
 
-        indicator += "trying to transfer paint, ";
-        rc.setIndicatorDot(paint_tower, 50, 50, 0);
-        if(rc.canTransferPaint(paint_tower, rc.getPaint() - 200)) {
-            rc.transferPaint(paint_tower, rc.getPaint() - 200);
+        indicator += "trying to transfer paint at "  + paint_tower.toString() + ", ";
+        rc.setIndicatorDot(paint_tower, 0, 255, 0);
+
+        int paint_in_tower = 0;
+        if(rc.canSenseLocation(paint_tower)) {
+            paint_in_tower = rc.senseRobotAtLocation(paint_tower).getPaintAmount();
+        }
+
+        Direction dir = rc.getLocation().directionTo(paint_tower);
+        if(rc.canMove(dir)) rc.move(dir);
+
+        int amount_to_transfer = Math.max(rc.getPaint() - 200, -paint_in_tower);
+
+        indicator += amount_to_transfer + ", ";
+        indicator += rc.canTransferPaint(paint_tower, -10);
+
+        if(rc.canTransferPaint(paint_tower, amount_to_transfer)) {
+            indicator += "can, ";
+            rc.transferPaint(paint_tower, amount_to_transfer);
         }
     }
 }
