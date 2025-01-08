@@ -18,6 +18,8 @@ public class Tower extends Globals {
         attack();
     }
 
+    //TODO: Make this smart, ie attack least health robots 
+    // or other criteria 
     public static void attack() throws GameActionException{
         RobotInfo[] robotInfo = rc.senseNearbyRobots(-1, opponentTeam);
         for(RobotInfo robot : robotInfo) {

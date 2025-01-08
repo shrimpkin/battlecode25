@@ -6,12 +6,14 @@ import battlecode.common.*;
 public class Soldier extends Unit {
     static MapLocation ruin_location = null;
     static MapLocation target_location = null;
-    static String indicator;
+    static boolean can_paint_tower = true;
 
     public static void run() throws GameActionException {
         indicator = rc.getRoundNum() + ": ";
 
         try {
+            update_paint_tower_loc();
+            acquire_paint();
             get_target_location();
             move();
             paint();
@@ -28,7 +30,31 @@ public class Soldier extends Unit {
      * This method should contain all such logic
      */
     public static void get_target_location() throws GameActionException {
-        if (ruin_location == null) {
+        if(rc.getPaint() < 50 && paint_tower != null) {
+            target_location = paint_tower;
+            indicator += "looking for paint, ";
+            return;
+        }
+        
+        boolean has_enemy_paint = false;
+        if(ruin_location != null && rc.canSenseLocation(ruin_location)) {
+            MapInfo[] locations = rc.senseNearbyMapInfos(ruin_location, 8);
+            if(locations.length == 25) {
+                for(MapInfo loc : locations) {
+                    if(loc.getPaint().equals(PaintType.ENEMY_PRIMARY) 
+                        || loc.getPaint().equals(PaintType.ENEMY_SECONDARY)) {
+                            indicator += "has enemy paint";
+                            has_enemy_paint = true;
+                    }
+                }
+            }
+        }
+        
+
+        if (ruin_location == null 
+            || (rc.canSenseLocation(ruin_location)
+                && rc.senseRobotAtLocation(ruin_location) != null)
+            || has_enemy_paint) {
             indicator += "finding ruin, ";
             ruin_location = Unit.findRuin();
         }
