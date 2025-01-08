@@ -48,7 +48,6 @@ public class Navigator extends Globals {
                 }
 
                 // Logger.log("bf " + bellmanFordDirection);
-                rc.setIndicatorString("MOVED!!");
                 return;
             } else {
                 // Logger.log("bf null");

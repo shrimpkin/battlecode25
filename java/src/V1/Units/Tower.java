@@ -46,6 +46,9 @@ public class Tower extends Globals {
                 rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
             }
         }
+        if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
+            rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
+        }
 
         //current going to self destruct if it can be immediately rebuilt
         

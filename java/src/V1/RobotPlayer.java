@@ -16,10 +16,8 @@ public class RobotPlayer {
             try {
                 switch (rc.getType()){
                     case SOLDIER: Soldier.run(); break;
-                    case MOPPER: 
-                    case SPLASHER:
-                        Unit.run();
-                        break;
+                    case MOPPER:  Unit.wander(); break;
+                    case SPLASHER: Splasher.run(); break;
                     default: 
                         Tower.run(); 
                         break;
