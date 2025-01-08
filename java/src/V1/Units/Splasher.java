@@ -5,13 +5,21 @@ import battlecode.common.*;
 
 public class Splasher extends Globals {
     // how many tiles need to be enemy tiles to splash
-    private static final int minNumEnemySquares = 4;
+    private static final int minNumEnemySquares = 0;
     // max number of ally tiles that will be overridden in a splash
     private static final int maxNumAllySquares = 3;
 
     public static void run() throws GameActionException {
-        if (shouldSplash()) {
-            rc.attack(rc.getLocation());
+        Unit.update_paint_tower_loc();
+
+        MapLocation currLoc = rc.getLocation();
+        if (rc.canAttack(currLoc) && rc.getPaint() > 50 && shouldSplash()) {
+            rc.attack(currLoc);
+        }
+
+        if (rc.getPaint() < 50) {
+            Navigator.moveTo(Unit.paint_tower);
+            Unit.acquire_paint();
         }
         
         Unit.wander();

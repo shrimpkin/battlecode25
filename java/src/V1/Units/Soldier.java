@@ -137,6 +137,7 @@ public class Soldier extends Unit {
      */
     public static void mark_tower(boolean mark_built_towers) throws GameActionException{
         if(ruin_location == null) return;
+        if(!rc.canSenseLocation(ruin_location)) return;
         //Checks if a tower is already built there 
         //Since it is on a ruin checking if there is a robot there is sufficient
         if(!mark_built_towers && rc.senseRobotAtLocation(ruin_location) != null) {
