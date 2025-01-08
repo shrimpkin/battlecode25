@@ -46,18 +46,13 @@ public class Unit extends Globals {
      * @return the UnitType of the tower if it does and null otherwise
      */
     public static UnitType has_tower_marked(MapLocation location) throws GameActionException{
-        System.out.println("In has_tower_marked.");
         MapInfo[] locations = rc.senseNearbyMapInfos(location, 8);
-
-        for(MapInfo info : locations) {
-            rc.setIndicatorDot(info.getMapLocation(), 0, 0, 0);
-        }
-
         if(locations.length != 25) {
-            System.out.println("Can't see all locations.");
             return null;
         }
 
+        //contains true if the paint type is secondary
+        //false if the paint type is primary
         boolean[][] pattern = new boolean[5][5];
 
         for(MapInfo info : locations) {
@@ -73,12 +68,12 @@ public class Unit extends Globals {
                     break;
                 default: 
                     if(info.getMapLocation().equals(location)) {
+                        //the center of the tower need not be marked
                         continue;
                     } else {
-                        System.out.println("At least one tile is not marked."); 
+                        //at least one tile is not marked
                         return null;
-                    }
-                    
+                    } 
             }
         }
 
