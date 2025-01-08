@@ -8,7 +8,7 @@ public class Soldier extends Unit {
     static MapLocation target_location = null;
     static String indicator;
 
-    public static void run() throws GameActionException{
+    public static void run() throws GameActionException {
         indicator = "";
 
         get_target_location();
@@ -23,27 +23,19 @@ public class Soldier extends Unit {
      * This method should contain all such logic
      */
     public static void get_target_location() {
-        //attempts to add ruin as target location
-        if(ruin_location == null) find_ruin();
+        if (ruin_location == null) {
+            ruin_location = Unit.findRuin();
+        }
 
-        if(ruin_location == null) return;
+        if (ruin_location == null) {
+            return;
+        }
 
-        if(rc.canSenseLocation(ruin_location)) {
-            target_location = new MapLocation(ruin_location.x - 2 + rng.nextInt(5), ruin_location.y - 2 + rng.nextInt(5));
+        if (rc.canSenseLocation(ruin_location)) {
+            target_location = new MapLocation(ruin_location.x - 2 + rng.nextInt(5),
+                    ruin_location.y - 2 + rng.nextInt(5));
         } else {
             target_location = ruin_location;
-        }
-    }
-
-    /**
-     * Updates the ruin_location field with any nearby ruins
-     */
-    public static void find_ruin() {
-        if(ruin_location != null) return;
-
-        MapInfo[] info = rc.senseNearbyMapInfos();
-        for(MapInfo tile : info) {
-            if(tile.hasRuin()) ruin_location = tile.getMapLocation();
         }
     }
 
@@ -75,14 +67,14 @@ public class Soldier extends Unit {
         MapLocation loc = rc.getLocation();
         MapInfo info = rc.senseMapInfo(loc);
 
-        switch(info.getPaint()) {
-            case PaintType.ALLY_PRIMARY: 
-            case PaintType.ALLY_SECONDARY: 
+        switch (info.getPaint()) {
+            case PaintType.ALLY_PRIMARY:
+            case PaintType.ALLY_SECONDARY:
                 break;
             default:
-                if(rc.canAttack(loc)) {
-                    //paints the tile, if it can paint the mark it paints that
-                    if(!paint_mark(loc)) {
+                if (rc.canAttack(loc)) {
+                    // paints the tile, if it can paint the mark it paints that
+                    if (!paint_mark(loc)) {
                         rc.attack(loc);
                     }
                 }
@@ -95,7 +87,7 @@ public class Soldier extends Unit {
      */
     public static void paint_marks() throws GameActionException {
         MapInfo[] locations = rc.senseNearbyMapInfos();
-        for(MapInfo info : locations) {
+        for (MapInfo info : locations) {
             paint_mark(info.getMapLocation());
         }
     }
@@ -105,11 +97,12 @@ public class Soldier extends Unit {
      */
     public static void mark_tower() throws GameActionException{
         UnitType tower = has_tower_marked(ruin_location);
-        
-        if(ruin_location == null) return;
 
-        if( (tower == null || !tower.equals(UnitType.LEVEL_ONE_PAINT_TOWER))
-            && rc.canMarkTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location)) {
+        if (ruin_location == null)
+            return;
+
+        if ((tower == null || !tower.equals(UnitType.LEVEL_ONE_PAINT_TOWER))
+                && rc.canMarkTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location)) {
 
             rc.markTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location);
         }
@@ -119,15 +112,17 @@ public class Soldier extends Unit {
      * Paints the given color at the given location
      */
     public static boolean paint_at(MapLocation location, PaintType type) throws GameActionException {
-        if(!rc.canSenseLocation(location)) return false;
-        if(!rc.canAttack(location)) return false;
+        if (!rc.canSenseLocation(location))
+            return false;
+        if (!rc.canAttack(location))
+            return false;
 
         MapInfo info = rc.senseMapInfo(location);
-        if(info.getPaint() == type) {
-             return true;
-        } 
+        if (info.getPaint() == type) {
+            return true;
+        }
 
-        if(type.equals(PaintType.ALLY_PRIMARY)) {
+        if (type.equals(PaintType.ALLY_PRIMARY)) {
             rc.attack(location, false);
             return true;
         } else {
@@ -140,14 +135,18 @@ public class Soldier extends Unit {
      * Paints whatever is marked at that location
      */
     public static boolean paint_mark(MapLocation location) throws GameActionException {
-        if(!rc.canSenseLocation(location)) return false;
-        if(!rc.canAttack(location)) {
-            if(!rc.canAttack(location)) return false;
+        if (!rc.canSenseLocation(location))
+            return false;
+        if (!rc.canAttack(location)) {
+            if (!rc.canAttack(location))
+                return false;
         }
-        
-        MapInfo info = rc.senseMapInfo(location);
-        if(info.getMark() == PaintType.EMPTY) return true; //vacuously painted
-        else return paint_at(location, info.getMark());
 
-    }    
+        MapInfo info = rc.senseMapInfo(location);
+        if (info.getMark() == PaintType.EMPTY)
+            return true; // vacuously painted
+        else
+            return paint_at(location, info.getMark());
+
+    }
 }
