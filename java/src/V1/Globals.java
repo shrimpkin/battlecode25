@@ -1,9 +1,12 @@
 package V1;
 
+import java.util.Random;
+
 import battlecode.common.*;
 
 public class Globals {
     public static RobotController rc;
+    public static final Random rng = new Random(6147);
 
     public static Team myTeam;
     public static Team opponentTeam;

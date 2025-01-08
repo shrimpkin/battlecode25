@@ -1,45 +1,84 @@
 package V1.Units;
 
+import static V1.Globals.rng;
+
 import java.util.Random;
 import V1.*;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
     static MapLocation ruin_location = null;
-    static final Random rng = new Random(6147);
+    static MapLocation target_location = null;
     static String indicator;
 
     public static void run() throws GameActionException{
         indicator = "";
-        find_ruin(rc);
-        
-        if(ruin_location != null) {
-            indicator += "has target" + "(" + ruin_location.x + "," + ruin_location.y + ")";
-            rc.setIndicatorString(indicator);
 
-            try{
-                Direction d = BellmanFordNavigator.getBestDirection(ruin_location);
-                indicator += "\nBellman done";
-                
-                if(rc.canMove(d)) {
-                    rc.move(d);
-                }
-                
-                paint_tower();
-
-            } catch(Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            indicator += "looking for target";
-            wander();
-        }
+        get_target_location();
+        Navigator.moveTo(target_location);
+        paint();
 
         rc.setIndicatorString(indicator);
     }
 
+    public static void get_target_location() {
+        if(ruin_location == null) find_ruin(rc);
+
+        if(rc.canSenseLocation(ruin_location)) {
+            target_location = new MapLocation(ruin_location.x - 2 + rng.nextInt(5), ruin_location.y - 2 + rng.nextInt(5));
+        } else {
+            target_location = ruin_location;
+        }
+    }
+
+    public static void find_ruin(RobotController rc) {
+        if(ruin_location != null) return;
+
+        MapInfo[] info = rc.senseNearbyMapInfos();
+        for(MapInfo tile : info) {
+            if(tile.hasRuin()) ruin_location = tile.getMapLocation();
+        }
+    }
+
+    public static void paint() throws GameActionException {
+        mark_tower();
+        paint_below();
+        paint_marks();
+    }
+
+    /**
+     * Paints below the robot if possible
+     * @throws GameActionException
+     */
+    public static void paint_below() throws GameActionException {
+        MapLocation loc = rc.getLocation();
+        MapInfo info = rc.senseMapInfo(loc);
+
+        switch(info.getPaint()) {
+            case PaintType.ALLY_PRIMARY: 
+            case PaintType.ALLY_SECONDARY: 
+                break;
+            default:
+                if(rc.canAttack(loc)) {
+                    //paints the tile, if it can paint the mark it paints that
+                    if(!paint_mark(loc)) {
+                        rc.attack(loc);
+                    }
+                }
+                break;
+        }
+    }
+
+
+    public static void paint_marks() throws GameActionException {
+        MapInfo[] locations = rc.senseNearbyMapInfos();
+        for(MapInfo info : locations) {
+            paint_mark(info.getMapLocation());
+        }
+    }
+
     //this robot will be used to repeated rebuild a paint tower
-    public static void paint_tower() throws GameActionException{
+    public static void mark_tower() throws GameActionException{
         UnitType tower = has_tower_marked(ruin_location);
         
         if(ruin_location == null) return;
@@ -49,17 +88,12 @@ public class Soldier extends Unit {
 
             rc.markTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location);
         }
-
-        MapInfo[] locations = rc.senseNearbyMapInfos();
-        for(MapInfo info : locations) {
-            paint_mark(info.getMapLocation());
-        }
     }
 
     /**
      * Paints the given color at the given location
      */
-    public static boolean paint(MapLocation location, PaintType type) throws GameActionException {
+    public static boolean paint_at(MapLocation location, PaintType type) throws GameActionException {
         if(!rc.canSenseLocation(location)) return false;
         if(!rc.canAttack(location)) return false;
 
@@ -82,20 +116,13 @@ public class Soldier extends Unit {
      */
     public static boolean paint_mark(MapLocation location) throws GameActionException {
         if(!rc.canSenseLocation(location)) return false;
-        if(!rc.canAttack(location)) return false;
+        if(!rc.canAttack(location)) {
+            if(!rc.canAttack(location)) return false;
+        }
         
         MapInfo info = rc.senseMapInfo(location);
         if(info.getMark() == PaintType.EMPTY) return true; //vacuously painted
-        else return paint(location, info.getMark());
+        else return paint_at(location, info.getMark());
 
-    }
-
-    public static void find_ruin(RobotController rc) {
-        if(ruin_location != null) return;
-
-        MapInfo[] info = rc.senseNearbyMapInfos();
-        for(MapInfo tile : info) {
-            if(tile.hasRuin()) ruin_location = tile.getMapLocation();
-        }
-    }
+    }    
 }
