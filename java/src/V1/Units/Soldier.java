@@ -7,11 +7,17 @@ public class Soldier extends Unit {
     static MapLocation ruin_location = null;
     static MapLocation target_location = null;
     static String indicator;
+    
+    //TODO: This should be an array of all known paint towers
+    //Should find the closest one for refuel
+    static MapLocation paint_towers = null;
 
     public static void run() throws GameActionException {
         indicator = rc.getRoundNum() + ": ";
 
         try {
+            update_paint_tower_loc();
+            acquire_paint();
             get_target_location();
             move();
             paint();
@@ -23,12 +29,43 @@ public class Soldier extends Unit {
         rc.setIndicatorString(indicator);
     }
 
+    public static void update_paint_tower_loc() throws GameActionException {
+        RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
+
+        for(RobotInfo robot : robots) {
+            if(robot.type.equals(UnitType.LEVEL_ONE_PAINT_TOWER) 
+                || robot.type.equals(UnitType.LEVEL_TWO_PAINT_TOWER) 
+                || robot.type.equals(UnitType.LEVEL_THREE_PAINT_TOWER)) {
+                    paint_towers = robot.getLocation();
+                }
+        }
+    }
+
+    public static void acquire_paint() throws GameActionException {
+        if(paint_towers == null) return; 
+        if(rc.getPaint() > 100) return;
+
+        indicator += "trying to transfer paint, ";
+        rc.setIndicatorDot(paint_towers, 50, 50, 0);
+        if(rc.canTransferPaint(paint_towers, rc.getPaint() - 200)) {
+            rc.transferPaint(paint_towers, rc.getPaint() - 200);
+        }
+    }
+
     /**
      * Finds the robots next target location
      * This method should contain all such logic
      */
     public static void get_target_location() throws GameActionException {
-        if (ruin_location == null) {
+        if(rc.getPaint() < 50 && paint_towers != null) {
+            target_location = paint_towers;
+            indicator += "looking for paint, ";
+            return;
+        }
+
+        if (ruin_location == null 
+            || (rc.canSenseLocation(ruin_location)
+                && rc.senseRobotAtLocation(ruin_location) != null)) {
             indicator += "finding ruin, ";
             ruin_location = Unit.findRuin();
         }
