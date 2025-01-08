@@ -125,6 +125,9 @@ public class Unit extends Globals {
         return true;
     }
 
+    /**
+     * Updates location of last seen paint tower
+     */
     public static void update_paint_tower_loc() throws GameActionException {
         RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
 
@@ -137,6 +140,10 @@ public class Unit extends Globals {
         }
     }
 
+    /**
+     * Will attempt to grab paint from paint towers
+     * Only will grab if it has 100 or less paint
+     */
     public static void acquire_paint() throws GameActionException {
         if(paint_tower == null) return; 
         if(rc.getPaint() > 100) return;

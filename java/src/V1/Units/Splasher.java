@@ -13,6 +13,7 @@ public class Splasher extends Globals {
         if (shouldSplash()) {
             rc.attack(rc.getLocation());
         }
+        
         Unit.wander();
     }
 
