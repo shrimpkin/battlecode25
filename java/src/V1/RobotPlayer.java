@@ -15,13 +15,13 @@ public class RobotPlayer {
 
             try {
                 switch (rc.getType()){
-                    case SOLDIER: 
+                    case SOLDIER: Soldier.run(); break;
                     case MOPPER: 
                     case SPLASHER:
                         Unit.run();
                         break;
                     default: 
-                        Tower.run(rc); 
+                        Tower.run(); 
                         break;
                 }
             } catch(GameActionException e) {
