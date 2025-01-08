@@ -10,15 +10,15 @@ public class Unit extends Globals {
     private static MapLocation wanderTarget;
     private static MapLocation spawnLocation;
 
-    public static void run(RobotController rc) throws GameActionException {
+    public static void run() throws GameActionException {
         spawnLocation = rc.getLocation();
-        wander(rc);
+        wander();
     }
 
     /**
      * Unit picks a random location and moves towards it
      */
-    public static void wander(RobotController rc) throws GameActionException {
+    public static void wander() throws GameActionException {
         if (!rc.isMovementReady()) {
             return;
         }

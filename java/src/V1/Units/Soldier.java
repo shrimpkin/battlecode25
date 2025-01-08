@@ -3,9 +3,8 @@ package V1.Units;
 import java.util.Random;
 import V1.*;
 import battlecode.common.*;
-import battlecode.schema.GameFooter;
 
-public class Soldier extends Globals {
+public class Soldier extends Unit {
     static MapLocation ruin_location = null;
     static final Random rng = new Random(6147);
     static String indicator;
@@ -38,11 +37,7 @@ public class Soldier extends Globals {
         } else {
             indicator += "looking for target";
 
-            //TODO: replace with exploration algorithm
-            int random_direction = rng.nextInt(8);
-            if(rc.canMove(Utils.directions[random_direction])) {
-                rc.move(Utils.directions[random_direction]);
-            }
+            wander();
         }
 
 
