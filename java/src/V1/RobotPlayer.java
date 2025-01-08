@@ -18,7 +18,7 @@ public class RobotPlayer {
                     case SOLDIER: 
                     case MOPPER: 
                     case SPLASHER:
-                        Unit.run(rc);
+                        Unit.run();
                         break;
                     default: 
                         Tower.run(rc); 
