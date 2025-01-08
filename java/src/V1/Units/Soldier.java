@@ -3,28 +3,33 @@ package V1.Units;
 import java.util.Random;
 import V1.*;
 import battlecode.common.*;
+import battlecode.schema.GameFooter;
 
 public class Soldier extends Globals {
-    static MapLocation tower_build_target = new MapLocation(0, 0);
+    static MapLocation ruin_location = null;
     static final Random rng = new Random(6147);
     static String indicator;
 
     public static void run() throws GameActionException{
         indicator = "";
-        //find_ruin(rc);
+        find_ruin(rc);
         
-        if(tower_build_target != null) {
-            indicator += "has target" + "(" + tower_build_target.x + "," + tower_build_target.y + ")";
+        if(ruin_location != null) {
+            indicator += "has target" + "(" + ruin_location.x + "," + ruin_location.y + ")";
 
             rc.setIndicatorString(indicator);
 
             try{
-                Direction d = BellmanFordNavigator.getBestDirection(tower_build_target);
+                Direction d = BellmanFordNavigator.getBestDirection(ruin_location);
                 indicator += "\nBellman done";
                 
                 if(rc.canMove(d)) {
                     rc.move(d);
                 }
+
+                MapInfo cur_info = rc.senseMapInfo(rc.getLocation());
+                
+                paint_tower();
             } catch(Exception e) {
                 e.printStackTrace();
             }
@@ -45,27 +50,69 @@ public class Soldier extends Globals {
     }
 
     //this robot will be used to repeated rebuild a paint tower
-    public static void paint_tower(RobotController rc) {
-        boolean is_paint_robot = false;
-
-        RobotInfo[] robots = rc.senseNearbyRobots();
-        for(RobotInfo robot : robots) {
-            if(robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER) {
-                is_paint_robot = true;
-            }
+    public static void paint_tower() throws GameActionException{
+        if(ruin_location != null && rc.canMarkTowerPattern(UnitType.LEVEL_ONE_DEFENSE_TOWER, ruin_location)) {
+            rc.markTowerPattern(UnitType.LEVEL_ONE_DEFENSE_TOWER, ruin_location);
         }
 
-        if(!is_paint_robot) return;
+        MapInfo[] locations = rc.senseNearbyMapInfos();
+        for(MapInfo info : locations) {
+            paint_mark(info.getMapLocation());
+        }
+    }
 
+    /**
+     * Checks whether a tile has a specific pattern painted around it
+     * @param location
+     * @return
+     */
+    public static boolean has_tower_marked(MapLocation location) {
+        
+
+
+        return true;
+    }
+
+    /**
+     * Paints the given color at the given location
+     */
+    public static boolean paint(MapLocation location, PaintType type) throws GameActionException {
+        if(!rc.canSenseLocation(location)) return false;
+        if(!rc.canAttack(location)) return false;
+
+        MapInfo info = rc.senseMapInfo(location);
+        if(info.getPaint() == type) {
+             return true;
+        } 
+
+        if(type.equals(PaintType.ALLY_PRIMARY)) {
+            rc.attack(location, false);
+            return true;
+        } else {
+            rc.attack(location, true);
+            return true;
+        }
+    }
+
+    /**
+     * Paints whatever is marked at that location
+     */
+    public static boolean paint_mark(MapLocation location) throws GameActionException {
+        if(!rc.canSenseLocation(location)) return false;
+        if(!rc.canAttack(location)) return false;
+        
+        MapInfo info = rc.senseMapInfo(location);
+        if(info.getMark() == PaintType.EMPTY) return true; //vacuously painted
+        else return paint(location, info.getMark());
 
     }
 
     public static void find_ruin(RobotController rc) {
-        if(tower_build_target != null) return;
+        if(ruin_location != null) return;
 
         MapInfo[] info = rc.senseNearbyMapInfos();
         for(MapInfo tile : info) {
-            if(tile.hasRuin()) tower_build_target = tile.getMapLocation();
+            if(tile.hasRuin()) ruin_location = tile.getMapLocation();
         }
     }
 }
