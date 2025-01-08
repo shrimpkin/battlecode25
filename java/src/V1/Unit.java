@@ -18,10 +18,10 @@ public class Unit extends Globals {
      * Returns the location of a ruin in the unit's sensing range if it exists,
      * otherwise returns null
      */
-    public static MapLocation findRuin() {
+    public static MapLocation findRuin() throws GameActionException {
         MapInfo[] tiles = rc.senseNearbyMapInfos();
         for (MapInfo tile : tiles) {
-            if (tile.hasRuin()) {
+            if (tile.hasRuin() && rc.senseRobotAtLocation(tile.getMapLocation()) == null) {
                 return tile.getMapLocation();
             }
         }
@@ -38,8 +38,7 @@ public class Unit extends Globals {
 
         // pick a new place to go if we don't have one
         while (wanderTarget == null
-                || rc.canSenseLocation(wanderTarget)
-                || (rc.getRoundNum() < SETUP_ROUNDS && spawnLocation.distanceSquaredTo(wanderTarget) > maxDistance)) {
+                || rc.canSenseLocation(wanderTarget)) {
             wanderTarget = new MapLocation(nextInt(mapWidth), nextInt(mapHeight));
         }
 

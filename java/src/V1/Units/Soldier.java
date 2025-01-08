@@ -11,10 +11,14 @@ public class Soldier extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
 
-        get_target_location();
-        move();
-        paint();
-
+        try {
+            get_target_location();
+            move();
+            paint();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        
         rc.setIndicatorString(indicator);
     }
 
@@ -22,7 +26,7 @@ public class Soldier extends Unit {
      * Finds the robots next target location
      * This method should contain all such logic
      */
-    public static void get_target_location() {
+    public static void get_target_location() throws GameActionException {
         if (ruin_location == null) {
             ruin_location = Unit.findRuin();
         }
@@ -37,17 +41,17 @@ public class Soldier extends Unit {
         } else {
             target_location = ruin_location;
         }
+
+        if(target_location == null) indicator += "null, ";
+        else indicator += target_location.toString();
     }
 
     /**
      * Contains all logic for movement
      */
     public static void move() throws GameActionException {
-        if(target_location != null) {
-            Navigator.moveTo(target_location);
-        } else {
-            wander();
-        }
+        if(target_location == null) wander();
+        else Navigator.moveTo(target_location);
     }
 
     /**
@@ -55,7 +59,7 @@ public class Soldier extends Unit {
      */
     public static void paint() throws GameActionException {
         //currently focuses on painting below the robot as fast as possible to reduce paint loss
-        mark_tower();
+        mark_tower(false);
         paint_below();
         paint_marks();
     }
@@ -95,7 +99,12 @@ public class Soldier extends Unit {
     /**
      * Marks a tower pattern at the ruin_location field if possible
      */
-    public static void mark_tower() throws GameActionException{
+    public static void mark_tower(boolean mark_built_towers) throws GameActionException{
+        //Checks if a tower is already built there 
+        //Since it is on a ruin checking if there is a robot there is sufficient
+        if(!mark_built_towers && rc.senseRobotAtLocation(ruin_location) != null) {
+            return;
+        }
         UnitType tower = has_tower_marked(ruin_location);
 
         if (ruin_location == null)
