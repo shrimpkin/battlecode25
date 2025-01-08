@@ -9,12 +9,13 @@ public class Soldier extends Unit {
     static String indicator;
 
     public static void run() throws GameActionException {
-        indicator = "";
+        indicator = rc.getRoundNum() + ": ";
 
         try {
             get_target_location();
             move();
             paint();
+            complete_patterns();
         } catch(Exception e) {
             e.printStackTrace();
         }
@@ -28,30 +29,39 @@ public class Soldier extends Unit {
      */
     public static void get_target_location() throws GameActionException {
         if (ruin_location == null) {
+            indicator += "finding ruin, ";
             ruin_location = Unit.findRuin();
         }
 
-        if (ruin_location == null) {
+        if(ruin_location == null) {
+            target_location = null;
+            indicator += "null, ";
             return;
         }
-
+        
         if (rc.canSenseLocation(ruin_location)) {
+            indicator += "moving around ruin, ";
             target_location = new MapLocation(ruin_location.x - 2 + rng.nextInt(5),
                     ruin_location.y - 2 + rng.nextInt(5));
         } else {
+            indicator += "update target to ruin, ";
             target_location = ruin_location;
         }
 
-        if(target_location == null) indicator += "null, ";
-        else indicator += target_location.toString();
+        indicator += target_location.toString() + ", ";
     }
 
     /**
      * Contains all logic for movement
      */
     public static void move() throws GameActionException {
-        if(target_location == null) wander();
-        else Navigator.moveTo(target_location);
+        if(target_location == null) {
+            indicator += "wandering, ";
+            wander();
+        } else {
+            indicator += "move to target, ";
+            Navigator.moveTo(target_location);
+        }
     }
 
     /**
@@ -100,6 +110,7 @@ public class Soldier extends Unit {
      * Marks a tower pattern at the ruin_location field if possible
      */
     public static void mark_tower(boolean mark_built_towers) throws GameActionException{
+        if(ruin_location == null) return;
         //Checks if a tower is already built there 
         //Since it is on a ruin checking if there is a robot there is sufficient
         if(!mark_built_towers && rc.senseRobotAtLocation(ruin_location) != null) {
@@ -125,17 +136,27 @@ public class Soldier extends Unit {
             return false;
         if (!rc.canAttack(location))
             return false;
+        
 
         MapInfo info = rc.senseMapInfo(location);
-        if (info.getPaint() == type) {
-            return true;
+        
+        if (info.getPaint() == type) return true;
+        
+        //soldiers can't paint over enemy paint
+        if(info.getPaint() == PaintType.ENEMY_PRIMARY 
+            || info.getPaint() == PaintType.ENEMY_SECONDARY) {
+                return false;
         }
 
         if (type.equals(PaintType.ALLY_PRIMARY)) {
             rc.attack(location, false);
+            indicator += location.toString() + ", ";
+            rc.setIndicatorDot(location, 0, 0, 0);
             return true;
         } else {
             rc.attack(location, true);
+            indicator += location.toString() + ", ";
+            rc.setIndicatorDot(location, 0, 0, 0);
             return true;
         }
     }
@@ -157,5 +178,14 @@ public class Soldier extends Unit {
         else
             return paint_at(location, info.getMark());
 
+    }
+
+    public static void complete_patterns() throws GameActionException {
+        if(ruin_location == null) return;
+
+        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location)) {
+            rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruin_location);
+            ruin_location = null;
+        }
     }
 }
