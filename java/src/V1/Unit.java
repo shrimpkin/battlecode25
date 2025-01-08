@@ -9,6 +9,11 @@ public class Unit extends Globals {
     private static MapLocation wanderTarget;
     private static MapLocation spawnLocation;
 
+    //TODO: This should be an array of all known paint towers
+    //Should find the closest one for refuel
+    public static MapLocation paint_tower = null;
+    public static String indicator;
+
     public static void run() throws GameActionException {
         spawnLocation = rc.getLocation();
         wander();
@@ -118,5 +123,28 @@ public class Unit extends Globals {
         }
 
         return true;
+    }
+
+    public static void update_paint_tower_loc() throws GameActionException {
+        RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
+
+        for(RobotInfo robot : robots) {
+            if(robot.type.equals(UnitType.LEVEL_ONE_PAINT_TOWER) 
+                || robot.type.equals(UnitType.LEVEL_TWO_PAINT_TOWER) 
+                || robot.type.equals(UnitType.LEVEL_THREE_PAINT_TOWER)) {
+                    paint_tower = robot.getLocation();
+                }
+        }
+    }
+
+    public static void acquire_paint() throws GameActionException {
+        if(paint_tower == null) return; 
+        if(rc.getPaint() > 100) return;
+
+        indicator += "trying to transfer paint, ";
+        rc.setIndicatorDot(paint_tower, 50, 50, 0);
+        if(rc.canTransferPaint(paint_tower, rc.getPaint() - 200)) {
+            rc.transferPaint(paint_tower, rc.getPaint() - 200);
+        }
     }
 }
