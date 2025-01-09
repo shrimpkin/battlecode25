@@ -123,7 +123,7 @@ public class BellmanFordNavigator extends Globals {{
         content += f"""
         int distance{id} = 1_000_000;
         Direction direction{id} = null;
-        int weight{id} = canVisit{id} ? 1 : 1_000_000;
+        int weight{id} = canVisit{id} ? ((rc.senseMapInfo(location{id}).getPaint().equals(PaintType.ENEMY_PRIMARY) || rc.senseMapInfo(location{id}).getPaint().equals(PaintType.ENEMY_SECONDARY)) ? 2 : 1) +  (rc.senseMapInfo(location{id}).getPaint().equals(PaintType.EMPTY) ? 1 : 0) : 1_000_000;
         """.rstrip() + "\n"
 
     for i, (side, ordered_offsets) in enumerate([

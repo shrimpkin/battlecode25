@@ -1,4 +1,4 @@
-package V1splasher;
+package V2;
 
 import battlecode.common.*;
 

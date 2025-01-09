@@ -1,6 +1,6 @@
-package V1splasher;
+package V2;
 
-import V1splasher.Units.*;
+import V2.Units.*;
 import battlecode.common.*;
 
 public class RobotPlayer {
@@ -18,9 +18,7 @@ public class RobotPlayer {
                     case SOLDIER: Soldier.run(); break;
                     case MOPPER:  Mopper.run(); break;
                     case SPLASHER: Splasher.run(); break;
-                    default: 
-                        Tower.run(); 
-                        break;
+                    default: Tower.run(); break;
                 }
             } catch(GameActionException e) {
                 rc.setIndicatorString("exception");
