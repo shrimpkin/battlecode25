@@ -19,7 +19,7 @@ public class Soldier extends Unit {
 
         try {
             update_paint_tower_loc();
-            acquire_paint();
+            acquire_paint(200);
             get_target_location();
             
             if(target_location != null) {

@@ -1,4 +1,4 @@
-# V1splasher 
+# V2 
 
 - `README.md`
     This file.

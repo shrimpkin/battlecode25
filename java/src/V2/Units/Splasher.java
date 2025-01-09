@@ -9,75 +9,55 @@ public class Splasher extends Globals {
     // max number of ally tiles that will be overridden in a splash
     private static final int maxNumAllySquares = 4;
 
+    private static MapLocation currLoc;
+    private static MapInfo[] nearbyTiles;
+    private static int paintLvl;
+
     public static void run() throws GameActionException {
         Unit.update_paint_tower_loc();
 
-        MapLocation splashLoc = getSplashLoc();
-        if (rc.canAttack(splashLoc) && rc.getPaint() > 50 && splashLoc != null) {
-            rc.attack(splashLoc);
-        }
+        // update round specific information
+        currLoc = rc.getLocation();
+        paintLvl = rc.getPaint();
+        nearbyTiles = rc.senseNearbyMapInfos();
 
-        if (rc.getPaint() < 50) {
-            Navigator.moveTo(Unit.paint_tower);
-            Unit.acquire_paint();
-        }
+        // action sequence
+        splash();
+        refill();
 
         Unit.wander();
     }
 
-    public static MapLocation isOptimalSplashLoc(MapLocation currLoc) throws GameActionException {
-        double[][] mp = {{2/13.0, -3/13.0},
-                {3/13.0, 2/13.0}};
-        int[] pt = {
-                (int) Math.round(mp[0][0] * currLoc.x + mp[0][1] * currLoc.y),
-                (int) Math.round(mp[1][0] * currLoc.x + mp[1][1] * currLoc.y),
-        };
-        // display 4 dots in line along with the closest dot as line guide
-        int[][] rmap = {{2, 3}, {-3, 2}};
-        for (int i = -2; i <= 2; i++) {
-            int[] offsetpt = {pt[0], pt[1]+i};
-            int[] linept = Utils.mvmul(rmap, offsetpt);
-            // if (linept[0] >= 0 && linept[1] >= 0 && linept[0] < mapWidth && linept[1] < mapHeight) {
-            //     rc.setIndicatorDot(new MapLocation(linept[0], linept[1]), 255, 255, 0);
-            // }
+    public static void splash() throws GameActionException {
+        MapLocation splashLoc = getClosestOptimalSplashLoc(currLoc);
+        Navigator.moveTo(splashLoc);
+
+        if (splashLoc != null && paintLvl > 50
+                && shouldSplash()
+                && rc.canAttack(splashLoc)) { 
+            rc.attack(splashLoc);
         }
-        // can also inline the mat-vec mul on this line
-        int[] remapped = Utils.mvmul(rmap, pt);
-        // String loc = String.format("Opt (mapped space): (%d, %d), Opt (real): (%d, %d)",pt[0],pt[1],remapped[0],remapped[1]);
-        // rc.setIndicatorString(loc);
-        return new MapLocation(remapped[0], remapped[1]);
     }
 
-    public static MapLocation getSplashLoc() throws GameActionException {
-        MapLocation currLoc = rc.getLocation();
-        MapLocation newLoc = isOptimalSplashLoc(currLoc);
+    public static void refill() throws GameActionException {
+        if (paintLvl >= 50)
+            return;
 
-        if (currLoc.x == newLoc.x && currLoc.y == newLoc.y) {
-            if (canOptimalSplash() || canSplashEnemies()) {
-                return currLoc;
-            }
-            return null;
-        }
-
-        Navigator.moveTo(newLoc);
-        if (canOptimalSplash() || canSplashEnemies()) {
-            return newLoc;
-        }
-        return null;
-
-        // if (canOptimalSplash())
-        //     return true;
-        
-        // if (canSplashEnemies())
-        //     return true;
-
-        // return false;
+        Navigator.moveTo(Unit.paint_tower);
+        Unit.acquire_paint(250);
     }
 
-    public static boolean canOptimalSplash() throws GameActionException {
+    public static boolean shouldSplash() throws GameActionException {
+        if (checkAllyCoverageOk() || checkEnemyCoverageOk()) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean checkAllyCoverageOk() throws GameActionException {
         int numAllySquares = 0;
-        for (MapInfo tile : rc.senseNearbyMapInfos(4)) {
-            if (tile.isWall()) {
+        for (MapInfo tile : nearbyTiles) {
+            if (tile.getMapLocation().distanceSquaredTo(currLoc) <= 4 && tile.isWall()) {
                 continue;
             }
             PaintType paintType = tile.getPaint();
@@ -88,10 +68,10 @@ public class Splasher extends Globals {
         return numAllySquares < maxNumAllySquares;
     }
 
-    public static boolean canSplashEnemies() throws GameActionException {
+    public static boolean checkEnemyCoverageOk() throws GameActionException {
         int numEnemySquares = 0;
-        for (MapInfo tile : rc.senseNearbyMapInfos(2)) {
-            if (tile.isWall()) {
+        for (MapInfo tile : nearbyTiles) {
+            if (tile.getMapLocation().distanceSquaredTo(currLoc) <= 2 && tile.isWall()) {
                 continue;
             }
             PaintType paintType = tile.getPaint();
@@ -100,5 +80,15 @@ public class Splasher extends Globals {
             }
         }
         return numEnemySquares >= minNumEnemySquares;
+    }
+
+    public static MapLocation getClosestOptimalSplashLoc(MapLocation currLoc) throws GameActionException {
+        int[] pt = {
+                (int) Math.round(Utils.mp[0][0] * currLoc.x + Utils.mp[0][1] * currLoc.y),
+                (int) Math.round(Utils.mp[1][0] * currLoc.x + Utils.mp[1][1] * currLoc.y),
+        };
+
+        int[] remapped = Utils.mvmul(Utils.rmap, pt);
+        return new MapLocation(remapped[0], remapped[1]);
     }
 }

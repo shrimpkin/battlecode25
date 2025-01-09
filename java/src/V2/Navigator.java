@@ -1,4 +1,4 @@
-package V1splasher;
+package V2;
 
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
@@ -43,8 +43,6 @@ public class Navigator extends Globals {
         Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
         if (bellmanFordDirection != null) {
             if (rc.canMove(bellmanFordDirection)) {
-
-
                 rc.move(bellmanFordDirection);
             }
 
