@@ -1,4 +1,4 @@
-package V1;
+package V1splasher;
 
 import battlecode.common.Direction;
 

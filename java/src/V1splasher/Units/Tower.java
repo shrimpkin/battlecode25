@@ -1,8 +1,7 @@
-package V1.Units;
+package V1splasher.Units;
 
 import battlecode.common.*;
-
-import V1.*;
+import V1splasher.*;
 
 public class Tower extends Globals {
     public static int turn_num = 0;

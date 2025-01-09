@@ -1,8 +1,6 @@
-package V1.Units;
+package V1splasher.Units;
 
-import java.util.ArrayList;
-
-import V1.*;
+import V1splasher.*;
 import battlecode.common.*;
 
 public class Splasher extends Globals {
@@ -27,20 +25,34 @@ public class Splasher extends Globals {
         Unit.wander();
     }
 
+    private static int[] mvmul(int[][] mat, int[] vect){
+        return new int[]{
+                mat[0][0] * vect[0] + mat[0][1] * vect[1],
+                mat[1][0] * vect[0] + mat[1][1] * vect[1]
+        };
+    }
     public static boolean isOptimalSplashLoc() throws GameActionException {
         MapLocation currLoc = rc.getLocation();
-        double[][] mp = {{2/13.0, 3/13.0}, 
-                         {3/13.0, -2/13.0}};
-
+        double[][] mp = {{2/13.0, -3/13.0},
+                {3/13.0, 2/13.0}};
         int[] pt = {
-            (int) Math.round(mp[0][0] * currLoc.x + mp[0][1] * currLoc.y),
-            (int) Math.round(mp[1][0] * currLoc.x + mp[1][1] * currLoc.y),
+                (int) Math.round(mp[0][0] * currLoc.x + mp[0][1] * currLoc.y),
+                (int) Math.round(mp[1][0] * currLoc.x + mp[1][1] * currLoc.y),
         };
-
-        String loc = "opt: " + pt[0] + " " + pt[1];
+        // display 4 dots in line along with the closest dot as line guide
+        int[][] rmap = {{2, 3}, {-3, 2}};
+        for (int i = -2; i <= 2; i++) {
+            int[] offsetpt = {pt[0], pt[1]+i};
+            int[] linept = mvmul(rmap, offsetpt);
+            if (linept[0] >= 0 && linept[1] >= 0 && linept[0] < mapWidth && linept[1] < mapHeight) {
+                rc.setIndicatorDot(new MapLocation(linept[0], linept[1]), 255, 255, 0);
+            }
+        }
+        // can also inline the mat-vec mul on this line
+        int[] remapped = mvmul(rmap, pt);
+        String loc = String.format("Opt (mapped space): (%d, %d), Opt (real): (%d, %d)",pt[0],pt[1],remapped[0],remapped[1]);
         rc.setIndicatorString(loc);
-        rc.setIndicatorDot(new MapLocation(currLoc.x + pt[0], currLoc.y + pt[1]), 255, 0, 0);
-        return pt[0] == currLoc.x && pt[1] == currLoc.y;
+        return remapped[0] == currLoc.x && remapped[1] == currLoc.y;
     }
 
     public static boolean shouldSplash() throws GameActionException {

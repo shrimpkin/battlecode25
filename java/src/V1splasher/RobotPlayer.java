@@ -1,6 +1,6 @@
-package V1;
+package V1splasher;
 
-import V1.Units.*;
+import V1splasher.Units.*;
 import battlecode.common.*;
 
 public class RobotPlayer {

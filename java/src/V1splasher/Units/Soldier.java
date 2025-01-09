@@ -1,6 +1,6 @@
-package V1.Units;
+package V1splasher.Units;
 
-import V1.*;
+import V1splasher.*;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
