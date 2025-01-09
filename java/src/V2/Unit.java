@@ -6,7 +6,7 @@ public class Unit extends Globals {
     // temporary variable representing how many rounds the unit should wander for
     public static final int SETUP_ROUNDS = 100;
 
-    private static MapLocation wanderTarget;
+    public static MapLocation wanderTarget;
     private static MapLocation spawnLocation;
     
     //TODO: This should be an array of all known paint towers
