@@ -7,23 +7,38 @@ public class Soldier extends Unit {
     static MapLocation ruin_location = null;
     static MapLocation target_location = null;
     static boolean can_paint_tower = true;
+    static enum Mode {LOW_PAINT, RUIN_FINDING, RUIN_BUILDING};
+    static Mode mo = Mode.LOW_PAINT;
 
     public static void run() throws GameActionException {
         indicator = rc.getRoundNum() + ": ";
+
+        if(paint_tower != null) {
+            rc.setIndicatorDot(paint_tower, 255, 128, 128);
+        }
 
         try {
             update_paint_tower_loc();
             acquire_paint();
             get_target_location();
+            
+            if(target_location != null) {
+                rc.setIndicatorDot(target_location, 0, 255, 0);
+            } 
+
             move();
             paint();
             complete_patterns();
-            attack();
+
         } catch(Exception e) {
             e.printStackTrace();
         }
         
-        rc.setIndicatorString(indicator);
+        switch(mo) {
+            case LOW_PAINT: rc.setIndicatorString("Low Paint");
+            case RUIN_BUILDING: rc.setIndicatorString("Ruin Building");
+            case RUIN_FINDING: rc.setIndicatorString("Ruin Finding");
+        }
     }
 
     /**
@@ -33,7 +48,7 @@ public class Soldier extends Unit {
     public static void get_target_location() throws GameActionException {
         if(rc.getPaint() < 50 && paint_tower != null) {
             target_location = paint_tower;
-            indicator += "looking for paint, ";
+            mo = Mode.LOW_PAINT;
             return;
         }
         
@@ -44,7 +59,6 @@ public class Soldier extends Unit {
                 for(MapInfo loc : locations) {
                     if(loc.getPaint().equals(PaintType.ENEMY_PRIMARY) 
                         || loc.getPaint().equals(PaintType.ENEMY_SECONDARY)) {
-                            indicator += "has enemy paint";
                             has_enemy_paint = true;
                     }
                 }
@@ -56,13 +70,12 @@ public class Soldier extends Unit {
             || (rc.canSenseLocation(ruin_location)
                 && rc.senseRobotAtLocation(ruin_location) != null)
             || has_enemy_paint) {
-            indicator += "finding ruin, ";
             ruin_location = Unit.findRuin();
         }
 
         if(ruin_location == null) {
             target_location = null;
-            indicator += "null, ";
+            mo = Mode.RUIN_FINDING;
             return;
         }
         
@@ -75,6 +88,7 @@ public class Soldier extends Unit {
             target_location = ruin_location;
         }
 
+        mo = Mode.RUIN_BUILDING;
         indicator += target_location.toString() + ", ";
     }
 
@@ -82,30 +96,24 @@ public class Soldier extends Unit {
      * Contains all logic for movement
      */
     public static void move() throws GameActionException {
-        if(target_location == null || rc.getMoney() < 1000) {
-            indicator += "wandering, ";
-            wander(true);
-        } else {
-            indicator += "move to target, ";
-            Navigator.moveTo(target_location, true);
-        }
+        if(target_location == null) wander();
+        else Navigator.moveTo(target_location);
     }
 
     /**
      * Contains all paint logic
      */
     public static void paint() throws GameActionException {
-        //currently focuses on painting below the robot as fast as possible to reduce paint loss
         mark_tower(false);
         paint_marks();
-        paint_below();
+        //paint_below();
     }
 
     /**
      * Paints below the robot if possible
      */
     public static void paint_below() throws GameActionException {
-        MapLocation loc = new MapLocation(rc.getLocation().x - 1 + rng.nextInt(2) , rc.getLocation().y - 1 + rng.nextInt(2));
+        MapLocation loc = new MapLocation(rc.getLocation().x, rc.getLocation().y);
         MapInfo info = rc.senseMapInfo(loc);
 
         switch (info.getPaint()) {
@@ -128,7 +136,20 @@ public class Soldier extends Unit {
     public static void paint_marks() throws GameActionException {
         MapInfo[] locations = rc.senseNearbyMapInfos();
         for (MapInfo info : locations) {
-            paint_mark(info.getMapLocation());
+            //we can't attack the tile if: 
+            // 1: the robot can't attack
+            // 2: soldiers can't override paint, so we check if there is already enemy paint on the tile
+            // 3: we already have the correct paint
+            if(!rc.canAttack(info.getMapLocation())) continue;
+            if(info.getMark().equals(info.getPaint())
+                || info.getMark().equals(PaintType.EMPTY)) continue;
+            if(info.getPaint().equals(PaintType.ENEMY_PRIMARY) 
+                || info.getPaint().equals(PaintType.ENEMY_SECONDARY)) continue;
+
+            Boolean is_secondary = (info.getMark() == PaintType.ALLY_SECONDARY);
+            rc.attack(info.getMapLocation(), is_secondary);
+            rc.setIndicatorDot(info.getMapLocation(), 255, 255, 0);
+            return;
         }
     }
 
@@ -166,7 +187,6 @@ public class Soldier extends Unit {
         if (!rc.canAttack(location))
             return false;
         
-
         MapInfo info = rc.senseMapInfo(location);
         
         if (info.getPaint() == type) return true;
@@ -197,8 +217,7 @@ public class Soldier extends Unit {
         if (!rc.canSenseLocation(location))
             return false;
         if (!rc.canAttack(location)) {
-            if (!rc.canAttack(location))
-                return false;
+            return false;
         }
 
         MapInfo info = rc.senseMapInfo(location);

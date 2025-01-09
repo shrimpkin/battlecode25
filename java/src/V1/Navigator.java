@@ -10,7 +10,7 @@ public class Navigator extends Globals {
     private static int minDistanceToTarget;
     private static int roundsSinceMovingCloserToTarget;
 
-    public static void moveTo(MapLocation target, boolean paint_target) throws GameActionException {
+    public static void moveTo(MapLocation target) throws GameActionException {
         MapLocation myLocation = rc.getLocation();
 
         // draw line to show where its going
@@ -40,21 +40,17 @@ public class Navigator extends Globals {
             roundsSinceMovingCloserToTarget++;
         }
 
-        if (roundsSinceMovingCloserToTarget < 3) {
-            Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
-            if (bellmanFordDirection != null) {
-                if (rc.canMove(bellmanFordDirection)) {
+        Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
+        if (bellmanFordDirection != null) {
+            if (rc.canMove(bellmanFordDirection)) {
 
-                    if(paint_target && rc.canAttack(target)) {
-                        rc.attack(target);
-                    }
 
-                    rc.move(bellmanFordDirection);
-                }
-
-                return;
+                rc.move(bellmanFordDirection);
             }
+
+            return;
         }
+        
 
         if (!rc.isMovementReady()) {
             return;

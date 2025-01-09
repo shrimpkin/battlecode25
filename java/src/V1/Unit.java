@@ -8,7 +8,7 @@ public class Unit extends Globals {
 
     private static MapLocation wanderTarget;
     private static MapLocation spawnLocation;
-
+    
     //TODO: This should be an array of all known paint towers
     //Should find the closest one for refuel
     public static MapLocation paint_tower = null;
@@ -16,7 +16,7 @@ public class Unit extends Globals {
 
     public static void run() throws GameActionException {
         spawnLocation = rc.getLocation();
-        wander(false);
+        wander();
     }
 
     /**
@@ -36,7 +36,7 @@ public class Unit extends Globals {
     /**
      * Unit picks a random location and moves towards it
      */
-    public static void wander(boolean paint_target) throws GameActionException {
+    public static void wander() throws GameActionException {
         if (!rc.isMovementReady()) {
             return;
         }
@@ -47,7 +47,7 @@ public class Unit extends Globals {
             wanderTarget = new MapLocation(nextInt(mapWidth), nextInt(mapHeight));
         }
 
-        Navigator.moveTo(wanderTarget, paint_target);
+        Navigator.moveTo(wanderTarget);
     }
 
     /**
