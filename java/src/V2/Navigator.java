@@ -42,8 +42,6 @@ public class Navigator extends Globals {
         Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
         if (bellmanFordDirection != null) {
             if (rc.canMove(bellmanFordDirection)) {
-
-
                 rc.move(bellmanFordDirection);
             }
 

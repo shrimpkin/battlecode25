@@ -15,10 +15,10 @@ public class RobotPlayer {
 
             try {
                 switch (rc.getType()){
-                    case SOLDIER: Soldier.run(); break;
-                    case MOPPER:  Mopper.run(); break;
+                    case SOLDIER:  Soldier.run();  break;
+                    case MOPPER:   Mopper.run();   break;
                     case SPLASHER: Splasher.run(); break;
-                    default: Tower.run(); break;
+                    default:       Tower.run();    break;
                 }
             } catch(GameActionException e) {
                 rc.setIndicatorString("exception");

@@ -6,7 +6,7 @@ public class Unit extends Globals {
     // temporary variable representing how many rounds the unit should wander for
     public static final int SETUP_ROUNDS = 100;
 
-    private static MapLocation wanderTarget;
+    public static MapLocation wanderTarget;
     private static MapLocation spawnLocation;
     
     //TODO: This should be an array of all known paint towers
@@ -144,7 +144,7 @@ public class Unit extends Globals {
      * Will attempt to grab paint from paint towers
      * Only will grab if it has 100 or less paint
      */
-    public static void acquire_paint() throws GameActionException {
+    public static void acquire_paint(int limit) throws GameActionException {
         if(paint_tower == null) return; 
         if(rc.getPaint() > 100) return;
 
@@ -159,7 +159,7 @@ public class Unit extends Globals {
         Direction dir = rc.getLocation().directionTo(paint_tower);
         if(rc.canMove(dir)) rc.move(dir);
 
-        int amount_to_transfer = Math.max(rc.getPaint() - 200, -paint_in_tower);
+        int amount_to_transfer = Math.max(rc.getPaint() - limit, -paint_in_tower);
 
         indicator += amount_to_transfer + ", ";
         indicator += rc.canTransferPaint(paint_tower, -10);
