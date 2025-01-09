@@ -13,4 +13,11 @@ public class Utils {
         Direction.WEST,
         Direction.NORTHWEST,
     };
+
+    public static int[] mvmul(int[][] mat, int[] vect){
+        return new int[]{
+                mat[0][0] * vect[0] + mat[0][1] * vect[1],
+                mat[1][0] * vect[0] + mat[1][1] * vect[1]
+        };
+    }
 }

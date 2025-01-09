@@ -5,16 +5,16 @@ import battlecode.common.*;
 
 public class Splasher extends Globals {
     // how many tiles need to be enemy tiles to splash
-    private static final int minNumEnemySquares = 0;
+    private static final int minNumEnemySquares = 2;
     // max number of ally tiles that will be overridden in a splash
-    private static final int maxNumAllySquares = 3;
+    private static final int maxNumAllySquares = 4;
 
     public static void run() throws GameActionException {
         Unit.update_paint_tower_loc();
 
-        MapLocation currLoc = rc.getLocation();
-        if (rc.canAttack(currLoc) && rc.getPaint() > 50 && shouldSplash()) {
-            rc.attack(currLoc);
+        MapLocation splashLoc = getSplashLoc();
+        if (rc.canAttack(splashLoc) && rc.getPaint() > 50 && splashLoc != null) {
+            rc.attack(splashLoc);
         }
 
         if (rc.getPaint() < 50) {
@@ -25,14 +25,7 @@ public class Splasher extends Globals {
         Unit.wander();
     }
 
-    private static int[] mvmul(int[][] mat, int[] vect){
-        return new int[]{
-                mat[0][0] * vect[0] + mat[0][1] * vect[1],
-                mat[1][0] * vect[0] + mat[1][1] * vect[1]
-        };
-    }
-    public static boolean isOptimalSplashLoc() throws GameActionException {
-        MapLocation currLoc = rc.getLocation();
+    public static MapLocation isOptimalSplashLoc(MapLocation currLoc) throws GameActionException {
         double[][] mp = {{2/13.0, -3/13.0},
                 {3/13.0, 2/13.0}};
         int[] pt = {
@@ -43,20 +36,35 @@ public class Splasher extends Globals {
         int[][] rmap = {{2, 3}, {-3, 2}};
         for (int i = -2; i <= 2; i++) {
             int[] offsetpt = {pt[0], pt[1]+i};
-            int[] linept = mvmul(rmap, offsetpt);
-            if (linept[0] >= 0 && linept[1] >= 0 && linept[0] < mapWidth && linept[1] < mapHeight) {
-                rc.setIndicatorDot(new MapLocation(linept[0], linept[1]), 255, 255, 0);
-            }
+            int[] linept = Utils.mvmul(rmap, offsetpt);
+            // if (linept[0] >= 0 && linept[1] >= 0 && linept[0] < mapWidth && linept[1] < mapHeight) {
+            //     rc.setIndicatorDot(new MapLocation(linept[0], linept[1]), 255, 255, 0);
+            // }
         }
         // can also inline the mat-vec mul on this line
-        int[] remapped = mvmul(rmap, pt);
-        String loc = String.format("Opt (mapped space): (%d, %d), Opt (real): (%d, %d)",pt[0],pt[1],remapped[0],remapped[1]);
-        rc.setIndicatorString(loc);
-        return remapped[0] == currLoc.x && remapped[1] == currLoc.y;
+        int[] remapped = Utils.mvmul(rmap, pt);
+        // String loc = String.format("Opt (mapped space): (%d, %d), Opt (real): (%d, %d)",pt[0],pt[1],remapped[0],remapped[1]);
+        // rc.setIndicatorString(loc);
+        return new MapLocation(remapped[0], remapped[1]);
     }
 
-    public static boolean shouldSplash() throws GameActionException {
-        return isOptimalSplashLoc();
+    public static MapLocation getSplashLoc() throws GameActionException {
+        MapLocation currLoc = rc.getLocation();
+        MapLocation newLoc = isOptimalSplashLoc(currLoc);
+
+        if (currLoc.x == newLoc.x && currLoc.y == newLoc.y) {
+            if (canOptimalSplash() || canSplashEnemies()) {
+                return currLoc;
+            }
+            return null;
+        }
+
+        Navigator.moveTo(newLoc);
+        if (canOptimalSplash() || canSplashEnemies()) {
+            return newLoc;
+        }
+        return null;
+
         // if (canOptimalSplash())
         //     return true;
         
