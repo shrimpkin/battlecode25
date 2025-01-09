@@ -1,8 +1,7 @@
 package V2;
 
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.Direction;
+import battlecode.common.*;
+
 
 public class Navigator extends Globals {
     private static MapLocation currentTarget;

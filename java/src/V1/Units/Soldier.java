@@ -106,6 +106,7 @@ public class Soldier extends Unit {
     public static void paint() throws GameActionException {
         mark_tower(false);
         paint_marks();
+
         //paint_below();
     }
 
