@@ -47,7 +47,7 @@ public class Unit extends Globals {
             wanderTarget = new MapLocation(nextInt(mapWidth), nextInt(mapHeight));
         }
 
-        Navigator.moveTo(wanderTarget);
+        Navigator.moveTo(wanderTarget, false);
     }
 
     /**

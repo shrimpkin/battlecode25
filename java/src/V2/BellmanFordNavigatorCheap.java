@@ -1,4 +1,4 @@
-package camel_case;
+package V2;
 
 import battlecode.common.*;
 

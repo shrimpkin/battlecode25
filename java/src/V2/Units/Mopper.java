@@ -13,7 +13,7 @@ public class Mopper extends Unit {
         remove_enemy_paint();
 
         if(nearby_paint != null) {
-            Navigator.moveTo(nearby_paint);
+            Navigator.moveTo(nearby_paint, false);
             if(rc.canMove(rc.getLocation().directionTo(nearby_paint))) {
                 rc.move(rc.getLocation().directionTo(nearby_paint));
             }

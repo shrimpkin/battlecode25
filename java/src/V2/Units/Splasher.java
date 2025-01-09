@@ -30,7 +30,7 @@ public class Splasher extends Globals {
 
     public static void splash() throws GameActionException {
         MapLocation splashLoc = getClosestOptimalSplashLoc(currLoc);
-        Navigator.moveTo(splashLoc);
+        Navigator.moveTo(splashLoc, true);
 
         if (splashLoc != null && paintLvl > 50
                 && shouldSplash()
@@ -43,7 +43,7 @@ public class Splasher extends Globals {
         if (paintLvl >= 50)
             return;
 
-        Navigator.moveTo(Unit.paint_tower);
+        Navigator.moveTo(Unit.paint_tower, false);
         Unit.acquire_paint(250);
         Unit.wanderTarget = null;
     }

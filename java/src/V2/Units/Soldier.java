@@ -97,7 +97,7 @@ public class Soldier extends Unit {
      */
     public static void move() throws GameActionException {
         if(target_location == null) wander();
-        else Navigator.moveTo(target_location);
+        else Navigator.moveTo(target_location, false);
     }
 
     /**
