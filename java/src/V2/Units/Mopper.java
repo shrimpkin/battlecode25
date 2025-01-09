@@ -1,8 +1,8 @@
-package V1splasher.Units;
+package V2.Units;
 
 
 import battlecode.common.*;
-import V1splasher.*;
+import V2.*;
 
 public class Mopper extends Unit {
     static MapLocation nearby_paint = null;
