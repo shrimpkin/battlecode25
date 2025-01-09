@@ -7,6 +7,7 @@ import V1.*;
 public class Tower extends Globals {
     public static int turn_num = 0;
     public static int num_built_soldier = 0;
+    public static int num_built_mopper = 0;
 
     public static void run() throws GameActionException {
         turn_num++;
@@ -59,6 +60,13 @@ public class Tower extends Globals {
             if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
                 num_built_soldier++;
                 rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
+            }
+        }
+
+        if(num_built_mopper * 500 < rc.getRoundNum()) {
+            if(rc.canBuildRobot(UnitType.MOPPER, rc.getLocation().add(Direction.EAST))) {
+                num_built_mopper++;
+                rc.buildRobot(UnitType.MOPPER, rc.getLocation().add(Direction.EAST));
             }
         }
         
