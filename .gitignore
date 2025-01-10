@@ -5,3 +5,7 @@
 **/matches
 **/client
 
+/java/codegen
+/java/scrim_private
+/java/src/_BOT1
+/java/src/_BOT2

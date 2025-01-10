@@ -3,21 +3,12 @@ package V3;
 import battlecode.common.*;
 
 public class Unit extends Globals {
-    // temporary variable representing how many rounds the unit should wander for
-    public static final int SETUP_ROUNDS = 100;
-
     public static MapLocation wanderTarget;
-    private static MapLocation spawnLocation;
     
     //TODO: This should be an array of all known paint towers
     //Should find the closest one for refuel
     public static MapLocation paint_tower = null;
     public static String indicator;
-
-    public static void run() throws GameActionException {
-        spawnLocation = rc.getLocation();
-        wander();
-    }
 
     /**
      * Returns the location of a ruin in the unit's sensing range if it exists,
@@ -152,7 +143,7 @@ public class Unit extends Globals {
         rc.setIndicatorDot(paint_tower, 0, 255, 0);
 
         int paint_in_tower = 0;
-        if(rc.canSenseLocation(paint_tower)) {
+        if(rc.canSenseRobotAtLocation(paint_tower)) {
             paint_in_tower = rc.senseRobotAtLocation(paint_tower).getPaintAmount();
         }
 
