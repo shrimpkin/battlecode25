@@ -9,6 +9,7 @@ public class Globals {
     public static Team opponentTeam;
     public static int mapWidth;
     public static int mapHeight;
+    public static boolean in_debug = false;
 
     public static void init(RobotController robotController) {
         rc = robotController;

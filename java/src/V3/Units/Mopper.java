@@ -18,7 +18,7 @@ public class Mopper extends Unit {
                 rc.move(rc.getLocation().directionTo(nearby_paint));
             }
         } else {
-            wander();
+            wander(true);
         }
 
         rc.setIndicatorString(rc.getRoundNum() + ": " + indicator);
