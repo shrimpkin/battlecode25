@@ -24,7 +24,6 @@ public class RobotPlayer {
                 }
             } catch(GameActionException e) {
                 rc.setIndicatorString("exception");
-                e.printStackTrace();
             } finally {
                 Clock.yield();
             }

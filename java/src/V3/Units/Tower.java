@@ -10,8 +10,8 @@ public class Tower extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
         
-        if(rc.getType() == UnitType.LEVEL_ONE_PAINT_TOWER) run_paint();
-        if(rc.getType() == UnitType.LEVEL_ONE_MONEY_TOWER) rush_spawn();
+        if(rc.getRoundNum() <= 4) rush_spawn();
+        else run_paint();
 
         give_paint();
         attack();
@@ -52,8 +52,6 @@ public class Tower extends Unit {
      * @param rc
      */
     public static void run_paint() throws GameActionException {
-        if(rc.getRoundNum() <= 4) return;
-        
         //building a solider to do some paint testing
         if(num_built_soldier * 500 < rc.getRoundNum()) {
             if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
