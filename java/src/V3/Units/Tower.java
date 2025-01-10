@@ -1,7 +1,7 @@
-package V2.Units;
+package V3.Units;
 
 import battlecode.common.*;
-import V2.*;
+import V3.*;
 
 public class Tower extends Unit {
     public static int num_built_soldier = 0;
@@ -10,7 +10,9 @@ public class Tower extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
         
-        run_paint();
+        if(rc.getType() == UnitType.LEVEL_ONE_PAINT_TOWER) run_paint();
+        if(rc.getType() == UnitType.LEVEL_ONE_MONEY_TOWER) rush_spawn();
+
         give_paint();
         attack();
 
@@ -50,6 +52,8 @@ public class Tower extends Unit {
      * @param rc
      */
     public static void run_paint() throws GameActionException {
+        if(rc.getRoundNum() <= 4) return;
+        
         //building a solider to do some paint testing
         if(num_built_soldier * 500 < rc.getRoundNum()) {
             if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
@@ -68,5 +72,14 @@ public class Tower extends Unit {
         if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
             rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
         }        
+    }
+
+    
+    public static void rush_spawn() throws GameActionException {
+        if(rc.getRoundNum() <= 4) {
+            if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
+                rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
+            }
+        }
     }
 }
