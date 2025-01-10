@@ -12,12 +12,10 @@ public class Soldier extends Unit {
     static MapLocation[] tower_locations = new MapLocation[3];
     static Boolean[] dead_tower = {false, false, false};
     
-    static boolean has_killed_tower = false;
-
-    enum Modes {RUSH, BOOM, NONE};
+    enum Modes {RUSH, BOOM, SIT, NONE};
     static Modes mode = Modes.NONE;
 
-    public static void run() throws GameActionException {
+    public static void run() throws GameActionException {    
         indicator = "";
         update_mode();
         update_paint_tower_loc();
@@ -44,6 +42,8 @@ public class Soldier extends Unit {
             } else {
                 wander(false);
             }
+        } else if(mode == Modes.SIT) {
+            sit();
         }
 
         attack();
@@ -54,6 +54,8 @@ public class Soldier extends Unit {
             case NONE: indicator += "None: ";
                 break;
             case RUSH: indicator += "Rush: ";
+                break;
+            case SIT: indicator += "Sit: ";
                 break;
             default:
                 break;
@@ -81,10 +83,38 @@ public class Soldier extends Unit {
         rc.setIndicatorString(indicator);
     }
 
+    public static void sit() throws GameActionException {
+        MapInfo info = rc.senseMapInfo(rc.getLocation());
+
+        if(info.getPaint() == PaintType.ALLY_PRIMARY 
+            || info.getPaint() == PaintType.ALLY_SECONDARY) return;
+
+        
+        if(rc.canAttack(rc.getLocation())) {
+            rc.attack(rc.getLocation());
+        }
+    }
+
     /**
      * Will update mode to something new if it is NONE
      */
     public static void update_mode() throws GameActionException {
+        if(rc.getNumberTowers() == 0) {
+            boolean can_see = false;
+            RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
+
+            for(RobotInfo info : robots) {
+                if(info.getType() == UnitType.LEVEL_ONE_MONEY_TOWER || info.getType() == UnitType.LEVEL_ONE_PAINT_TOWER) {
+                    can_see = true;
+                }
+            }
+
+            if(!can_see) {
+                mode = Modes.SIT;
+                return;
+            }
+        }
+
         if(rc.getRoundNum() <= 10) mode = Modes.RUSH;
         if(rc.getRoundNum() >= 50) mode = Modes.BOOM;
     }
