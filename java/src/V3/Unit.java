@@ -27,7 +27,7 @@ public class Unit extends Globals {
     /**
      * Unit picks a random location and moves towards it
      */
-    public static void wander() throws GameActionException {
+    public static void wander(boolean cheap) throws GameActionException {
         if (!rc.isMovementReady()) {
             return;
         }
@@ -38,7 +38,7 @@ public class Unit extends Globals {
             wanderTarget = new MapLocation(nextInt(mapWidth), nextInt(mapHeight));
         }
 
-        Navigator.moveTo(wanderTarget, false);
+        Navigator.moveTo(wanderTarget, cheap);
     }
 
     /**
@@ -123,11 +123,9 @@ public class Unit extends Globals {
         RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
 
         for(RobotInfo robot : robots) {
-            if(robot.type.equals(UnitType.LEVEL_ONE_PAINT_TOWER) 
-                || robot.type.equals(UnitType.LEVEL_TWO_PAINT_TOWER) 
-                || robot.type.equals(UnitType.LEVEL_THREE_PAINT_TOWER)) {
-                    paint_tower = robot.getLocation();
-                }
+            if(robot.type.equals(UnitType.LEVEL_ONE_PAINT_TOWER)) {
+                paint_tower = robot.getLocation();
+            }
         }
     }
 

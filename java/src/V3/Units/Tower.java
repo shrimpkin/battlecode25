@@ -53,19 +53,19 @@ public class Tower extends Unit {
      */
     public static void run_paint() throws GameActionException {
         //building a solider to do some paint testing
-        if(num_built_soldier * 500 < rc.getRoundNum()) {
-            if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
-                num_built_soldier++;
-                rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
-            }
-        }
+        // if(num_built_soldier * 500 < rc.getRoundNum()) {
+        //     if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
+        //         num_built_soldier++;
+        //         rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
+        //     }
+        // }
 
-        if(num_built_mopper * 500 < rc.getRoundNum()) {
-            if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
-                num_built_mopper++;
-                rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
-            }
-        }
+        // if(num_built_mopper * 500 < rc.getRoundNum()) {
+        //     if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
+        //         num_built_mopper++;
+        //         rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
+        //     }
+        // }
         
         if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
             rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));

@@ -9,16 +9,49 @@ public class Soldier extends Unit {
     
     static MapLocation[] tower_locations = new MapLocation[3];
     static Boolean[] dead_tower = {false, false, false};
+    
+    static boolean has_killed_tower = false;
+
+    enum Modes {RUSH, BOOM, NONE};
+    static Modes mode = Modes.NONE;
+
+    static boolean has_setup = false;
+
+    //Maximum number of ruins is 60 * 60 / 25
+    static MapLocation[] ruin_locations = new MapLocation[144];
+    static UnitType[] ruin_units = new UnitType[144];
 
     public static void run() throws GameActionException {
         indicator = "";
+        
+        if(!has_setup) setup();
 
-        notice_towers();
-        get_rush_targets();
-        update_rush_targets();
-        move();
-        attack();
+        update_mode();
+        update_paint_tower_loc();
 
+        if(mode == Modes.RUSH) {
+            notice_towers();
+            get_rush_targets();
+            update_rush_targets();
+            move();
+            attack();
+        } else {
+            //I dunno go boom
+            rc.disintegrate();
+
+        }
+        
+        switch(mode) {
+            case BOOM: indicator += "Boom: ";
+                break; 
+            case NONE: indicator += "None: ";
+                break;
+            case RUSH: indicator += "Rush: ";
+                break;
+            default:
+                break;
+            
+        }
         for(int i = 0; i < tower_locations.length; i++) {
             if(tower_locations[i] != null && !dead_tower[i]) {
                 indicator += tower_locations[i].toString() + ". ";
@@ -32,6 +65,20 @@ public class Soldier extends Unit {
         }
 
         rc.setIndicatorString(indicator);
+    }
+
+    public static void setup() throws GameActionException {
+        for(int i = 0; i < ruin_units.length; i++) {
+
+        }
+    }
+
+    /**
+     * Will update mode to something new if it is NONE
+     */
+    public static void update_mode() throws GameActionException {
+        if(rc.getRoundNum() <= 10) mode = Modes.RUSH;
+        if(rc.getRoundNum() >= 50) mode = Modes.BOOM;
     }
 
     public static void get_rush_targets() throws GameActionException {
@@ -121,7 +168,7 @@ public class Soldier extends Unit {
             return;
         }
 
-        wander();
+        wander(false);
     }
 
     public static void attack() throws GameActionException {
