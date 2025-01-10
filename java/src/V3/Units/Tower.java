@@ -6,6 +6,7 @@ import V3.*;
 public class Tower extends Unit {
     public static int num_built_soldier = 0;
     public static int num_built_mopper = 0;
+    public static int num_built_splasher = 0;
 
     public static void run() throws GameActionException {
         indicator = "";
@@ -67,15 +68,26 @@ public class Tower extends Unit {
         //     }
         // }
         
-        if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
-            rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
-        }        
+        if(num_built_splasher < num_built_soldier) {
+            if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
+                rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
+                num_built_soldier++;
+            } 
+        } else {
+            if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.WEST))) {
+                rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.WEST));
+                num_built_splasher++;
+            } 
+        }
+
+               
     }
 
     
     public static void rush_spawn() throws GameActionException {
         if(rc.getRoundNum() <= 4) {
             if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
+                num_built_soldier++;
                 rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
             }
         }

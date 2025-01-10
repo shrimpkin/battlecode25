@@ -4,7 +4,7 @@ import V3.*;
 import battlecode.common.*;
 
 public class Splasher extends Globals {
-    private static final int LOWEST_SCORE = 6;
+    private static final int LOWEST_SCORE = 8;
     
     public static void run() throws GameActionException {
         Unit.update_paint_tower_loc();
@@ -53,13 +53,13 @@ public class Splasher extends Globals {
 
         MapInfo[] locations = rc.senseNearbyMapInfos(center, 2);
         for(MapInfo loc : locations) {
-            if(rc.senseMapInfo(loc.getMapLocation()).hasRuin()) continue;
+            if(!rc.senseMapInfo(loc.getMapLocation()).isPassable()) continue;
 
             switch(loc.getPaint()) {
                 case EMPTY: score++; break;
                 case ENEMY_PRIMARY: 
                 case ENEMY_SECONDARY: 
-                    score += 2;
+                    score += 5;
                     break;
                 default: break;
             }

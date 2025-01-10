@@ -1,11 +1,13 @@
 package V3.Units;
 
+import java.util.Map;
+
 import V3.*;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
-    static MapLocation[] targets = new MapLocation[3];
-    static Boolean[] valid_targets = {true, true, true};
+    static MapLocation[] targets = new MapLocation[6];
+    static Boolean[] valid_targets = {true, true, true, true, true, true};
     
     static MapLocation[] tower_locations = new MapLocation[3];
     static Boolean[] dead_tower = {false, false, false};
@@ -15,31 +17,36 @@ public class Soldier extends Unit {
     enum Modes {RUSH, BOOM, NONE};
     static Modes mode = Modes.NONE;
 
-    static boolean has_setup = false;
-
-    //Maximum number of ruins is 60 * 60 / 25
-    static MapLocation[] ruin_locations = new MapLocation[144];
-    static UnitType[] ruin_units = new UnitType[144];
-
     public static void run() throws GameActionException {
         indicator = "";
-        
-        if(!has_setup) setup();
-
         update_mode();
         update_paint_tower_loc();
+
+        int start = Clock.getBytecodeNum();
+
+        int end = Clock.getBytecodeNum();
+        System.out.println("Delta: " + (end - start));
 
         if(mode == Modes.RUSH) {
             notice_towers();
             get_rush_targets();
             update_rush_targets();
-            move();
-            attack();
-        } else {
-            //I dunno go boom
-            rc.disintegrate();
+            rush_move();
+        } else if(mode == Modes.BOOM) {
+            find_valid_tower_pos();
+            paint_clock();
 
+            if(rc.getPaint() < 100) {
+                acquire_paint(200);
+            } else if(ruin_target != null) {
+                MapLocation around_ruin = new MapLocation(ruin_target.x - 2 + rng.nextInt(4), ruin_target.y - 2 + rng.nextInt(4));
+                Navigator.moveTo(around_ruin, false);
+            } else {
+                wander(false);
+            }
         }
+
+        attack();
         
         switch(mode) {
             case BOOM: indicator += "Boom: ";
@@ -52,25 +59,26 @@ public class Soldier extends Unit {
                 break;
             
         }
-        for(int i = 0; i < tower_locations.length; i++) {
-            if(tower_locations[i] != null && !dead_tower[i]) {
-                indicator += tower_locations[i].toString() + ". ";
+
+        if(mode == Modes.RUSH) {
+            for(int i = 0; i < tower_locations.length; i++) {
+                if(tower_locations[i] != null && !dead_tower[i]) {
+                    indicator += tower_locations[i].toString() + ". ";
+                }
+            }
+    
+            for(int i = 0; i < 3; i++) {
+                if(targets[i] != null && valid_targets[i]) {
+                    indicator += targets[i].toString() + ", ";
+                }
             }
         }
 
-        for(int i = 0; i < 3; i++) {
-            if(targets[i] != null && valid_targets[i]) {
-                indicator += targets[i].toString() + ", ";
-            }
+        if(mode == Modes.BOOM) {
+            if(ruin_target != null) indicator += ruin_target.toString();
         }
-
+        
         rc.setIndicatorString(indicator);
-    }
-
-    public static void setup() throws GameActionException {
-        for(int i = 0; i < ruin_units.length; i++) {
-
-        }
     }
 
     /**
@@ -150,7 +158,7 @@ public class Soldier extends Unit {
         }
     }
 
-    public static void move() throws GameActionException {
+    public static void rush_move() throws GameActionException {
         for(int i = 0; i < tower_locations.length; i++) {
             if(tower_locations[i] != null && !dead_tower[i]) {
                 rc.setIndicatorDot(tower_locations[i], 0, 0, 0);
@@ -162,7 +170,8 @@ public class Soldier extends Unit {
 
         for(int i = 0; i < targets.length; i++) {
             if(!valid_targets[i]) continue;
-            
+            if(targets[i] == null) continue;
+
             rc.setIndicatorDot(targets[i], 255, 0, 0);
             Navigator.moveTo(targets[i], true);
             return;
@@ -182,4 +191,80 @@ public class Soldier extends Unit {
             }
         }
     }
+
+
+     //==================================================================\\ 
+    //                           Boom                                     \\
+
+    static final int max_ruins = 144;
+    static MapLocation ruin_target = null;
+
+    /**
+     * Will attempt to build clock tower on nearby empty ruins
+     */
+    public static void find_valid_tower_pos() throws GameActionException {
+        ruin_target = null;
+        MapLocation[] ruin_locations = rc.senseNearbyRuins(-1);
+
+        for(MapLocation ruin : ruin_locations) {
+            RobotInfo robot = rc.senseRobotAtLocation(ruin);
+            
+            if(robot != null) continue;
+
+            MapInfo[] ruin_suroundings = rc.senseNearbyMapInfos(ruin, 8);
+            boolean has_enemy_paint = false;
+            //Checks for nearby enemy paint that would prevent building a clock tower
+            for(MapInfo loc : ruin_suroundings) {
+                PaintType paint = loc.getPaint();
+                if(paint == PaintType.ENEMY_PRIMARY || paint == PaintType.ENEMY_SECONDARY) {
+                    System.out.println("has bad paint");
+                    has_enemy_paint = true;
+                }
+            }
+
+            if(!has_enemy_paint) ruin_target = ruin;
+            break;
+        }
+    }
+
+    public static void paint_clock() throws GameActionException {
+        if(ruin_target == null) return;
+        if(!rc.canSenseLocation(ruin_target)) return;
+
+        //if(rc.canMarkTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target)) rc.markTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target);
+
+        MapInfo[] ruin_suroundings = rc.senseNearbyMapInfos(ruin_target, 8);
+        boolean[][] paint_pattern = rc.getTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER);
+
+        for(MapInfo info : ruin_suroundings) {
+            MapLocation loc = info.getMapLocation();
+            if(!rc.canAttack(loc)) continue;
+            if(info.hasRuin()) continue;
+            
+
+            int x = ruin_target.x - loc.x + 2;
+            int y = ruin_target.y - loc.y + 2;
+
+            PaintType paint = info.getPaint();
+            if((paint == PaintType.ENEMY_PRIMARY || paint == PaintType.ENEMY_SECONDARY)) continue;
+
+            
+            if(paint_pattern[x][y] && paint != PaintType.ALLY_SECONDARY) {
+                rc.attack(loc, true);
+                indicator += loc.toString();
+
+                if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target)) 
+                    rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target);
+                return;
+            } else if(!paint_pattern[x][y] && paint != PaintType.ALLY_PRIMARY) {
+                rc.attack(loc, false);
+                indicator += loc.toString();
+
+                if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target)) 
+                    rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target);
+                return;
+            }
+        }
+    }
+
 }

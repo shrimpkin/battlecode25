@@ -137,7 +137,7 @@ public class Unit extends Globals {
         if(paint_tower == null) return; 
         if(rc.getPaint() > 100) return;
 
-        indicator += "trying to transfer paint at "  + paint_tower.toString() + ", ";
+        //indicator += "trying to transfer paint at "  + paint_tower.toString() + ", ";
         rc.setIndicatorDot(paint_tower, 0, 255, 0);
 
         int paint_in_tower = 0;
@@ -150,8 +150,8 @@ public class Unit extends Globals {
 
         int amount_to_transfer = Math.max(rc.getPaint() - limit, -paint_in_tower);
 
-        indicator += amount_to_transfer + ", ";
-        indicator += rc.canTransferPaint(paint_tower, -10);
+        //indicator += amount_to_transfer + ", ";
+        //indicator += rc.canTransferPaint(paint_tower, -10);
 
         if(rc.canTransferPaint(paint_tower, amount_to_transfer)) {
             indicator += "can, ";
