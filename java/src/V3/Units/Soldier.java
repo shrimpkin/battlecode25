@@ -82,7 +82,7 @@ public class Soldier extends Unit {
         //updating dead towers
         MapLocation[] ruins = rc.senseNearbyRuins(-1);
         for(MapLocation loc : ruins) {
-            indicator += "ruin: " + loc.toString();
+            //indicator += "ruin: " + loc.toString();
             for(int i = 0; i < tower_locations.length; i++) {
                 
                 if(tower_locations[i] != null && tower_locations[i].equals(loc) && rc.senseRobotAtLocation(loc) == null) {
@@ -108,7 +108,8 @@ public class Soldier extends Unit {
     public static void move() throws GameActionException {
         for(int i = 0; i < tower_locations.length; i++) {
             if(tower_locations[i] != null && !dead_tower[i]) {
-                Navigator.moveTo(targets[i], true);
+                rc.setIndicatorDot(tower_locations[i], 0, 0, 0);
+                Navigator.moveTo(tower_locations[i], true);
                 return;
             }
             
@@ -116,7 +117,8 @@ public class Soldier extends Unit {
 
         for(int i = 0; i < targets.length; i++) {
             if(!valid_targets[i]) continue;
-
+            
+            rc.setIndicatorDot(targets[i], 255, 0, 0);
             Navigator.moveTo(targets[i], true);
             return;
         }
