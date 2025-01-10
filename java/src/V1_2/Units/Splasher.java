@@ -13,34 +13,17 @@ public class Splasher extends Globals {
         Unit.update_paint_tower_loc();
 
         splash();
-        refill();    
-        
+        refill();
+
         Unit.wander();
     }
 
     public static void splash() throws GameActionException {
         MapLocation currLoc = rc.getLocation();
-        MapLocation optLoc = getClosestOptimalLoc(currLoc);
-
-        // try to splash current location
         int[] currPaintStats = getNearbyPaintStats(); // enemy, ally, obstacle
         boolean shouldSplash = currPaintStats[0] >= minNumEnemySquares || currPaintStats[1] < maxNumAllySquares;
-        if (currLoc.equals(optLoc) && shouldSplash) {
-            if (rc.canAttack(currLoc)) {
-                rc.attack(currLoc);
-            }     
-            return;
-        }
-
-        // move and try to splash
-        Navigator.moveTo(optLoc);
-        
-        currPaintStats = getNearbyPaintStats(); // enemy, ally, obstacle
-        shouldSplash = currPaintStats[0] >= minNumEnemySquares || currPaintStats[1] < maxNumAllySquares;
-        if (shouldSplash) {
-            if (rc.canAttack(optLoc)) {
-                rc.attack(optLoc);
-            }
+        if (shouldSplash && rc.canAttack(currLoc)) {
+            rc.attack(currLoc);
         }
     }
 
@@ -57,7 +40,7 @@ public class Splasher extends Globals {
     public static int[] getNearbyPaintStats() throws GameActionException {
         MapInfo[] tiles = rc.senseNearbyMapInfos();
         MapLocation currLoc = rc.getLocation();
-        int[] statuses = {0, 0, 0}; // enemy paint, ally paint, obstacle
+        int[] statuses = { 0, 0, 0 }; // enemy paint, ally paint, obstacle
 
         // count the number of enemy/ally tiles that would be covered by splash
         for (int i = 0; i < tiles.length; i++) {
@@ -73,7 +56,7 @@ public class Splasher extends Globals {
                     statuses[0]++;
                 }
             }
-            
+
             // in range of ally splash
             if (tiles[i].getMapLocation().distanceSquaredTo(currLoc) <= 4) {
                 PaintType paintType = tiles[i].getPaint();
@@ -84,14 +67,5 @@ public class Splasher extends Globals {
         }
 
         return statuses;
-    }
-
-    public static MapLocation getClosestOptimalLoc(MapLocation currLoc) throws GameActionException {
-        int[] pt = {
-                (int) Math.round(Utils.mp[0][0] * currLoc.x + Utils.mp[0][1] * currLoc.y),
-                (int) Math.round(Utils.mp[1][0] * currLoc.x + Utils.mp[1][1] * currLoc.y),
-        };
-        int[] remapped = Utils.mvmul(Utils.rmap, pt);
-        return new MapLocation(remapped[0], remapped[1]);
     }
 }
