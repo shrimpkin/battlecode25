@@ -24,4 +24,14 @@ public class Utils {
                 mat[1][0] * vect[0] + mat[1][1] * vect[1]
         };
     }
+
+    public static int nextInt(int maxExclusive) {
+        return (int) Math.floor(Math.random() * maxExclusive);
+    }
+
+    public static int clamp(int value, int min, int max){
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
 }

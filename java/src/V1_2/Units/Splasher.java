@@ -46,6 +46,7 @@ public class Splasher extends Globals {
 
         Navigator.moveTo(Unit.paint_tower);
         Unit.acquire_paint();
+        Unit.wanderTarget = null;
     }
 
     public static boolean canOptimalSplash() throws GameActionException {
