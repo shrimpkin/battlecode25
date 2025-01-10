@@ -4,16 +4,16 @@ import V1_2.*;
 import battlecode.common.*;
 
 public class Mopper extends Unit {
-    static MapLocation nearby_paint = null;
+    static MapLocation nearby_paint;
 
-    public static void run() throws GameActionException{
+    public static void run() throws GameActionException {
         indicator = "";
         nearby_paint = null;
-        remove_enemy_paint();
+        removeNearbyEnemyPaint();
 
-        if(nearby_paint != null) {
+        if (nearby_paint != null) {
             Navigator.moveTo(nearby_paint);
-            if(rc.canMove(rc.getLocation().directionTo(nearby_paint))) {
+            if (rc.canMove(rc.getLocation().directionTo(nearby_paint))) {
                 rc.move(rc.getLocation().directionTo(nearby_paint));
             }
         } else {
@@ -23,23 +23,19 @@ public class Mopper extends Unit {
         rc.setIndicatorString(rc.getRoundNum() + ": " + indicator);
     }
 
-    public static void remove_enemy_paint() throws GameActionException{
+    public static void removeNearbyEnemyPaint() throws GameActionException {
         MapInfo[] locations = rc.senseNearbyMapInfos();
 
-        for(MapInfo loc : locations) {
-            if(loc.getPaint() == PaintType.ENEMY_PRIMARY
-                || loc.getPaint() == PaintType.ENEMY_SECONDARY) {
-                    indicator += loc.getMapLocation().toString() + ", ";
+        for (MapInfo loc : locations) {
+            PaintType paintType = loc.getPaint();
+            if (paintType == PaintType.ENEMY_PRIMARY || paintType == PaintType.ENEMY_SECONDARY) {
+                indicator += loc.getMapLocation().toString() + ", ";
+                nearby_paint = loc.getMapLocation();
 
-                    if(rc.canAttack(loc.getMapLocation())) {
-                        rc.attack(loc.getMapLocation());
-                        indicator += "attacked";
-                    }
-
-                    if(loc.getPaint() == PaintType.ENEMY_PRIMARY
-                    || loc.getPaint() == PaintType.ENEMY_SECONDARY) {
-                        nearby_paint = loc.getMapLocation();
-                    }
+                if (rc.canAttack(loc.getMapLocation())) {
+                    rc.attack(loc.getMapLocation());
+                    indicator += "attacked";
+                }
             }
         }
     }

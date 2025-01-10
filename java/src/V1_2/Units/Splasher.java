@@ -22,8 +22,10 @@ public class Splasher extends Globals {
         MapLocation currLoc = rc.getLocation();
         MapLocation optLoc = getClosestOptimalLoc(currLoc);
 
-        // try to splash now
-        if (currLoc.equals(optLoc) && (canOptimalSplash() || canSplashEnemies())) {
+        // try to splash current location
+        int[] currPaintStats = getNearbyPaintStats(); // enemy, ally, obstacle
+        boolean shouldSplash = currPaintStats[0] >= minNumEnemySquares || currPaintStats[1] < maxNumAllySquares;
+        if (currLoc.equals(optLoc) && shouldSplash) {
             if (rc.canAttack(currLoc)) {
                 rc.attack(currLoc);
             }     
@@ -32,10 +34,13 @@ public class Splasher extends Globals {
 
         // move and try to splash
         Navigator.moveTo(optLoc);
-        if (canOptimalSplash() || canSplashEnemies()) {
+        
+        currPaintStats = getNearbyPaintStats(); // enemy, ally, obstacle
+        shouldSplash = currPaintStats[0] >= minNumEnemySquares || currPaintStats[1] < maxNumAllySquares;
+        if (shouldSplash) {
             if (rc.canAttack(optLoc)) {
                 rc.attack(optLoc);
-            }     
+            }
         }
     }
 
@@ -49,32 +54,36 @@ public class Splasher extends Globals {
         Unit.wanderTarget = null;
     }
 
-    public static boolean canOptimalSplash() throws GameActionException {
-        int numAllySquares = 0;
-        for (MapInfo tile : rc.senseNearbyMapInfos(4)) {
-            if (tile.isWall()) {
-                continue;
-            }
-            PaintType paintType = tile.getPaint();
-            if (paintType == PaintType.ALLY_PRIMARY || paintType == PaintType.ALLY_SECONDARY) {
-                numAllySquares++;
-            }
-        }
-        return numAllySquares < maxNumAllySquares;
-    }
+    public static int[] getNearbyPaintStats() throws GameActionException {
+        MapInfo[] tiles = rc.senseNearbyMapInfos();
+        MapLocation currLoc = rc.getLocation();
+        int[] statuses = {0, 0, 0}; // enemy paint, ally paint, obstacle
 
-    public static boolean canSplashEnemies() throws GameActionException {
-        int numEnemySquares = 0;
-        for (MapInfo tile : rc.senseNearbyMapInfos(2)) {
-            if (tile.isWall()) {
+        // count the number of enemy/ally tiles that would be covered by splash
+        for (int i = 0; i < tiles.length; i++) {
+            if (!tiles[i].isPassable()) {
+                statuses[2]++;
                 continue;
             }
-            PaintType paintType = tile.getPaint();
-            if (paintType == PaintType.ENEMY_PRIMARY || paintType == PaintType.ENEMY_SECONDARY) {
-                numEnemySquares++;
+
+            // in range of enemy splash
+            if (tiles[i].getMapLocation().distanceSquaredTo(currLoc) <= 2) {
+                PaintType paintType = tiles[i].getPaint();
+                if (paintType == PaintType.ENEMY_PRIMARY || paintType == PaintType.ENEMY_SECONDARY) {
+                    statuses[0]++;
+                }
+            }
+            
+            // in range of ally splash
+            if (tiles[i].getMapLocation().distanceSquaredTo(currLoc) <= 4) {
+                PaintType paintType = tiles[i].getPaint();
+                if (paintType == PaintType.ALLY_PRIMARY || paintType == PaintType.ALLY_SECONDARY) {
+                    statuses[1]++;
+                }
             }
         }
-        return numEnemySquares >= minNumEnemySquares;
+
+        return statuses;
     }
 
     public static MapLocation getClosestOptimalLoc(MapLocation currLoc) throws GameActionException {

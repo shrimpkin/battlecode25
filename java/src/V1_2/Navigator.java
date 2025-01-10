@@ -8,8 +8,7 @@ public class Navigator extends Globals {
     private static MapLocation currentTarget;
 
     private static int minDistanceToTarget;
-    private static int roundsSinceMovingCloserToTarget;
-
+    
     public static void moveTo(MapLocation target) throws GameActionException {
         MapLocation myLocation = rc.getLocation();
 
@@ -35,9 +34,6 @@ public class Navigator extends Globals {
         int distanceToTarget = myLocation.distanceSquaredTo(target);
         if (distanceToTarget < minDistanceToTarget) {
             minDistanceToTarget = distanceToTarget;
-            roundsSinceMovingCloserToTarget = 0;
-        } else {
-            roundsSinceMovingCloserToTarget++;
         }
 
         Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
@@ -56,6 +52,5 @@ public class Navigator extends Globals {
     public static void reset() {
         currentTarget = null;
         minDistanceToTarget = Integer.MAX_VALUE;
-        roundsSinceMovingCloserToTarget = 0;
     }
 }
