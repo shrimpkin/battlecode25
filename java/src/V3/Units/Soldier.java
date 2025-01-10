@@ -1,7 +1,5 @@
 package V3.Units;
 
-import java.util.Set;
-
 import V3.*;
 import battlecode.common.*;
 

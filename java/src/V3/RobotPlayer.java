@@ -30,7 +30,6 @@ public class RobotPlayer {
     }   
 
     public static void init(RobotController rc) {
-        Unit.init(rc); // this doesn't do anything
         BellmanFordNavigator.init(rc);
     }
 }
