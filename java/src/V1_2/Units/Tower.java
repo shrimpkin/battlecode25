@@ -6,6 +6,7 @@ import battlecode.common.*;
 public class Tower extends Globals {
     public static int turn_num = 0;
     public static int num_built_soldier = 0;
+    private static boolean sentCorner = false;
 
     public static void run() throws GameActionException {
         turn_num++;
@@ -58,11 +59,24 @@ public class Tower extends Globals {
             if (rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
                 num_built_soldier++;
                 rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
+
+                if (rc.canSendMessage(rc.getLocation().add(Direction.EAST)) && rng.nextInt(8) == 0) {
+                    System.out.println("spawned painter soldier");
+                    rc.sendMessage(rc.getLocation().add(Direction.EAST), 0);
+                }
             }
         }
 
         if (rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
             rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
+
+            // tell unit to check corners
+            if (rc.canSendMessage(rc.getLocation().add(Direction.WEST))) {
+                if (rng.nextInt(5) == 0) {
+                    System.out.println("spawned corner splasher");
+                    rc.sendMessage(rc.getLocation().add(Direction.WEST), 1);
+                }
+            }
         }
     }
 }

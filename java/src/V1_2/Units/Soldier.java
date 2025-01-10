@@ -9,35 +9,62 @@ public class Soldier extends Unit {
     static boolean can_paint_tower = true;
     static enum Mode {LOW_PAINT, RUIN_FINDING, RUIN_BUILDING};
     static Mode mo = Mode.LOW_PAINT;
+    static boolean painter = false;
 
     public static void run() throws GameActionException {
-        indicator = rc.getRoundNum() + ": ";
-
-        if(paint_tower != null) {
-            rc.setIndicatorDot(paint_tower, 255, 128, 128);
+        if (rc.readMessages(-1).length > 0) {
+            painter = true;
         }
 
-        try {
-            update_paint_tower_loc();
-            acquire_paint();
-            get_target_location();
+        update_paint_tower_loc();
+        acquire_paint();
+
+        if (painter) {
+            paintNearby();
+            Unit.wander();
+
+        } else {
+            indicator = rc.getRoundNum() + ": ";
+
+            if(paint_tower != null) {
+                rc.setIndicatorDot(paint_tower, 255, 128, 128);
+            }
+    
+            try {
+                update_paint_tower_loc();
+                acquire_paint();
+                get_target_location();
+                
+                if(target_location != null) {
+                    rc.setIndicatorDot(target_location, 0, 255, 0);
+                } 
+    
+                move();
+                paint();
+                complete_patterns();
+    
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
             
-            if(target_location != null) {
-                rc.setIndicatorDot(target_location, 0, 255, 0);
-            } 
-
-            move();
-            paint();
-            complete_patterns();
-
-        } catch(Exception e) {
-            e.printStackTrace();
+            switch(mo) {
+                case LOW_PAINT: rc.setIndicatorString("Low Paint");
+                case RUIN_BUILDING: rc.setIndicatorString("Ruin Building");
+                case RUIN_FINDING: rc.setIndicatorString("Ruin Finding");
+            }    
         }
-        
-        switch(mo) {
-            case LOW_PAINT: rc.setIndicatorString("Low Paint");
-            case RUIN_BUILDING: rc.setIndicatorString("Ruin Building");
-            case RUIN_FINDING: rc.setIndicatorString("Ruin Finding");
+    }
+
+    public static void paintNearby() throws GameActionException {
+        MapInfo[] tiles = rc.senseNearbyMapInfos();
+        for (MapInfo tile : tiles) {
+            PaintType paintType = tile.getPaint();
+            if (paintType == PaintType.EMPTY || paintType == PaintType.ENEMY_PRIMARY || paintType == PaintType.ENEMY_SECONDARY) {
+                if (rc.canAttack(tile.getMapLocation())) {
+                    rc.attack(tile.getMapLocation());
+                }
+                return;
+            }
         }
     }
 
