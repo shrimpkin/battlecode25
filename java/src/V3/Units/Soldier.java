@@ -1,6 +1,7 @@
 package V3.Units;
 
 import V3.*;
+import V3.Nav.Navigator;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -17,8 +18,7 @@ public class Soldier extends Unit {
         indicator = "";
 
         updateMode();
-        updatePaintTowerLocations();
-        updateEnemyTowerLocations();
+        updateTowerLocations();
 
         if(mode == Modes.GET_PAINT) {
             targetLocation = closestPaintTower();
@@ -26,7 +26,7 @@ public class Soldier extends Unit {
         }
 
         if(mode == Modes.RUSH) {
-            getRushTargets();
+            getRushTargetsBySymmetry();
             updateSymmetryTargets();
             targetLocation = getRushMoveTarget();
             move();
@@ -57,6 +57,11 @@ public class Soldier extends Unit {
      * Changes mode based on criteria I haven't quite figured out yet
      */
     public static void updateMode() throws GameActionException {
+        if(rc.getPaint() <= 2) {
+            mode = Modes.SIT; 
+            return;
+        }
+
         if(rc.getPaint() <= 50) {
             mode = Modes.GET_PAINT;
             return;
@@ -96,7 +101,7 @@ public class Soldier extends Unit {
     /**
      * Uses map symmetry and our tower positions to generate possible locations for enemy towers
      */
-    public static void getRushTargets() throws GameActionException {
+    public static void getRushTargetsBySymmetry() throws GameActionException {
         RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
 
         for(RobotInfo robot : robots) {
@@ -123,6 +128,9 @@ public class Soldier extends Unit {
         }        
     }
 
+    /**
+     * Updates targets in symmetryLocations by removing them if we know they aren't towers
+     */
     public static void updateSymmetryTargets() throws GameActionException {
         for (int i = 0; i < symmetryLocations.size; i++) {
             MapLocation tower = Utils.unpack(symmetryLocations.keys.charAt(i));
@@ -163,7 +171,7 @@ public class Soldier extends Unit {
     }
 
     /**
-     * Uses getRushMoveTarget() to target towers, if we know of no more possible towers it will wander
+     * Moves to target location, if no target wanders
      */
     public static void move() throws GameActionException {
         if(targetLocation != null) {
@@ -176,8 +184,7 @@ public class Soldier extends Unit {
      //==================================================================\\ 
     //                           Boom                                     \\
 
-    static final int max_ruins = 144;
-    static MapLocation ruin_target = null;
+    static MapLocation ruin_target;
 
     /**
      * Will attempt to build clock tower on nearby empty ruins

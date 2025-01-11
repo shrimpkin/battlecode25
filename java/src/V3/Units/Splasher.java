@@ -1,6 +1,7 @@
 package V3.Units;
 
 import V3.*;
+import V3.Nav.Navigator;
 import battlecode.common.*;
 
 public class Splasher extends Unit {
@@ -15,7 +16,7 @@ public class Splasher extends Unit {
     private static boolean refilling = false;
 
     public static void run() throws GameActionException {
-        updatePaintTowerLocations();
+        updateTowerLocations();
         refill();
         splash();
         wander(false);
@@ -36,7 +37,7 @@ public class Splasher extends Unit {
     }
 
     public static void splash() throws GameActionException {
-        if (refilling) return; // don't be counterproductive -- can hav more complex check here later
+        if (refilling) return; // don't be counterproductive -- can have more complex check here later
         MapLocation best = null;
         int mostUtil = -1;
         for (var tile : rc.senseNearbyMapInfos(4)) {

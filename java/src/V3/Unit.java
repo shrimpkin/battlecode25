@@ -1,5 +1,6 @@
 package V3;
 
+import V3.Nav.Navigator;
 import battlecode.common.*;
 
 public class Unit extends Globals {
@@ -8,7 +9,8 @@ public class Unit extends Globals {
     
     public static FastIntSet paintTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
-    
+    public static FastIntSet unusedRuinLocations = new FastIntSet();
+
     public static String indicator;
     public static MapLocation wanderTarget;
     private static LocMap vis = new LocMap(mapWidth, mapHeight);
@@ -65,50 +67,40 @@ public class Unit extends Globals {
     }
 
     /**
-     * Updates location of last seen paint tower
+     * Maintains correctness of tower sets
+     * Specifically: paintTowerLocations, unusedRuinLocations, enemyTowerLocations
      */
-    public static void updatePaintTowerLocations() throws GameActionException {
-        RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
-        for (RobotInfo robot : robots) {
-            switch (robot.type) {
-                case UnitType.LEVEL_ONE_PAINT_TOWER:
-                case UnitType.LEVEL_TWO_PAINT_TOWER:
-                case UnitType.LEVEL_THREE_PAINT_TOWER:
-                    paintTowerLocations.add(Utils.pack(robot.getLocation()));
-                    break;
-                default:
-                    paintTowerLocations.remove(Utils.pack(robot.getLocation()));
-                    break;
-            }
-        }
-    }
+    public static void updateTowerLocations() throws GameActionException {
+        MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
 
-    /**
-     * Updates the enemyTowerLocations set by adding new towers that are seen
-     * and removing towers that are no longer there
-     */
-    public static void updateEnemyTowerLocations() throws GameActionException {
-        RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
-        for(RobotInfo robot : robots) {
-            if(isPaintTower(robot.getType()) || isMoneyTower(robot.getType())) {
-                int packedLocation = Utils.pack(robot.getLocation());
-                if(!enemyTowerLocations.contains(packedLocation)) {
-                    enemyTowerLocations.add(packedLocation);
+        for(MapLocation ruin : ruinLocations) {
+            RobotInfo robot = rc.senseRobotAtLocation(ruin);
+            int packedLocation = Utils.pack(ruin);
+            if(robot == null) {
+                unusedRuinLocations.add(packedLocation);
+
+                if(enemyTowerLocations.contains(packedLocation)) {
+                    enemyTowerLocations.remove(packedLocation);
                 }
-            }
-        }
 
-        for(int i = 0; i < enemyTowerLocations.size; i++) {
-            MapLocation tower = Utils.unpack(enemyTowerLocations.keys.charAt(i));
-            
-            if(!rc.canSenseLocation(tower)) continue;
-            RobotInfo info = rc.senseRobotAtLocation(tower);
+                if(paintTowerLocations.contains(packedLocation)) {
+                    paintTowerLocations.remove(packedLocation);
+                }
 
-            //there is no unit or the unit is not a paint or money tower
-            //hence the tower is not there and we should remove 
-            if(info == null || !(isPaintTower(info.getType()) || isMoneyTower(info.getType()))) {
-                enemyTowerLocations.remove(Utils.pack(tower));
+                continue;
             }
+
+            UnitType type = robot.getType();
+            if(robot.getTeam().equals(opponentTeam)) {
+                if(isPaintTower(type) || isMoneyTower(type)) {
+                    enemyTowerLocations.add(Utils.pack(ruin));
+                }
+                continue;
+            }
+
+            if(isPaintTower(type)) {
+                paintTowerLocations.add(Utils.pack(ruin));
+            }            
         }
     }
 

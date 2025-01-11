@@ -2,6 +2,7 @@ package V3.Units;
 
 import battlecode.common.*;
 import V3.*;
+import V3.Nav.Navigator;
 
 public class Mopper extends Unit {
     static MapLocation nearby_paint = null;
