@@ -68,7 +68,7 @@ public class Tower extends Unit {
         //     }
         // }
         
-        if(num_built_splasher < num_built_soldier) {
+        if(num_built_splasher >= num_built_soldier) {
             if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
                 rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
                 num_built_soldier++;
@@ -78,9 +78,7 @@ public class Tower extends Unit {
                 rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.WEST));
                 num_built_splasher++;
             } 
-        }
-
-               
+        }               
     }
 
     

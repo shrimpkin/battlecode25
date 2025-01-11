@@ -5,7 +5,7 @@ import battlecode.common.*;
 
 public class Soldier extends Unit {
     enum Presence {NOT_SEEN, NOT_THERE, IS_THERE};
-    enum Modes {RUSH, BOOM, SIT, NONE};
+    enum Modes {RUSH, BOOM, SIT, NONE, GET_PAINT};
 
     static MapLocation[] targets = new MapLocation[6];
     static Presence[] targetPresence = new Presence[6];
@@ -23,22 +23,27 @@ public class Soldier extends Unit {
         indicator = "";
 
         updateMode();
-        update_paint_tower_loc();
+        updatePaintTowerLocations();
+
+        if(mode == Modes.GET_PAINT) {
+            targetLocation = closestPaintTower();
+            move();
+            getPaint(UnitType.SOLDIER.paintCapacity);
+        }
 
         if(mode == Modes.RUSH) {
             getRushTargets();
             updateRushTargets();
-            rush_move();
+            targetLocation = getRushMoveTarget();
+            move();
         }  
         
         if(mode == Modes.BOOM) {
             find_valid_tower_pos();
             paint_clock();
 
-            if(rc.getPaint() < 100) {
-                acquire_paint(200);
-            } else if(ruin_target != null) {
-                MapLocation around_ruin = new MapLocation(ruin_target.x - 2 + rng.nextInt(4), ruin_target.y - 2 + rng.nextInt(4));
+            if(ruin_target != null) {
+                MapLocation around_ruin = new MapLocation(ruin_target.x - 2 + (nextInt() % 4), ruin_target.y - 2 + (nextInt() % 4));
                 Navigator.moveTo(around_ruin, false);
             } else {
                 wander(false);
@@ -63,8 +68,20 @@ public class Soldier extends Unit {
      * Changes mode based on criteria I haven't quite figured out yet
      */
     public static void updateMode() throws GameActionException {
-        if(rc.getRoundNum() <= 50) mode = Modes.RUSH;
-        if(rc.getRoundNum() >= 50) mode = Modes.BOOM;
+        if(rc.getPaint() <= 50) {
+            mode = Modes.GET_PAINT;
+            return;
+        }
+
+        if(rc.getRoundNum() <= rc.getMapHeight() + rc.getMapWidth()) {
+            mode = Modes.RUSH;
+            return;
+        }
+
+        if(rc.getRoundNum() >= rc.getMapHeight() + rc.getMapWidth()) {
+            mode = Modes.BOOM;
+            return;
+        }
     }
 
     //==================================================================\\ 
@@ -167,9 +184,7 @@ public class Soldier extends Unit {
     /**
      * Uses getRushMoveTarget() to target towers, if we know of no more possible towers it will wander
      */
-    public static void rush_move() throws GameActionException {
-        targetLocation = getRushMoveTarget();
-
+    public static void move() throws GameActionException {
         if(targetLocation != null) {
             Navigator.moveTo(targetLocation, true);
         } else {
@@ -256,7 +271,7 @@ public class Soldier extends Unit {
             }
         }
     }
-    
+
     //==========================================================================\\
 
     /**
@@ -270,6 +285,7 @@ public class Soldier extends Unit {
             case NONE: indicator += "None: "; break;
             case RUSH: indicator += "Rush: "; break;
             case SIT:  indicator +=  "Sit: "; break;
+            case GET_PAINT: indicator += "Getting Paint: "; break;
             default: break;
         }
 
