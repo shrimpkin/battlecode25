@@ -4,9 +4,9 @@ import battlecode.common.*;
 import V3.*;
 
 public class Tower extends Unit {
-    public static int num_built_soldier = 0;
-    public static int num_built_mopper = 0;
-    public static int num_built_splasher = 0;
+    public static int numberOfBuiltSoldiers = 0;
+    public static int numberOfBuiltMoppers = 0;
+    public static int numberOfBuiltSplashers = 0;
 
     public static void run() throws GameActionException {
         indicator = "";
@@ -20,7 +20,7 @@ public class Tower extends Unit {
     }
 
     /**
-     * Attacks nearest robot
+     * Attacks nearest robot and performs aoe attack
      */
     public static void attack() throws GameActionException{
         RobotInfo[] robotInfo = rc.senseNearbyRobots(-1, opponentTeam);
@@ -28,10 +28,9 @@ public class Tower extends Unit {
             if(rc.canAttack(robot.getLocation())) {
                 rc.attack(robot.getLocation());
             }
-            if(rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-            }
         }
+
+        rc.attack(null);
     }
 
     //TODO: This doesn't work
@@ -55,15 +54,15 @@ public class Tower extends Unit {
      * Building for booming
      */
     public static void boomBuild() throws GameActionException {        
-        if(num_built_splasher >= num_built_soldier) {
-            if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
-                rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
-                num_built_soldier++;
+        if(numberOfBuiltMoppers < numberOfBuiltSoldiers) {
+            if(rc.canBuildRobot(UnitType.MOPPER, rc.getLocation().add(Direction.WEST))) {
+                rc.buildRobot(UnitType.MOPPER, rc.getLocation().add(Direction.WEST));
+                numberOfBuiltMoppers++;
             } 
         } else {
             if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.WEST))) {
                 rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.WEST));
-                num_built_splasher++;
+                numberOfBuiltSoldiers++;
             } 
         }               
     }
@@ -73,7 +72,7 @@ public class Tower extends Unit {
      */
     public static void rushBuild() throws GameActionException {
         if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
-            num_built_soldier++;
+            numberOfBuiltSoldiers++;
             rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
         }
     }

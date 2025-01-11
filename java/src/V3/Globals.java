@@ -2,7 +2,7 @@ package V3;
 
 import battlecode.common.*;
 
-public class Globals {
+public class Globals extends Utils {
     public static RobotController rc;
 
     public static Team myTeam;
