@@ -84,18 +84,13 @@ public class Unit extends Globals {
      */
     public static UnitType has_tower_marked(MapLocation location) throws GameActionException {
         MapInfo[] locations = rc.senseNearbyMapInfos(location, 8);
-        if (locations.length != 25) {
-            return null;
-        }
-
+        if (locations.length != 25) return null;
         //contains true if the paint type is secondary
         //false if the paint type is primary
         boolean[][] pattern = new boolean[5][5];
-
         for (MapInfo info : locations) {
             int x = (location.x - info.getMapLocation().x) + 2;
             int y = (location.y - info.getMapLocation().y) + 2;
-
             switch (info.getMark()) {
                 case PaintType.ALLY_PRIMARY:
                     pattern[x][y] = false;
@@ -104,26 +99,19 @@ public class Unit extends Globals {
                     pattern[x][y] = true;
                     break;
                 default:
-                    if (info.getMapLocation().equals(location)) {
-                        //the center of the tower need not be marked
-                        continue;
-                    } else {
-                        //at least one tile is not marked
+                    if (!info.getMapLocation().equals(location))
                         return null;
-                    }
             }
         }
-
         if (does_tower_pattern_match(pattern, rc.getTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER))) {
             return UnitType.LEVEL_ONE_PAINT_TOWER;
         }
         if (does_tower_pattern_match(pattern, rc.getTowerPattern(UnitType.LEVEL_ONE_DEFENSE_TOWER))) {
             return UnitType.LEVEL_ONE_DEFENSE_TOWER;
         }
-        if (does_tower_pattern_match(pattern, rc.getTowerPattern(UnitType.LEVEL_THREE_MONEY_TOWER))) {
+        if (does_tower_pattern_match(pattern, rc.getTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER))) {
             return UnitType.LEVEL_ONE_MONEY_TOWER;
         }
-
         return null;
     }
 
@@ -131,17 +119,13 @@ public class Unit extends Globals {
      * Checks to see if a 5 by 5 resource pattern is the same as another
      * Ignores the center square since that doesn't matter for towers
      */
-    private static boolean does_tower_pattern_match(boolean[][] pattern1, boolean[][] pattern2) {
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (i == 2 && j == 2)
-                    continue;
-                if (pattern1[i][j] != pattern2[i][j]) {
-                    return false;
-                }
-            }
-        }
-        return true;
+    private static boolean does_tower_pattern_match(boolean[][] p1, boolean[][] p2) {
+        // look it halves the bytecode OK -- maybe i'll make a bitmap version kekw
+        return  p1[0][0] == p2[0][0] && p1[0][1] == p2[0][1] && p1[0][2] == p2[0][2] && p1[0][3] == p2[0][3] && p1[0][4] == p2[0][4] &&
+                p1[1][0] == p2[1][0] && p1[1][1] == p2[1][1] && p1[1][2] == p2[1][2] && p1[1][3] == p2[1][3] && p1[1][4] == p2[1][4] &&
+                p1[2][0] == p2[2][0] && p1[2][1] == p2[2][1]                         && p1[2][3] == p2[2][3] && p1[2][4] == p2[2][4] &&
+                p1[3][0] == p2[3][0] && p1[3][1] == p2[3][1] && p1[3][2] == p2[3][2] && p1[3][3] == p2[3][3] && p1[3][4] == p2[3][4] &&
+                p1[4][0] == p2[4][0] && p1[4][1] == p2[4][1] && p1[4][2] == p2[4][2] && p1[4][3] == p2[4][3] && p1[4][4] == p2[4][4];
     }
 
     /**
