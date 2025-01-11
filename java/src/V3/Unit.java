@@ -158,4 +158,22 @@ public class Unit extends Globals {
             rc.transferPaint(paint_tower, amount_to_transfer);
         }
     }
+
+    /**
+     * @return true if the target is a level one/two/three money tower
+     */
+    public static boolean isMoneyTower(UnitType robotType) {
+        return robotType.equals(UnitType.LEVEL_ONE_MONEY_TOWER) 
+                    || robotType.equals(UnitType.LEVEL_TWO_MONEY_TOWER)
+                    || robotType.equals(UnitType.LEVEL_THREE_MONEY_TOWER);
+    }
+
+    /**
+     * @return true if the target is a level one/two/three paint tower
+     */
+    public static boolean isPaintTower(UnitType robotType) {
+        return robotType.equals(UnitType.LEVEL_ONE_PAINT_TOWER)
+                    || robotType.equals(UnitType.LEVEL_TWO_PAINT_TOWER)
+                    || robotType.equals(UnitType.LEVEL_THREE_PAINT_TOWER);
+    }
 }
