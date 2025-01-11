@@ -4,7 +4,7 @@ import V1_2.*;
 import battlecode.common.*;
 import java.util.Random;
 
-public class Splasher extends Globals {
+public class Splasher extends Unit {
     // how many tiles need to be enemy tiles to splash
     private static final int minNumEnemySquares = 2;
     // max number of ally tiles that will be overridden in a splash
@@ -14,17 +14,19 @@ public class Splasher extends Globals {
     static MapLocation[] targets = new MapLocation[4];
 
     public static void run() throws GameActionException {
-        Unit.update_paint_tower_loc();
+        update_paint_tower_loc();
 
-        Message[] msgs = rc.readMessages(-1);
-        if (msgs.length > 0) {    
-            checkCorners();
-        }
+        // Message[] msgs = rc.readMessages(-1);
+        // if (msgs.length > 0) {    
+        //     checkCorners();
+        // }
 
         splash();
-        refill();
+        if (rc.getPaint() <= 50) {
+            refill(300);
+        }
 
-        Unit.wander();
+        wander();
     }
 
     public static void splash() throws GameActionException {
@@ -36,32 +38,22 @@ public class Splasher extends Globals {
         }
     }
 
-    public static void refill() throws GameActionException {
-        if (rc.getPaint() >= 50) {
-            return;
-        }
+    // public static void checkCorners() throws GameActionException {
+    //     MapLocation currLoc = rc.getLocation();
 
-        Navigator.moveTo(Unit.paint_tower);
-        Unit.acquire_paint();
-        Unit.wanderTarget = null;
-    }
+    //     MapLocation vert = new MapLocation(mapWidth - 1, currLoc.y);
+    //     MapLocation hort = new MapLocation(currLoc.x, mapHeight - 1);
+    //     MapLocation mirr = new MapLocation(mapWidth - 1, mapHeight - 1);
+    //     MapLocation home = new MapLocation(1, 1);
 
-    public static void checkCorners() throws GameActionException {
-        MapLocation currLoc = rc.getLocation();
+    //     targets[0] = vert;
+    //     targets[1] = mirr;
+    //     targets[2] = hort;
+    //     targets[3] = home;
 
-        MapLocation vert = new MapLocation(mapWidth - 1, currLoc.y);
-        MapLocation hort = new MapLocation(currLoc.x, mapHeight - 1);
-        MapLocation mirr = new MapLocation(mapWidth - 1, mapHeight - 1);
-        MapLocation home = new MapLocation(1, 1);
-
-        targets[0] = vert;
-        targets[1] = mirr;
-        targets[2] = hort;
-        targets[3] = home;
-
-        Random rng = new Random();
-        Unit.wanderTarget = targets[rng.nextInt(4)];
-    }
+    //     Random rng = new Random();
+    //     Unit.wanderTarget = targets[rng.nextInt(4)];
+    // }
 
     public static int[] getNearbyPaintStats() throws GameActionException {
         MapInfo[] tiles = rc.senseNearbyMapInfos();
