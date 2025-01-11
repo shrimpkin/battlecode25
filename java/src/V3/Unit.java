@@ -10,7 +10,7 @@ public class Unit extends Globals {
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     
     public static String indicator;
-    private static MapLocation wanderTarget;
+    public static MapLocation wanderTarget;
     private static LocMap vis = new LocMap(mapWidth, mapHeight);
 
     /**

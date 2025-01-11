@@ -4,65 +4,72 @@ import V3.*;
 import battlecode.common.*;
 
 public class Splasher extends Unit {
-    private static final int LOWEST_SCORE = 8;
-    
+    private static final int PaintLimit = UnitType.SPLASHER.paintCapacity;
+    // weights for coloring in enemy and empty squares -- and hitting enemy towers as a little bonus
+    private static final int EnemyWeight = 5, EmptyWeight = 1, EnemyTowerWeight = 20;
+    // minimum utility at which the splasher will splash -- maybe make vary with round # / current paint amt
+    private static final int MinUtil = 8;
+    // thresholds for refilling (currently 300/6 = 50, 300/4 = 75), susceptible to change)
+    private static final int RefillStart = PaintLimit / 6, RefillEnd = PaintLimit / 4;
+    // whether the splasher is in refilling mode
+    private static boolean refilling = false;
+
     public static void run() throws GameActionException {
         updatePaintTowerLocations();
-        splash();
         refill();
-        wander(false);        
+        splash();
+        wander(false);
     }
 
     public static void refill() throws GameActionException {
-        if (rc.getPaint() >= 50) return;
+        if (!refilling) return;
+        // move to paint tower, get paint
+        MapLocation paintTower = closestPaintTower();
+        if (paintTower != null)
+            Navigator.moveTo(paintTower, false);
 
-        Navigator.moveTo(closestPaintTower(), false);
+        // acquired sufficient paint, go do other stuff -- maybe play with this number
+        if (rc.getPaint() >= RefillEnd) {
+            refilling = false;
+            wanderTarget = null;
+        }
     }
 
-    /**
-     * Finds the best location for splashing using the get_score heuristic
-     * Splashes the best tile if it has a better score than LOWEST_SCORE 
-     */
     public static void splash() throws GameActionException {
-        MapLocation bestLocation = null;
-        int bestScore = 0;
-
-        MapInfo[] locations = rc.senseNearbyMapInfos(rc.getLocation(), 4);
-
-        for(MapInfo loc : locations) {
-            int score = getScore(loc.getMapLocation());
-            if(score > bestScore) {
-                bestScore = score;
-                bestLocation = loc.getMapLocation();
+        if (refilling) return; // don't be counterproductive -- can hav more complex check here later
+        MapLocation best = null;
+        int mostUtil = -1;
+        for (var tile : rc.senseNearbyMapInfos(4)) {
+            var loc = tile.getMapLocation();
+            if (!rc.canAttack(loc)) continue;
+            int score = splashUtil(loc);
+            if (score > mostUtil) {
+                best = loc;
+                mostUtil = score;
             }
         }
-
-        if(bestLocation != null && rc.canAttack(bestLocation) && bestScore >= LOWEST_SCORE) {
-            rc.attack(bestLocation);
+        // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
+        if (best != null && mostUtil >= MinUtil) {
+            rc.attack(best);
+            if (rc.getPaint() <= RefillStart) refilling = true;
         }
     }
 
-    /**
-     * Gets the score of each tile, where each adjacent empty tile is one
-     * And each adjacent tile with enemy paint is two
-     */
-    public static int getScore(MapLocation center) throws GameActionException {
-        int score = 0;
-
-        MapInfo[] locations = rc.senseNearbyMapInfos(center, 2);
-        for(MapInfo loc : locations) {
-            if(!rc.senseMapInfo(loc.getMapLocation()).isPassable()) continue;
-
-            switch(loc.getPaint()) {
-                case EMPTY: score++; break;
-                case ENEMY_PRIMARY: 
-                case ENEMY_SECONDARY: 
-                    score += 5;
+    public static int splashUtil(MapLocation center) throws GameActionException {
+        int util = 0;
+        for (MapInfo info : rc.senseNearbyMapInfos(center, 2)) {
+            // depending on how things play out -- maybe also count nearby enemy towers as well
+            if (!info.isPassable()) continue;
+            switch (info.getPaint()) {
+                case EMPTY:
+                    util += EmptyWeight;
+                    break;
+                case ENEMY_PRIMARY, ENEMY_SECONDARY:
+                    util += EnemyWeight;
                     break;
                 default: break;
             }
         }
-
-        return score;
+        return util;
     }
 }

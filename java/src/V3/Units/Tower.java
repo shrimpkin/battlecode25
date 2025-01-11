@@ -13,15 +13,15 @@ public class Tower extends Unit {
         
         if(rc.getRoundNum() <= 4) rushBuild();
         else boomBuild();
-        
+
         givePaint();
         attack();
         rc.setIndicatorString(indicator);
     }
 
-    //TODO: Make this smart, ie attack least health robots 
-    // or other criteria 
-    // I also don't know how aoe attacks work
+    /**
+     * Attacks nearest robot
+     */
     public static void attack() throws GameActionException{
         RobotInfo[] robotInfo = rc.senseNearbyRobots(-1, opponentTeam);
         for(RobotInfo robot : robotInfo) {
@@ -39,21 +39,20 @@ public class Tower extends Unit {
         RobotInfo[] robotInfo = rc.senseNearbyRobots(-1, myTeam);
 
         for(RobotInfo robot : robotInfo) {
-            int transfer_amount = Math.min(rc.getPaint(), robot.getType().paintCapacity - robot.getPaintAmount());
-            indicator += "t: " + transfer_amount + ", ";
+            int transferAmount = Math.min(rc.getPaint(), robot.getType().paintCapacity - robot.getPaintAmount());
+            indicator += "t: " + transferAmount + ", ";
             
             MapLocation loc = robot.getLocation();
             indicator += loc.toString() + ", ";
-            if(rc.canTransferPaint(loc, transfer_amount)) {
+            if(rc.canTransferPaint(loc, transferAmount)) {
                 indicator += "transferred, ";
-                rc.transferPaint(loc, transfer_amount);
+                rc.transferPaint(loc, transferAmount);
             }
         }
     }
 
     /**
-     * Special behavior for paint tower
-     * @param rc
+     * Building for booming
      */
     public static void boomBuild() throws GameActionException {        
         if(num_built_splasher >= num_built_soldier) {
@@ -69,6 +68,9 @@ public class Tower extends Unit {
         }               
     }
 
+    /**
+     * Building for rushing
+     */
     public static void rushBuild() throws GameActionException {
         if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
             num_built_soldier++;
