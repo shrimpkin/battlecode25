@@ -4,26 +4,22 @@ import V3.*;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
-    enum Presence {NOT_SEEN, NOT_THERE, IS_THERE};
     enum Modes {RUSH, BOOM, SIT, NONE, GET_PAINT};
 
-    static MapLocation[] targets = new MapLocation[6];
-    static Presence[] targetPresence = new Presence[6];
+    static FastIntSet symmetryLocations = new FastIntSet();
+    static FastIntSet enemyTowerLocations = new FastIntSet();
+
     static Modes mode = Modes.NONE;
     static int turnsAlive = 0;
-
-    boolean hasCompletedInit = false;
-
     static MapLocation targetLocation = null;
 
     public static void run() throws GameActionException {    
-        if(turnsAlive == 0) init();
-
         turnsAlive++;
         indicator = "";
 
         updateMode();
         updatePaintTowerLocations();
+        updateEnemyTowerLocations();
 
         if(mode == Modes.GET_PAINT) {
             targetLocation = closestPaintTower();
@@ -33,7 +29,7 @@ public class Soldier extends Unit {
 
         if(mode == Modes.RUSH) {
             getRushTargets();
-            updateRushTargets();
+            updateSymmetryTargets();
             targetLocation = getRushMoveTarget();
             move();
         }  
@@ -41,13 +37,14 @@ public class Soldier extends Unit {
         if(mode == Modes.BOOM) {
             find_valid_tower_pos();
             paint_clock();
-
+        
             if(ruin_target != null) {
-                MapLocation around_ruin = new MapLocation(ruin_target.x - 2 + (nextInt() % 4), ruin_target.y - 2 + (nextInt() % 4));
-                Navigator.moveTo(around_ruin, false);
+                targetLocation = new MapLocation(ruin_target.x - 2 + (nextInt() % 4), ruin_target.y - 2 + (nextInt() % 4));
             } else {
-                wander(false);
+                targetLocation = null;
             }
+
+            move();
         } 
         
         if(mode == Modes.SIT) {
@@ -56,13 +53,7 @@ public class Soldier extends Unit {
 
         attack();
         debug();
-    }
-
-    public static void init() {
-        for(int i = 0; i < targetPresence.length; i++) {
-            targetPresence[i] = Presence.NOT_SEEN;
-        }
-    }    
+    }  
 
     /**
      * Changes mode based on criteria I haven't quite figured out yet
@@ -102,6 +93,8 @@ public class Soldier extends Unit {
     //==================================================================\\ 
     //                           Rush                                    \\
 
+    static boolean addedPaintTowerSymmetryLocations = false;
+    static boolean addedMoneyTowerSymmetryLocations = false;
     /**
      * Uses map symmetry and our tower positions to generate possible locations for enemy towers
      */
@@ -109,51 +102,57 @@ public class Soldier extends Unit {
         RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
 
         for(RobotInfo robot : robots) {
-            if(robot.getType() == UnitType.LEVEL_ONE_MONEY_TOWER || robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER) {
-                int x = robot.getLocation().x;
-                int y = robot.getLocation().y;
+            boolean isPaintTower = isPaintTower(robot.getType());
+            boolean isMoneyTower = isMoneyTower(robot.getType());
+            
+            if(!(isPaintTower || isMoneyTower)) return;
+            if(isPaintTower && addedPaintTowerSymmetryLocations) continue;
+            if(isMoneyTower && addedMoneyTowerSymmetryLocations) continue;
 
-                MapLocation vert = new MapLocation(mapWidth - x - 1,y);
-                MapLocation hort = new MapLocation(x, mapHeight - y - 1);
-                MapLocation mirr = new MapLocation(mapWidth - x - 1, mapHeight - y - 1);
+            int x = robot.getLocation().x;
+            int y = robot.getLocation().y;
 
-                if(robot.getType() == UnitType.LEVEL_ONE_MONEY_TOWER) {
-                    targets[0] = vert;
-                    targets[1] = mirr;
-                    targets[2] = hort;
-                } else {
-                    targets[3] = vert;
-                    targets[4] = mirr;
-                    targets[5] = hort;
-                }
-            }
+            MapLocation vert = new MapLocation(mapWidth - x - 1,y);
+            MapLocation hort = new MapLocation(x, mapHeight - y - 1);
+            MapLocation mirr = new MapLocation(mapWidth - x - 1, mapHeight - y - 1);
+
+            symmetryLocations.add(Utils.pack(vert));
+            symmetryLocations.add(Utils.pack(hort));
+            symmetryLocations.add(Utils.pack(mirr));
+
+            if(isPaintTower) addedPaintTowerSymmetryLocations = true;
+            if(isMoneyTower) addedMoneyTowerSymmetryLocations = true;
         }        
     }
 
-    /**
-     * Updates array that keeps track of all possible tower positions for enemy towers
-     * Changes targetPresence array to reflect any new information
-     */
-    public static void updateRushTargets() throws GameActionException {
-        for(int i = 0; i < targets.length; i++) {
-            if(targets[i] == null) continue;
+    
+    public static void updateSymmetryTargets() throws GameActionException {
+        for (int i = 0; i < symmetryLocations.size; i++) {
+            MapLocation tower = Utils.unpack(symmetryLocations.keys.charAt(i));
+            
+            if(!rc.canSenseLocation(tower)) continue;
+            RobotInfo info = rc.senseRobotAtLocation(tower);
 
-            MapLocation loc = targets[i];
-            if(!rc.canSenseLocation(loc)) continue;
-
-            RobotInfo robotInfo = rc.senseRobotAtLocation(loc);
-            if(robotInfo == null) {
-                targetPresence[i] = Presence.NOT_THERE;
-                continue;
+            //there is no unit or the unit is not a paint or money tower
+            //hence the tower is not there and we should remove 
+            if(info == null || !(isPaintTower(info.getType()) || isMoneyTower(info.getType()))) {
+                symmetryLocations.remove(Utils.pack(tower));
             }
+        }
+    }
 
-            UnitType robotType = robotInfo.getType();
-            if(!(isPaintTower(robotType) || isMoneyTower(robotType))) {
-                targetPresence[i] = Presence.NOT_THERE;
-                return;
+    public static void updateEnemyTowerLocations() throws GameActionException {
+        for(int i = 0; i < enemyTowerLocations.size; i++) {
+            MapLocation tower = Utils.unpack(enemyTowerLocations.keys.charAt(i));
+            
+            if(!rc.canSenseLocation(tower)) continue;
+            RobotInfo info = rc.senseRobotAtLocation(tower);
+
+            //there is no unit or the unit is not a paint or money tower
+            //hence the tower is not there and we should remove 
+            if(info == null || !(isPaintTower(info.getType()) || isMoneyTower(info.getType()))) {
+                enemyTowerLocations.remove(Utils.pack(tower));
             }
-
-            targetPresence[i] = Presence.IS_THERE;
         }
     }
 
@@ -164,17 +163,17 @@ public class Soldier extends Unit {
         int minDistance = Integer.MAX_VALUE;
         MapLocation bestLocation = null;
 
-        for(int i = 0; i < targets.length; i++) {
-            if(targets[i] == null) continue;
-            
-            if(targetPresence[i] == Presence.IS_THERE) {
-                return targets[i];
-            }
+        if(enemyTowerLocations.size > 0) {
+            return Utils.unpack(enemyTowerLocations.keys.charAt(0));
+        }
 
-            int distanceToTarget = rc.getLocation().distanceSquaredTo(targets[i]);
-            if(targetPresence[i] == Presence.NOT_SEEN && distanceToTarget < minDistance) {
-                minDistance = distanceToTarget;
-                bestLocation = targets[i];
+        for (int i = 0; i < symmetryLocations.size; i++) {
+            MapLocation tower = Utils.unpack(symmetryLocations.keys.charAt(i));
+            int distanceToTower = tower.distanceSquaredTo(rc.getLocation());
+
+            if(distanceToTower < minDistance) {
+                minDistance = distanceToTower;
+                bestLocation = tower;
             }
         }
 
@@ -297,18 +296,12 @@ public class Soldier extends Unit {
         }
 
         if(mode == Modes.RUSH) {
-            for(int i = 0; i < targets.length; i++) {
-                if(targets[i] == null) continue;
+            for(int i = 0; i < enemyTowerLocations.size; i++) {
+                indicator += Utils.unpack(enemyTowerLocations.keys.charAt(i)).toString() + ", \n";
+            }
 
-                switch(targetPresence[i]) {
-                    case IS_THERE: indicator += "Is at: "; break;
-                    case NOT_SEEN: indicator += "Haven't checked: "; break;
-                    case NOT_THERE: indicator += "Not at: "; break;
-                    default: break;
-                }
-                
-                indicator += targets[i].toString() + ", \n";
-                
+            for(int i = 0; i < symmetryLocations.size; i++) {
+                indicator += Utils.unpack(symmetryLocations.keys.charAt(i)).toString() + ", \n";
             }
         }
 

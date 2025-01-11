@@ -5,9 +5,6 @@ import battlecode.common.*;
 public class Unit extends Globals {
     // temporary variable representing how many rounds the unit should wander for
     public static final int SETUP_ROUNDS = 100;
-    //TODO: This should be an array of all known paint towers
-    //Should find the closest one for refuel
-    public static MapLocation paint_tower = null;
     public static FastIntSet towersSet = new FastIntSet();
     public static String indicator;
     private static MapLocation wanderTarget;
@@ -154,7 +151,7 @@ public class Unit extends Globals {
                 case UnitType.LEVEL_ONE_PAINT_TOWER:
                 case UnitType.LEVEL_TWO_PAINT_TOWER:
                 case UnitType.LEVEL_THREE_PAINT_TOWER:
-                    paint_tower = robot.getLocation();
+                    MapLocation paint_tower = robot.getLocation();
                     towersSet.add(Utils.pack(robot.getLocation()));
                     break;
                 default:
@@ -169,25 +166,26 @@ public class Unit extends Globals {
      * Only will grab if it has 100 or less paint
      */
     public static void getPaint(int limit) throws GameActionException {
+        MapLocation paintTower = closestPaintTower();
         if (rc.getPaint() > 100) return;
 
-        if (paint_tower == null) return;
+        if (paintTower == null) return;
 
-        rc.setIndicatorDot(paint_tower, 0, 255, 0);
+        rc.setIndicatorDot(paintTower, 0, 255, 0);
 
         int paint_in_tower = 0;
-        if (rc.canSenseLocation(paint_tower)) {
-            paint_in_tower = rc.senseRobotAtLocation(paint_tower).getPaintAmount();
+        if (rc.canSenseLocation(paintTower)) {
+            paint_in_tower = rc.senseRobotAtLocation(paintTower).getPaintAmount();
         }
 
-        Direction dir = rc.getLocation().directionTo(paint_tower);
+        Direction dir = rc.getLocation().directionTo(paintTower);
         if (rc.canMove(dir)) rc.move(dir);
 
         int amount_to_transfer = Math.max(rc.getPaint() - limit, -paint_in_tower);
 
-        if (rc.canTransferPaint(paint_tower, amount_to_transfer)) {
+        if (rc.canTransferPaint(paintTower, amount_to_transfer)) {
             indicator += "can, ";
-            rc.transferPaint(paint_tower, amount_to_transfer);
+            rc.transferPaint(paintTower, amount_to_transfer);
         }
     }
 

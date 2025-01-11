@@ -16,7 +16,7 @@ public class Splasher extends Unit {
     public static void refill() throws GameActionException {
         if (rc.getPaint() >= 50) return;
 
-        Navigator.moveTo(Unit.paint_tower, false);
+        Navigator.moveTo(closestPaintTower(), false);
         getPaint(250);
     }
 
@@ -25,21 +25,21 @@ public class Splasher extends Unit {
      * Splashes the best tile if it has a better score than LOWEST_SCORE 
      */
     public static void splash() throws GameActionException {
-        MapLocation best_location = null;
-        int best_score = 0;
+        MapLocation bestLocation = null;
+        int bestScore = 0;
 
         MapInfo[] locations = rc.senseNearbyMapInfos(rc.getLocation(), 4);
 
         for(MapInfo loc : locations) {
-            int score = get_score(loc.getMapLocation());
-            if(score > best_score) {
-                best_score = score;
-                best_location = loc.getMapLocation();
+            int score = getScore(loc.getMapLocation());
+            if(score > bestScore) {
+                bestScore = score;
+                bestLocation = loc.getMapLocation();
             }
         }
 
-        if(best_location != null && rc.canAttack(best_location) && best_score >= LOWEST_SCORE) {
-            rc.attack(best_location);
+        if(bestLocation != null && rc.canAttack(bestLocation) && bestScore >= LOWEST_SCORE) {
+            rc.attack(bestLocation);
         }
     }
 
@@ -47,7 +47,7 @@ public class Splasher extends Unit {
      * Gets the score of each tile, where each adjacent empty tile is one
      * And each adjacent tile with enemy paint is two
      */
-    public static int get_score(MapLocation center) throws GameActionException {
+    public static int getScore(MapLocation center) throws GameActionException {
         int score = 0;
 
         MapInfo[] locations = rc.senseNearbyMapInfos(center, 2);
