@@ -4,30 +4,34 @@ import V3.*;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
-    enum TowerPresence {NOT_SEEN, NOT_THERE, IS_THERE};
+    enum Presence {NOT_SEEN, NOT_THERE, IS_THERE};
     enum Modes {RUSH, BOOM, SIT, NONE};
 
     static MapLocation[] targets = new MapLocation[6];
-    static TowerPresence[] targetPresence = new TowerPresence[6];
+    static Presence[] targetPresence = new Presence[6];
     static Modes mode = Modes.NONE;
     static int turnsAlive = 0;
 
     boolean hasCompletedInit = false;
 
+    static MapLocation targetLocation = null;
+
     public static void run() throws GameActionException {    
         if(turnsAlive == 0) init();
 
         turnsAlive++;
-
         indicator = "";
-        update_mode();
+
+        updateMode();
         update_paint_tower_loc();
 
         if(mode == Modes.RUSH) {
-            get_rush_targets();
-            update_rush_targets();
+            getRushTargets();
+            updateRushTargets();
             rush_move();
-        } else if(mode == Modes.BOOM) {
+        }  
+        
+        if(mode == Modes.BOOM) {
             find_valid_tower_pos();
             paint_clock();
 
@@ -39,7 +43,9 @@ public class Soldier extends Unit {
             } else {
                 wander(false);
             }
-        } else if(mode == Modes.SIT) {
+        } 
+        
+        if(mode == Modes.SIT) {
             sit();
         }
 
@@ -49,30 +55,14 @@ public class Soldier extends Unit {
 
     public static void init() {
         for(int i = 0; i < targetPresence.length; i++) {
-            targetPresence[i] = TowerPresence.NOT_SEEN;
+            targetPresence[i] = Presence.NOT_SEEN;
         }
     }    
 
     /**
-     * Will update mode to something new if it is NONE
+     * Changes mode based on criteria I haven't quite figured out yet
      */
-    public static void update_mode() throws GameActionException {
-        if(rc.getNumberTowers() == 0) {
-            boolean can_see = false;
-            RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
-
-            for(RobotInfo info : robots) {
-                if(info.getType() == UnitType.LEVEL_ONE_MONEY_TOWER || info.getType() == UnitType.LEVEL_ONE_PAINT_TOWER) {
-                    can_see = true;
-                }
-            }
-
-            if(!can_see && rc.getRoundNum() > 50) {
-                mode = Modes.SIT;
-                return;
-            }
-        }
-
+    public static void updateMode() throws GameActionException {
         if(rc.getRoundNum() <= 50) mode = Modes.RUSH;
         if(rc.getRoundNum() >= 50) mode = Modes.BOOM;
     }
@@ -94,7 +84,11 @@ public class Soldier extends Unit {
 
     //==================================================================\\ 
     //                           Rush                                    \\
-    public static void get_rush_targets() throws GameActionException {
+
+    /**
+     * Uses map symmetry and our tower positions to generate possible locations for enemy towers
+     */
+    public static void getRushTargets() throws GameActionException {
         RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
 
         for(RobotInfo robot : robots) {
@@ -119,7 +113,11 @@ public class Soldier extends Unit {
         }        
     }
 
-    public static void update_rush_targets() throws GameActionException {
+    /**
+     * Updates array that keeps track of all possible tower positions for enemy towers
+     * Changes targetPresence array to reflect any new information
+     */
+    public static void updateRushTargets() throws GameActionException {
         for(int i = 0; i < targets.length; i++) {
             if(targets[i] == null) continue;
 
@@ -128,20 +126,23 @@ public class Soldier extends Unit {
 
             RobotInfo robotInfo = rc.senseRobotAtLocation(loc);
             if(robotInfo == null) {
-                targetPresence[i] = TowerPresence.NOT_THERE;
+                targetPresence[i] = Presence.NOT_THERE;
                 continue;
             }
 
             UnitType robotType = robotInfo.getType();
             if(!(isPaintTower(robotType) || isMoneyTower(robotType))) {
-                targetPresence[i] = TowerPresence.NOT_THERE;
+                targetPresence[i] = Presence.NOT_THERE;
                 return;
             }
 
-            targetPresence[i] = TowerPresence.IS_THERE;
+            targetPresence[i] = Presence.IS_THERE;
         }
     }
 
+    /**
+     * @returns If possible a tower that have seen, otherwise the nearest possible location for a tower
+     */
     public static MapLocation getRushMoveTarget() throws GameActionException {
         int minDistance = Integer.MAX_VALUE;
         MapLocation bestLocation = null;
@@ -149,12 +150,12 @@ public class Soldier extends Unit {
         for(int i = 0; i < targets.length; i++) {
             if(targets[i] == null) continue;
             
-            if(targetPresence[i] == TowerPresence.IS_THERE) {
+            if(targetPresence[i] == Presence.IS_THERE) {
                 return targets[i];
             }
 
             int distanceToTarget = rc.getLocation().distanceSquaredTo(targets[i]);
-            if(targetPresence[i] == TowerPresence.NOT_SEEN && distanceToTarget < minDistance) {
+            if(targetPresence[i] == Presence.NOT_SEEN && distanceToTarget < minDistance) {
                 minDistance = distanceToTarget;
                 bestLocation = targets[i];
             }
@@ -163,36 +164,18 @@ public class Soldier extends Unit {
         return bestLocation;
     }
 
+    /**
+     * Uses getRushMoveTarget() to target towers, if we know of no more possible towers it will wander
+     */
     public static void rush_move() throws GameActionException {
-        MapLocation rushTarget = getRushMoveTarget();
+        targetLocation = getRushMoveTarget();
 
-        indicator += "Move Target: ";
-        if(getRushMoveTarget() != null) {
-            indicator += rushTarget.toString() + "\n";
-        } else {
-            indicator += "null target\n";
-        }
-
-        if(rushTarget != null) {
-            Navigator.moveTo(rushTarget, true);
+        if(targetLocation != null) {
+            Navigator.moveTo(targetLocation, true);
         } else {
             wander(true);
         }
-
     }
-
-    public static void attack() throws GameActionException {
-        RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
-
-        for(RobotInfo robot : robots) {
-            if( (robot.getType() == UnitType.LEVEL_ONE_MONEY_TOWER 
-                || robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER)
-                && rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-            }
-        }
-    }
-
 
      //==================================================================\\ 
     //                           Boom                                     \\
@@ -262,7 +245,18 @@ public class Soldier extends Unit {
                     rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target);
     }
 
+    public static void attack() throws GameActionException {
+        RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
 
+        for(RobotInfo robot : robots) {
+            if( (robot.getType() == UnitType.LEVEL_ONE_MONEY_TOWER 
+                || robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER)
+                && rc.canAttack(robot.getLocation())) {
+                rc.attack(robot.getLocation());
+            }
+        }
+    }
+    
     //==========================================================================\\
 
     /**
@@ -277,6 +271,13 @@ public class Soldier extends Unit {
             case RUSH: indicator += "Rush: "; break;
             case SIT:  indicator +=  "Sit: "; break;
             default: break;
+        }
+
+        indicator += "Move Target: ";
+        if(targetLocation != null) {
+            indicator += targetLocation.toString() + "\n";
+        } else {
+            indicator += "null target\n";
         }
 
         if(mode == Modes.RUSH) {
@@ -302,4 +303,6 @@ public class Soldier extends Unit {
         rc.setIndicatorString(indicator);
         System.out.println(indicator);
     }
+
+    
 }
