@@ -17,7 +17,6 @@ public class Splasher extends Unit {
         if (rc.getPaint() >= 50) return;
 
         Navigator.moveTo(closestPaintTower(), false);
-        getPaint(250);
     }
 
     /**

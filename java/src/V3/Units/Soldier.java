@@ -7,7 +7,6 @@ public class Soldier extends Unit {
     enum Modes {RUSH, BOOM, SIT, NONE, GET_PAINT};
 
     static FastIntSet symmetryLocations = new FastIntSet();
-    static FastIntSet enemyTowerLocations = new FastIntSet();
 
     static Modes mode = Modes.NONE;
     static int turnsAlive = 0;
@@ -24,7 +23,6 @@ public class Soldier extends Unit {
         if(mode == Modes.GET_PAINT) {
             targetLocation = closestPaintTower();
             move();
-            getPaint(UnitType.SOLDIER.paintCapacity);
         }
 
         if(mode == Modes.RUSH) {
@@ -125,7 +123,6 @@ public class Soldier extends Unit {
         }        
     }
 
-    
     public static void updateSymmetryTargets() throws GameActionException {
         for (int i = 0; i < symmetryLocations.size; i++) {
             MapLocation tower = Utils.unpack(symmetryLocations.keys.charAt(i));
@@ -137,21 +134,6 @@ public class Soldier extends Unit {
             //hence the tower is not there and we should remove 
             if(info == null || !(isPaintTower(info.getType()) || isMoneyTower(info.getType()))) {
                 symmetryLocations.remove(Utils.pack(tower));
-            }
-        }
-    }
-
-    public static void updateEnemyTowerLocations() throws GameActionException {
-        for(int i = 0; i < enemyTowerLocations.size; i++) {
-            MapLocation tower = Utils.unpack(enemyTowerLocations.keys.charAt(i));
-            
-            if(!rc.canSenseLocation(tower)) continue;
-            RobotInfo info = rc.senseRobotAtLocation(tower);
-
-            //there is no unit or the unit is not a paint or money tower
-            //hence the tower is not there and we should remove 
-            if(info == null || !(isPaintTower(info.getType()) || isMoneyTower(info.getType()))) {
-                enemyTowerLocations.remove(Utils.pack(tower));
             }
         }
     }
