@@ -28,13 +28,15 @@ public class Soldier extends Unit {
         if(mode == Modes.RUSH) {
             getRushTargetsBySymmetry();
             updateSymmetryTargets();
+            markRuins();
             targetLocation = getRushMoveTarget();
             move();
         }  
         
         if(mode == Modes.BOOM) {
-            find_valid_tower_pos();
-            paint_clock();
+            findValidTowerPosition();
+            paintClockTower();
+            markRuins();
         
             if(ruin_target != null) {
                 targetLocation = new MapLocation(ruin_target.x - 2 + (nextInt() % 4), ruin_target.y - 2 + (nextInt() % 4));
@@ -171,6 +173,32 @@ public class Soldier extends Unit {
     }
 
     /**
+     * Paints one tile of every adjacent ruin
+     */
+    public static void markRuins() throws GameActionException {
+        MapLocation locationToMark = null;
+        for(int i = 0; i < unusedRuinLocations.size; i++) {
+            MapLocation ruinLocation = Utils.unpack(unusedRuinLocations.keys.charAt(i));
+
+            if(!rc.canSenseLocation(ruinLocation)) continue;
+
+            MapInfo[] squaresToMark = rc.senseNearbyMapInfos(ruinLocation, 8);
+            for(MapInfo info : squaresToMark) {
+                PaintType paint = info.getPaint();
+                if(isFriendlyPaint(paint)) return;
+
+                if(paint.equals(PaintType.EMPTY) && rc.canAttack(info.getMapLocation())) {
+                    locationToMark = info.getMapLocation();
+                }
+            }
+        }
+
+        if(locationToMark != null) {
+            rc.attack(locationToMark);
+        }
+    }
+
+    /**
      * Moves to target location, if no target wanders
      */
     public static void move() throws GameActionException {
@@ -189,7 +217,7 @@ public class Soldier extends Unit {
     /**
      * Will attempt to build clock tower on nearby empty ruins
      */
-    public static void find_valid_tower_pos() throws GameActionException {
+    public static void findValidTowerPosition() throws GameActionException {
         ruin_target = null;
         MapLocation[] ruin_locations = rc.senseNearbyRuins(-1);
 
@@ -214,11 +242,9 @@ public class Soldier extends Unit {
         }
     }
 
-    public static void paint_clock() throws GameActionException {
+    public static void paintClockTower() throws GameActionException {
         if(ruin_target == null) return;
         if(!rc.canSenseLocation(ruin_target)) return;
-
-        //if(rc.canMarkTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target)) rc.markTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target);
 
         MapInfo[] ruin_suroundings = rc.senseNearbyMapInfos(ruin_target, 8);
         boolean[][] paint_pattern = rc.getTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER);

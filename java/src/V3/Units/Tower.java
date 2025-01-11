@@ -20,7 +20,7 @@ public class Tower extends Unit {
     }
 
     /**
-     * Attacks nearest robot
+     * Attacks nearest robot and performs aoe attack
      */
     public static void attack() throws GameActionException{
         RobotInfo[] robotInfo = rc.senseNearbyRobots(-1, opponentTeam);
@@ -28,10 +28,9 @@ public class Tower extends Unit {
             if(rc.canAttack(robot.getLocation())) {
                 rc.attack(robot.getLocation());
             }
-            if(rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-            }
         }
+
+        rc.attack(null);
     }
 
     //TODO: This doesn't work

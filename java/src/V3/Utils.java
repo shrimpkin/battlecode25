@@ -2,6 +2,8 @@ package V3;
 
 import battlecode.common.Direction;
 import battlecode.common.MapLocation;
+import battlecode.common.PaintType;
+import battlecode.common.UnitType;
 
 public class Utils {
     public static final Direction[] directions = {
@@ -40,5 +42,22 @@ public class Utils {
         return new MapLocation(
                 loc / Globals.mapHeight, loc % Globals.mapHeight
         );
+    }
+
+    public static boolean isPaintTower(UnitType robotType) {
+        return robotType.equals(UnitType.LEVEL_ONE_PAINT_TOWER)
+                || robotType.equals(UnitType.LEVEL_TWO_PAINT_TOWER)
+                || robotType.equals(UnitType.LEVEL_THREE_PAINT_TOWER);
+    }
+
+    public static boolean isMoneyTower(UnitType robotType) {
+        return robotType.equals(UnitType.LEVEL_ONE_MONEY_TOWER)
+                || robotType.equals(UnitType.LEVEL_TWO_MONEY_TOWER)
+                || robotType.equals(UnitType.LEVEL_THREE_MONEY_TOWER);
+    }
+
+    public static boolean isFriendlyPaint(PaintType type) {
+        return type.equals(PaintType.ALLY_PRIMARY)
+                || type.equals(PaintType.ALLY_SECONDARY);
     }
 }

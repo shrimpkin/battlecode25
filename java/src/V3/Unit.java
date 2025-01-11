@@ -123,15 +123,24 @@ public class Unit extends Globals {
         return closest;
     }
 
-    public static boolean isPaintTower(UnitType robotType) {
-        return robotType.equals(UnitType.LEVEL_ONE_PAINT_TOWER)
-                || robotType.equals(UnitType.LEVEL_TWO_PAINT_TOWER)
-                || robotType.equals(UnitType.LEVEL_THREE_PAINT_TOWER);
+    public static MapLocation closestUnusedRuin() throws GameActionException {
+        MapLocation closest = null;
+        int best = Integer.MAX_VALUE;
+        int bnum = Clock.getBytecodeNum();
+        var loc = rc.getLocation();
+        for (int i = 0; i < unusedRuinLocations.size; i++) {
+            MapLocation tower = Utils.unpack(unusedRuinLocations.keys.charAt(i));
+            rc.setIndicatorDot(tower, 0, 255, 0);
+            var dist = tower.distanceSquaredTo(loc);
+            if (dist < best) {
+                best = dist;
+                closest = tower;
+            }
+        }
+        int bnum2 = Clock.getBytecodeNum();
+        System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", unusedRuinLocations.size, bnum2 - bnum);
+        return closest;
     }
 
-    public static boolean isMoneyTower(UnitType robotType) {
-        return robotType.equals(UnitType.LEVEL_ONE_MONEY_TOWER)
-                || robotType.equals(UnitType.LEVEL_TWO_MONEY_TOWER)
-                || robotType.equals(UnitType.LEVEL_THREE_MONEY_TOWER);
-    }
+    
 }
