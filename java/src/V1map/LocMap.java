@@ -1,4 +1,4 @@
-package V1map.Units;
+package V1map;
 
 import battlecode.common.MapLocation;
 

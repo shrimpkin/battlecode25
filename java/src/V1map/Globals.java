@@ -1,6 +1,5 @@
 package V1map;
 
-import V1map.Units.LocMap;
 import battlecode.common.RobotController;
 import battlecode.common.Team;
 

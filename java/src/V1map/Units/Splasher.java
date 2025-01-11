@@ -3,78 +3,76 @@ package V1map.Units;
 import V1map.Globals;
 import V1map.Navigator;
 import V1map.Unit;
-import battlecode.common.GameActionException;
-import battlecode.common.MapInfo;
-import battlecode.common.MapLocation;
-import battlecode.common.PaintType;
+import battlecode.common.*;
+import battlecode.util.TeamMapping;
+import battlecode.world.TeamInfo;
 
 public class Splasher extends Globals {
-    // how many tiles need to be enemy tiles to splash
-    private static final int minNumEnemySquares = 2;
-    // max number of ally tiles that will be overridden in a splash
-    private static final int maxNumAllySquares = 6;
+    private static final int PaintLimit = UnitType.SPLASHER.paintCapacity;
+    // weights for coloring in enemy and empty squares -- and hitting enemy towers as a little bonus
+    private static final int EnemyWeight = 5, EmptyWeight = 1, EnemyTowerWeight = 20;
+    // minimum utility at which the splasher will splash -- maybe make vary with round # / current paint amt
+    private static final int MinUtil = 8;
+    // thresholds for refilling (currently 300/6 = 50, 300/4 = 75), susceptible to change)
+    private static final int RefillStart = PaintLimit / 6, RefillEnd = PaintLimit / 4;
+    // whether the splasher is in refilling mode
+    private static boolean refilling = false;
 
     public static void run() throws GameActionException {
         Unit.update_paint_tower_loc();
-        MapLocation splashLoc = getSplashLoc();
-        if (rc.getPaint() > 50 && splashLoc != null && rc.canAttack(splashLoc)) {
-            rc.attack(splashLoc);
-        }
-        if (rc.getPaint() < 50) {
-            Unit.resetWanderTarget();
+        refill();
+        splash();
+        Unit.wander();
+    }
+
+    public static void refill() throws GameActionException {
+        if (!refilling) return;
+        // move to paint tower, get paint
+        if (Unit.paint_tower != null)
             Navigator.moveTo(Unit.paint_tower);
-            Unit.acquire_paint();
-        } else {
-            Unit.wander();
+        Unit.acquire_paint(PaintLimit);
+
+        // acquired sufficient paint, go do other stuff -- maybe play with this number
+        if (rc.getPaint() >= RefillEnd) {
+            refilling = false;
+            Unit.resetWanderTarget();
         }
     }
 
-    public static MapLocation isOptimalSplashLoc(MapLocation currLoc) {
-        int[] pt = {
-                (int) Math.round((2.0 * currLoc.x - 3 * currLoc.y) / 13),
-                (int) Math.round((3.0 * currLoc.x + 2 * currLoc.y) / 13),
-        };
-        return new MapLocation(
-                2 * pt[0] + 3 * pt[1],
-                -3 * pt[0] + 2 * pt[1]
-        );
-    }
-
-    // TODO: do better
-    public static MapLocation getSplashLoc() throws GameActionException {
-        MapLocation currLoc = rc.getLocation();
-        MapLocation newLoc = isOptimalSplashLoc(currLoc);
-
-        if (currLoc.x == newLoc.x && currLoc.y == newLoc.y) {
-            if (canOptimalSplash() || canSplashEnemies()) {
-                return currLoc;
-            }
-            return null;
-        }
-        return null;
-    }
-
-    public static boolean canOptimalSplash() throws GameActionException {
-        int numAllySquares = 0;
-        for (MapInfo tile : rc.senseNearbyMapInfos(4)) {
-            if (tile.isWall()) continue;
-            PaintType paintType = tile.getPaint();
-            if (paintType == PaintType.ALLY_PRIMARY || paintType == PaintType.ALLY_SECONDARY) {
-                numAllySquares++;
+    public static void splash() throws GameActionException {
+        if (refilling) return; // don't be counterproductive -- can hav more complex check here later
+        MapLocation best = null;
+        int mostUtil = -1;
+        for (var tile : rc.senseNearbyMapInfos(4)) {
+            var loc = tile.getMapLocation();
+            if (!rc.canAttack(loc)) continue;
+            int score = splashUtil(loc);
+            if (score > mostUtil) {
+                best = loc;
+                mostUtil = score;
             }
         }
-        return numAllySquares < maxNumAllySquares;
+        // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
+        if (best != null && mostUtil >= MinUtil) {
+            rc.attack(best);
+            if (rc.getPaint() <= RefillStart) refilling = true;
+        }
     }
 
-    public static boolean canSplashEnemies() throws GameActionException {
-        int numEnemySquares = 0;
-        for (MapInfo tile : rc.senseNearbyMapInfos(2)) {
-            if (tile.isWall()) continue;
-            PaintType paintType = tile.getPaint();
-            if (paintType == PaintType.ENEMY_PRIMARY || paintType == PaintType.ENEMY_SECONDARY) {
-                numEnemySquares++;
+    public static int splashUtil(MapLocation center) throws GameActionException {
+        int util = 0;
+        for (var l : rc.senseNearbyMapInfos(center, 2)) {
+            // depending on how things play out -- maybe also count nearby enemy towers as well
+            if (!l.isPassable()) continue;
+            switch (l.getPaint()) {
+                case EMPTY:
+                    util += EmptyWeight;
+                    break;
+                case ENEMY_PRIMARY, ENEMY_SECONDARY:
+                    util += EnemyWeight;
+                    break;
             }
         }
-        return numEnemySquares >= minNumEnemySquares;
+        return util;
     }
 }

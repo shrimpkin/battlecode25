@@ -12,26 +12,12 @@ public class Navigator extends Globals {
 
     public static void moveTo(MapLocation target) throws GameActionException {
         MapLocation myLocation = rc.getLocation();
-
         // draw line to show where its going -- avoid an exception this way
-        if (rc.onTheMap(target))
-            rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 0);
-
-        if (myLocation.equals(target)) {
-            return;
-        }
-
-        if (currentTarget == null || !currentTarget.equals(target)) {
-            reset();
-        }
+        if (rc.onTheMap(target)) rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 0);
+        if (myLocation.equals(target)) return;
+        if (currentTarget == null || !currentTarget.equals(target)) reset();
 
         currentTarget = target;
-
-        //causes it to not move idk
-        // MapLocation nextLocation = myLocation.add(myLocation.directionTo(target));
-        // if (rc.canSenseLocation(nextLocation)) {
-        //     return;
-        // }
 
         int distanceToTarget = myLocation.distanceSquaredTo(target);
         if (distanceToTarget < minDistanceToTarget) {
@@ -42,19 +28,8 @@ public class Navigator extends Globals {
         }
 
         Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
-        if (bellmanFordDirection != null) {
-            if (rc.canMove(bellmanFordDirection)) {
-
-
-                rc.move(bellmanFordDirection);
-            }
-
-            return;
-        }
-        
-
-        if (!rc.isMovementReady()) {
-            return;
+        if (bellmanFordDirection != null && rc.canMove(bellmanFordDirection)) {
+            rc.move(bellmanFordDirection);
         }
     }
 

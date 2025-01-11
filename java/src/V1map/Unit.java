@@ -1,6 +1,5 @@
 package V1map;
 
-import V1map.Units.LocMap;
 import battlecode.common.*;
 
 public class Unit extends Globals {
@@ -9,6 +8,7 @@ public class Unit extends Globals {
     //TODO: This should be an array of all known paint towers
     //Should find the closest one for refuel
     public static MapLocation paint_tower = null;
+    public static FastIntSet towersSet = new FastIntSet();
     public static String indicator;
     private static MapLocation wanderTarget;
     private static MapLocation spawnLocation;
@@ -33,23 +33,20 @@ public class Unit extends Globals {
         return null;
     }
 
+    // update seen locations in visited set
     private static void updateSeen() {
         for (MapInfo loc : rc.senseNearbyMapInfos()) {
             vis.mark(loc.getMapLocation());
         }
     }
 
-
+    // get an exploration target
     private static MapLocation getExploreTarget() {
         MapLocation ret = null;
         MapLocation current = rc.getLocation();
         for (int i = 0; i < 5; i++) {
             var dist = 4 * nextDouble() + 6;
             var angle = 2 * Math.PI * nextDouble();
-            if (dist > 10 || dist < 0) {
-                System.out.println(dist);
-                rc.resign();
-            }
             ret = new MapLocation(
                     Utils.clamp((int) (current.x + Math.cos(angle) * dist), 0, mapWidth - 1),
                     Utils.clamp((int) (current.y + Math.sin(angle) * dist), 0, mapHeight - 1)
@@ -68,21 +65,15 @@ public class Unit extends Globals {
      * Unit picks a random location and moves towards it
      */
     public static void wander() throws GameActionException {
-        if (!rc.isMovementReady()) {
-            return;
-        }
+        if (!rc.isMovementReady()) return;
         // 'refresh' the visited nodes every few hundred rounds to account for map changes over time
         if (rc.getRoundNum() % 200 == 0) vis.clearAll();
         // pick a new place to go if we don't have one
         if (wanderTarget != null && rc.canSenseLocation(wanderTarget)) wanderTarget = null;
-        if (wanderTarget == null) {
-            wanderTarget = getExploreTarget();
-            rc.setIndicatorDot(wanderTarget, 255, 0, 255);
-        } else {
-            rc.setIndicatorString("existing wander " + wanderTarget);
-            rc.setIndicatorDot(wanderTarget, 0, 0, 128);
-        }
+        if (wanderTarget == null) wanderTarget = getExploreTarget();
+        rc.setIndicatorDot(wanderTarget, 255, 0, 255);
         Navigator.moveTo(wanderTarget);
+        // update the visited array every few rounds
         if (rc.getRoundNum() % 4 == 0) updateSeen();
     }
 
@@ -150,7 +141,6 @@ public class Unit extends Globals {
                 }
             }
         }
-
         return true;
     }
 
@@ -160,10 +150,16 @@ public class Unit extends Globals {
     public static void update_paint_tower_loc() throws GameActionException {
         RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
         for (RobotInfo robot : robots) {
-            if (robot.type.equals(UnitType.LEVEL_ONE_PAINT_TOWER)
-                    || robot.type.equals(UnitType.LEVEL_TWO_PAINT_TOWER)
-                    || robot.type.equals(UnitType.LEVEL_THREE_PAINT_TOWER)) {
-                paint_tower = robot.getLocation();
+            switch (robot.type) {
+                case UnitType.LEVEL_ONE_PAINT_TOWER:
+                case UnitType.LEVEL_TWO_PAINT_TOWER:
+                case UnitType.LEVEL_THREE_PAINT_TOWER:
+                    paint_tower = robot.getLocation();
+                    towersSet.add(Utils.pack(robot.getLocation()));
+                    break;
+                default:
+                    towersSet.remove(Utils.pack(robot.getLocation()));
+                    break;
             }
         }
     }
@@ -172,11 +168,11 @@ public class Unit extends Globals {
      * Will attempt to grab paint from paint towers
      * Only will grab if it has 100 or less paint
      */
-    public static void acquire_paint() throws GameActionException {
-        if (paint_tower == null) return;
+    public static void acquire_paint(int limit) throws GameActionException {
         if (rc.getPaint() > 100) return;
 
-        indicator += "trying to transfer paint at " + paint_tower.toString() + ", ";
+        if (paint_tower == null) return;
+
         rc.setIndicatorDot(paint_tower, 0, 255, 0);
 
         int paint_in_tower = 0;
@@ -187,14 +183,30 @@ public class Unit extends Globals {
         Direction dir = rc.getLocation().directionTo(paint_tower);
         if (rc.canMove(dir)) rc.move(dir);
 
-        int amount_to_transfer = Math.max(rc.getPaint() - 200, -paint_in_tower);
-
-        indicator += amount_to_transfer + ", ";
-        indicator += rc.canTransferPaint(paint_tower, -10);
+        int amount_to_transfer = Math.max(rc.getPaint() - limit, -paint_in_tower);
 
         if (rc.canTransferPaint(paint_tower, amount_to_transfer)) {
             indicator += "can, ";
             rc.transferPaint(paint_tower, amount_to_transfer);
         }
+    }
+
+    private static MapLocation closestPaintTower() throws GameActionException {
+        MapLocation closest = null;
+        int best = Integer.MAX_VALUE;
+        int bnum = Clock.getBytecodeNum();
+        var loc = rc.getLocation();
+        for (int i = 0; i < towersSet.size; i++) {
+            MapLocation tower = Utils.unpack(towersSet.keys.charAt(i));
+            rc.setIndicatorDot(tower, 0, 255, 0);
+            var dist = tower.distanceSquaredTo(loc);
+            if (dist < best) {
+                best = dist;
+                closest = tower;
+            }
+        }
+        int bnum2 = Clock.getBytecodeNum();
+        System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", towersSet.size, bnum2 - bnum);
+        return closest;
     }
 }

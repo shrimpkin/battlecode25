@@ -5,6 +5,7 @@ import V1map.Unit;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
+    private static final int PaintLimit = UnitType.SOLDIER.paintCapacity;
     static MapLocation ruin_location = null;
     static MapLocation target_location = null;
     static boolean can_paint_tower = true;
@@ -20,7 +21,7 @@ public class Soldier extends Unit {
 
         try {
             update_paint_tower_loc();
-            acquire_paint();
+            acquire_paint(PaintLimit);
             get_target_location();
             
             if(target_location != null) {
