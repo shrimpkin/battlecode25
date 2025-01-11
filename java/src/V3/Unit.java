@@ -1,34 +1,28 @@
 package V3;
 
+import V3.Nav.Navigator;
 import battlecode.common.*;
 
 public class Unit extends Globals {
     // temporary variable representing how many rounds the unit should wander for
     public static final int SETUP_ROUNDS = 100;
-    //TODO: This should be an array of all known paint towers
-    //Should find the closest one for refuel
-    public static MapLocation paint_tower = null;
-    public static FastIntSet towersSet = new FastIntSet();
-    public static String indicator;
-    private static MapLocation wanderTarget;
-    private static MapLocation spawnLocation;
-    private static LocMap vis = new LocMap(mapWidth, mapHeight);
+    
+    public static FastIntSet paintTowerLocations = new FastIntSet();
+    public static FastIntSet enemyTowerLocations = new FastIntSet();
+    public static FastIntSet unusedRuinLocations = new FastIntSet();
 
-    public static void run() throws GameActionException {
-        spawnLocation = rc.getLocation();
-        wander(false);
-    }
+    public static String indicator;
+    public static MapLocation wanderTarget;
+    private static LocMap vis = new LocMap(mapWidth, mapHeight);
 
     /**
      * Returns the location of a ruin in the unit's sensing range if it exists,
      * otherwise returns null
      */
     public static MapLocation findRuin() throws GameActionException {
-        MapInfo[] tiles = rc.senseNearbyMapInfos();
-        for (MapInfo tile : tiles) {
-            if (tile.hasRuin() && rc.senseRobotAtLocation(tile.getMapLocation()) == null) {
-                return tile.getMapLocation();
-            }
+        MapLocation[] tiles = rc.senseNearbyRuins(-1);
+        for (MapLocation tile : tiles) {
+            if (rc.senseRobotAtLocation(tile) == null) return tile;
         }
         return null;
     }
@@ -56,11 +50,6 @@ public class Unit extends Globals {
         return ret;
     }
 
-    // e.g. when it needs to do smth else like acquire paint
-    public static void resetWanderTarget() {
-        wanderTarget = null;
-    }
-
     /**
      * Unit picks a random location and moves towards it
      */
@@ -78,116 +67,40 @@ public class Unit extends Globals {
     }
 
     /**
-     * Checks whether a tile has a specific pattern painted around it
-     *
-     * @return the UnitType of the tower if it does and null otherwise
+     * Maintains correctness of tower sets
+     * Specifically: paintTowerLocations, unusedRuinLocations, enemyTowerLocations
      */
-    public static UnitType has_tower_marked(MapLocation location) throws GameActionException {
-        MapInfo[] locations = rc.senseNearbyMapInfos(location, 8);
-        if (locations.length != 25) {
-            return null;
-        }
+    public static void updateTowerLocations() throws GameActionException {
+        MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
 
-        //contains true if the paint type is secondary
-        //false if the paint type is primary
-        boolean[][] pattern = new boolean[5][5];
+        for(MapLocation ruin : ruinLocations) {
+            RobotInfo robot = rc.senseRobotAtLocation(ruin);
+            int packedLocation = Utils.pack(ruin);
+            if(robot == null) {
+                unusedRuinLocations.add(packedLocation);
 
-        for (MapInfo info : locations) {
-            int x = (location.x - info.getMapLocation().x) + 2;
-            int y = (location.y - info.getMapLocation().y) + 2;
-
-            switch (info.getMark()) {
-                case PaintType.ALLY_PRIMARY:
-                    pattern[x][y] = false;
-                    break;
-                case PaintType.ALLY_SECONDARY:
-                    pattern[x][y] = true;
-                    break;
-                default:
-                    if (info.getMapLocation().equals(location)) {
-                        //the center of the tower need not be marked
-                        continue;
-                    } else {
-                        //at least one tile is not marked
-                        return null;
-                    }
-            }
-        }
-
-        if (does_tower_pattern_match(pattern, rc.getTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER))) {
-            return UnitType.LEVEL_ONE_PAINT_TOWER;
-        }
-        if (does_tower_pattern_match(pattern, rc.getTowerPattern(UnitType.LEVEL_ONE_DEFENSE_TOWER))) {
-            return UnitType.LEVEL_ONE_DEFENSE_TOWER;
-        }
-        if (does_tower_pattern_match(pattern, rc.getTowerPattern(UnitType.LEVEL_THREE_MONEY_TOWER))) {
-            return UnitType.LEVEL_ONE_MONEY_TOWER;
-        }
-
-        return null;
-    }
-
-    /**
-     * Checks to see if a 5 by 5 resource pattern is the same as another
-     * Ignores the center square since that doesn't matter for towers
-     */
-    private static boolean does_tower_pattern_match(boolean[][] pattern1, boolean[][] pattern2) {
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (i == 2 && j == 2)
-                    continue;
-                if (pattern1[i][j] != pattern2[i][j]) {
-                    return false;
+                if(enemyTowerLocations.contains(packedLocation)) {
+                    enemyTowerLocations.remove(packedLocation);
                 }
+
+                if(paintTowerLocations.contains(packedLocation)) {
+                    paintTowerLocations.remove(packedLocation);
+                }
+
+                continue;
             }
-        }
-        return true;
-    }
 
-    /**
-     * Updates location of last seen paint tower
-     */
-    public static void updatePaintTowerLocations() throws GameActionException {
-        RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
-        for (RobotInfo robot : robots) {
-            switch (robot.type) {
-                case UnitType.LEVEL_ONE_PAINT_TOWER:
-                case UnitType.LEVEL_TWO_PAINT_TOWER:
-                case UnitType.LEVEL_THREE_PAINT_TOWER:
-                    paint_tower = robot.getLocation();
-                    towersSet.add(Utils.pack(robot.getLocation()));
-                    break;
-                default:
-                    towersSet.remove(Utils.pack(robot.getLocation()));
-                    break;
+            UnitType type = robot.getType();
+            if(robot.getTeam().equals(opponentTeam)) {
+                if(isPaintTower(type) || isMoneyTower(type)) {
+                    enemyTowerLocations.add(Utils.pack(ruin));
+                }
+                continue;
             }
-        }
-    }
 
-    /**
-     * Will attempt to grab paint from paint towers
-     * Only will grab if it has 100 or less paint
-     */
-    public static void getPaint(int limit) throws GameActionException {
-        if (rc.getPaint() > 100) return;
-
-        if (paint_tower == null) return;
-
-        rc.setIndicatorDot(paint_tower, 0, 255, 0);
-
-        int paint_in_tower = 0;
-        if (rc.canSenseLocation(paint_tower)) {
-            paint_in_tower = rc.senseRobotAtLocation(paint_tower).getPaintAmount();
-        }
-
-        Direction dir = rc.getLocation().directionTo(paint_tower);
-        if (rc.canMove(dir)) rc.move(dir);
-
-        int amount_to_transfer = Math.max(rc.getPaint() - limit, -paint_in_tower);
-
-        if (rc.canTransferPaint(paint_tower, amount_to_transfer)) {
-            indicator += "can, ";
-            rc.transferPaint(paint_tower, amount_to_transfer);
+            if(isPaintTower(type)) {
+                paintTowerLocations.add(Utils.pack(ruin));
+            }            
         }
     }
 
@@ -196,8 +109,8 @@ public class Unit extends Globals {
         int best = Integer.MAX_VALUE;
         int bnum = Clock.getBytecodeNum();
         var loc = rc.getLocation();
-        for (int i = 0; i < towersSet.size; i++) {
-            MapLocation tower = Utils.unpack(towersSet.keys.charAt(i));
+        for (int i = 0; i < paintTowerLocations.size; i++) {
+            MapLocation tower = Utils.unpack(paintTowerLocations.keys.charAt(i));
             rc.setIndicatorDot(tower, 0, 255, 0);
             var dist = tower.distanceSquaredTo(loc);
             if (dist < best) {
@@ -206,7 +119,7 @@ public class Unit extends Globals {
             }
         }
         int bnum2 = Clock.getBytecodeNum();
-        System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", towersSet.size, bnum2 - bnum);
+        System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", paintTowerLocations.size, bnum2 - bnum);
         return closest;
     }
 

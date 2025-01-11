@@ -1,5 +1,7 @@
 package V3;
 
+import V3.Nav.BellmanFordNavigator;
+import V3.Nav.BellmanFordNavigatorCheap;
 import V3.Units.*;
 import battlecode.common.*;
 

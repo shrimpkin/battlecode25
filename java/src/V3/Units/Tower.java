@@ -11,18 +11,17 @@ public class Tower extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
         
-        if(rc.getRoundNum() <= 4) rush_spawn();
-        else run_paint();
+        if(rc.getRoundNum() <= 4) rushBuild();
+        else boomBuild();
 
-        give_paint();
+        givePaint();
         attack();
-
         rc.setIndicatorString(indicator);
     }
 
-    //TODO: Make this smart, ie attack least health robots 
-    // or other criteria 
-    // I also don't know how aoe attacks work
+    /**
+     * Attacks nearest robot
+     */
     public static void attack() throws GameActionException{
         RobotInfo[] robotInfo = rc.senseNearbyRobots(-1, opponentTeam);
         for(RobotInfo robot : robotInfo) {
@@ -35,39 +34,27 @@ public class Tower extends Unit {
         }
     }
 
-    public static void give_paint() throws GameActionException {
+    //TODO: This doesn't work
+    public static void givePaint() throws GameActionException {
         RobotInfo[] robotInfo = rc.senseNearbyRobots(-1, myTeam);
 
         for(RobotInfo robot : robotInfo) {
-            int transfer_amount = Math.min(rc.getPaint(), robot.getType().paintCapacity - robot.getPaintAmount());
-            indicator += transfer_amount + ", ";
-            indicator += robot.getLocation().toString() + ", ";
-            if(rc.canTransferPaint(robot.getLocation(), transfer_amount)) {
+            int transferAmount = Math.min(rc.getPaint(), robot.getType().paintCapacity - robot.getPaintAmount());
+            indicator += "t: " + transferAmount + ", ";
+            
+            MapLocation loc = robot.getLocation();
+            indicator += loc.toString() + ", ";
+            if(rc.canTransferPaint(loc, transferAmount)) {
                 indicator += "transferred, ";
-                rc.transferPaint(robot.getLocation(), transfer_amount);
+                rc.transferPaint(loc, transferAmount);
             }
         }
     }
-    /**
-     * Special behavior for paint tower
-     * @param rc
-     */
-    public static void run_paint() throws GameActionException {
-        //building a solider to do some paint testing
-        // if(num_built_soldier * 500 < rc.getRoundNum()) {
-        //     if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
-        //         num_built_soldier++;
-        //         rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
-        //     }
-        // }
 
-        // if(num_built_mopper * 500 < rc.getRoundNum()) {
-        //     if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
-        //         num_built_mopper++;
-        //         rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
-        //     }
-        // }
-        
+    /**
+     * Building for booming
+     */
+    public static void boomBuild() throws GameActionException {        
         if(num_built_splasher >= num_built_soldier) {
             if(rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
                 rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
@@ -81,13 +68,13 @@ public class Tower extends Unit {
         }               
     }
 
-    
-    public static void rush_spawn() throws GameActionException {
-        if(rc.getRoundNum() <= 4) {
-            if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
-                num_built_soldier++;
-                rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
-            }
+    /**
+     * Building for rushing
+     */
+    public static void rushBuild() throws GameActionException {
+        if(rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
+            num_built_soldier++;
+            rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
         }
     }
 }
