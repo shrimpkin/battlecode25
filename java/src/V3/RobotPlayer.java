@@ -31,5 +31,6 @@ public class RobotPlayer {
 
     public static void init(RobotController rc) {
         BellmanFordNavigator.init(rc);
+        BellmanFordNavigatorCheap.init(rc);
     }
 }

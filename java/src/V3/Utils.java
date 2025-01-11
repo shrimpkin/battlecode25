@@ -1,6 +1,7 @@
 package V3;
 
 import battlecode.common.Direction;
+import battlecode.common.MapLocation;
 
 public class Utils {
     public static final Direction[] directions = {
@@ -23,5 +24,21 @@ public class Utils {
                 mat[0][0] * vect[0] + mat[0][1] * vect[1],
                 mat[1][0] * vect[0] + mat[1][1] * vect[1]
         };
+    }
+
+    public static int clamp(int value, int min, int max) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+
+    public static int pack(MapLocation loc) {
+        return loc.x * Globals.mapHeight + loc.y;
+    }
+
+    public static MapLocation unpack(int loc) {
+        return new MapLocation(
+                loc / Globals.mapHeight, loc % Globals.mapHeight
+        );
     }
 }

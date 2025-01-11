@@ -19,7 +19,7 @@ public class Splasher extends Globals {
     private static boolean refilling = false;
 
     public static void run() throws GameActionException {
-        Unit.update_paint_tower_loc();
+        Unit.updatePaintTowerLocations();
         refill();
         splash();
         Unit.wander();

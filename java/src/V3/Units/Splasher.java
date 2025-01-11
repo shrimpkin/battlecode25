@@ -3,22 +3,21 @@ package V3.Units;
 import V3.*;
 import battlecode.common.*;
 
-public class Splasher extends Globals {
+public class Splasher extends Unit {
     private static final int LOWEST_SCORE = 8;
     
     public static void run() throws GameActionException {
-        Unit.update_paint_tower_loc();
+        updatePaintTowerLocations();
         splash();
         refill();
-        Unit.wander(false);        
+        wander(false);        
     }
 
     public static void refill() throws GameActionException {
         if (rc.getPaint() >= 50) return;
 
         Navigator.moveTo(Unit.paint_tower, false);
-        Unit.acquire_paint(250);
-        Unit.wanderTarget = null;
+        getPaint(250);
     }
 
     /**

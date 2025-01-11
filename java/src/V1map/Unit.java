@@ -147,7 +147,7 @@ public class Unit extends Globals {
     /**
      * Updates location of last seen paint tower
      */
-    public static void update_paint_tower_loc() throws GameActionException {
+    public static void updatePaintTowerLocations() throws GameActionException {
         RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
         for (RobotInfo robot : robots) {
             switch (robot.type) {
