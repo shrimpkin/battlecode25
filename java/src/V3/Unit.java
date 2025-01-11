@@ -119,7 +119,7 @@ public class Unit extends Globals {
             }
         }
         int bnum2 = Clock.getBytecodeNum();
-        System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", paintTowerLocations.size, bnum2 - bnum);
+        //System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", paintTowerLocations.size, bnum2 - bnum);
         return closest;
     }
 
@@ -138,7 +138,7 @@ public class Unit extends Globals {
             }
         }
         int bnum2 = Clock.getBytecodeNum();
-        System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", unusedRuinLocations.size, bnum2 - bnum);
+        //System.out.printf("with set size: %d, getting closest took %d bytecode instructions\n", unusedRuinLocations.size, bnum2 - bnum);
         return closest;
     }
 

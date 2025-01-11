@@ -35,11 +35,11 @@ public class Soldier extends Unit {
         
         if(mode == Modes.BOOM) {
             findValidTowerPosition();
-            paintClockTower();
+            paintTowerPattern();
             markRuins();
         
-            if(ruin_target != null) {
-                targetLocation = new MapLocation(ruin_target.x - 2 + (nextInt() % 4), ruin_target.y - 2 + (nextInt() % 4));
+            if(ruinTarget != null) {
+                targetLocation = new MapLocation(ruinTarget.x - 2 + (nextInt() % 4), ruinTarget.y - 2 + (nextInt() % 4));
             } else {
                 targetLocation = null;
             }
@@ -212,13 +212,15 @@ public class Soldier extends Unit {
      //==================================================================\\ 
     //                           Boom                                     \\
 
-    static MapLocation ruin_target;
-
+    static MapLocation ruinTarget;
+    static MapLocation eastOfRuinTarget;
+    static MapLocation westOfRuinTarget;
+    static MapLocation northOfRuinTarget;
     /**
      * Will attempt to build clock tower on nearby empty ruins
      */
     public static void findValidTowerPosition() throws GameActionException {
-        ruin_target = null;
+        ruinTarget = null;
         MapLocation[] ruin_locations = rc.senseNearbyRuins(-1);
 
         for(MapLocation ruin : ruin_locations) {
@@ -232,22 +234,77 @@ public class Soldier extends Unit {
             for(MapInfo loc : ruin_suroundings) {
                 PaintType paint = loc.getPaint();
                 if(paint == PaintType.ENEMY_PRIMARY || paint == PaintType.ENEMY_SECONDARY) {
-                    System.out.println("has bad paint");
                     has_enemy_paint = true;
                 }
             }
 
-            if(!has_enemy_paint) ruin_target = ruin;
+            if(!has_enemy_paint) ruinTarget = ruin;
             break;
         }
     }
+    
+    /**
+     * Helper method for figuring out which type of tower to build
+     */
+    public static UnitType decideTowerType() throws GameActionException {
+        if(ruinTarget == null) return null;
 
-    public static void paintClockTower() throws GameActionException {
-        if(ruin_target == null) return;
-        if(!rc.canSenseLocation(ruin_target)) return;
+        eastOfRuinTarget = ruinTarget.add(Direction.EAST);
+        westOfRuinTarget = ruinTarget.add(Direction.WEST);
+        northOfRuinTarget = ruinTarget.add(Direction.NORTH);
 
-        MapInfo[] ruin_suroundings = rc.senseNearbyMapInfos(ruin_target, 8);
-        boolean[][] paint_pattern = rc.getTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER);
+        if(!rc.canSenseLocation(northOfRuinTarget) 
+            || !rc.canSenseLocation(eastOfRuinTarget)
+            || !rc.canSenseLocation(westOfRuinTarget)) return null;
+
+        if(rc.senseMapInfo(northOfRuinTarget).getMark().equals(PaintType.ALLY_PRIMARY)) {
+            return UnitType.LEVEL_ONE_DEFENSE_TOWER;
+        }
+
+        if(rc.senseMapInfo(eastOfRuinTarget).getMark().equals(PaintType.ALLY_PRIMARY)) {
+            return UnitType.LEVEL_ONE_MONEY_TOWER;
+        }
+
+        if(rc.senseMapInfo(westOfRuinTarget).getMark().equals(PaintType.ALLY_PRIMARY)) {
+            return UnitType.LEVEL_ONE_PAINT_TOWER;
+        }
+
+        return null;
+    }
+
+    /**
+     * Picks a tower to build and builds it
+     */
+    public static void paintTowerPattern() throws GameActionException {
+        if(ruinTarget == null) return;
+        if(!rc.canSenseLocation(ruinTarget)) return;
+        
+        UnitType towerType = decideTowerType();
+
+        northOfRuinTarget = ruinTarget.add(Direction.NORTH);
+        eastOfRuinTarget = ruinTarget.add(Direction.EAST);
+        westOfRuinTarget = ruinTarget.add(Direction.WEST);
+
+        if(towerType == null) {
+            int key = rc.getNumberTowers() % 10;
+            if(key <= 5) {
+                if(rc.canMark(eastOfRuinTarget)) {
+                    rc.mark(eastOfRuinTarget, false);   
+                }
+            } else if(key <= 7) {
+                if(rc.canMark(westOfRuinTarget)) {
+                    rc.mark(westOfRuinTarget, false);   
+                }
+            } else {
+                if(rc.canMark(northOfRuinTarget)) {
+                    rc.mark(northOfRuinTarget, false);   
+                }
+            }
+            return;
+        }
+
+        MapInfo[] ruin_suroundings = rc.senseNearbyMapInfos(ruinTarget, 8);
+        boolean[][] paintPattern = rc.getTowerPattern(towerType);
 
         for(MapInfo info : ruin_suroundings) {
             MapLocation loc = info.getMapLocation();
@@ -255,23 +312,20 @@ public class Soldier extends Unit {
             if(info.hasRuin()) continue;
             
 
-            int x = ruin_target.x - loc.x + 2;
-            int y = ruin_target.y - loc.y + 2;
+            int x = ruinTarget.x - loc.x + 2;
+            int y = ruinTarget.y - loc.y + 2;
 
             PaintType paint = info.getPaint();
             if((paint == PaintType.ENEMY_PRIMARY || paint == PaintType.ENEMY_SECONDARY)) continue;
 
-            if(paint_pattern[x][y] && paint != PaintType.ALLY_SECONDARY) {
+            if(paintPattern[x][y] && paint != PaintType.ALLY_SECONDARY) {
                 rc.attack(loc, true);
                 indicator += loc.toString();
-            } else if(!paint_pattern[x][y] && paint != PaintType.ALLY_PRIMARY) {
+            } else if(!paintPattern[x][y] && paint != PaintType.ALLY_PRIMARY) {
                 rc.attack(loc, false);
                 indicator += loc.toString();
             }
         }
-
-        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target)) 
-                    rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruin_target);
     }
 
     public static void attack() throws GameActionException {
@@ -321,11 +375,10 @@ public class Soldier extends Unit {
         }
 
         if(mode == Modes.BOOM) {
-            if(ruin_target != null) indicator += ruin_target.toString();
+            if(ruinTarget != null) indicator += ruinTarget.toString();
         }
         
         rc.setIndicatorString(indicator);
-        System.out.println(indicator);
     }
 
     
