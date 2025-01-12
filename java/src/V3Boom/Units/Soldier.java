@@ -1,7 +1,7 @@
-package V3.Units;
+package V3Boom.Units;
 
-import V3.*;
-import V3.Nav.Navigator;
+import V3Boom.*;
+import V3Boom.Nav.Navigator;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -81,16 +81,10 @@ public class Soldier extends Unit {
             mode = Modes.ATTACK;
             return;
         }
-
-        if(rc.getRoundNum() <= rc.getMapHeight() + rc.getMapWidth()) {
-            mode = Modes.RUSH;
-            return;
-        }
-
-        if(rc.getRoundNum() >= rc.getMapHeight() + rc.getMapWidth()) {
-            mode = Modes.BOOM;
-            return;
-        }
+        
+        mode = Modes.BOOM;
+        return;
+       
     }
 
     //==================================================================\\ 
