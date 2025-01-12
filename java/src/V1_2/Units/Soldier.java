@@ -5,13 +5,15 @@ import battlecode.common.*;
 
 public class Soldier extends Unit {
     private static int refillThreshold = 50;
+    private static MapLocation currPOI;
+
     private static MapLocation currRuinLoc;
     private static MapLocation currSRPLoc;
-    private static MapLocation currTargetLoc;
     // private static MapLocation target_location;
 
     /** Generic soldier action sequence */
     public static void run() throws GameActionException {
+        // rc.setIndicatorString(rc.getRoundNum() + " ran Soldier.run");
         update_paint_tower_loc();
 
         initRuin();
@@ -21,7 +23,11 @@ public class Soldier extends Unit {
             refill(200);
         }
 
-        wander();
+        if (currPOI != null) {
+            Navigator.moveTo(currPOI);
+        } else {
+            wander();
+        }
     }
 
     /** Initializes nearby ruins to new towers */
@@ -29,12 +35,12 @@ public class Soldier extends Unit {
         if (currRuinLoc == null) {
             currRuinLoc = findRuin();
         }
+
         markRuinAs(currRuinLoc, UnitType.LEVEL_ONE_PAINT_TOWER);
-        // wanderTarget = currRuinLoc;
         paintNearbyMarks();
+
         if (completeRuinAs(currRuinLoc, UnitType.LEVEL_ONE_PAINT_TOWER)) {
             currRuinLoc = null;
-            // wanderTarget = null;
         }
     }
 
@@ -47,8 +53,8 @@ public class Soldier extends Unit {
             return;
 
         currSRPLoc = rc.getLocation();
+        currPOI = currSRPLoc;
         rc.markResourcePattern(currSRPLoc);
-        // wanderTarget = currSRPLoc;
 
         for (MapInfo tile : rc.senseNearbyMapInfos()) {
             if (tile.getMark() == PaintType.ALLY_PRIMARY || tile.getMark() == PaintType.ALLY_SECONDARY) {
@@ -60,23 +66,31 @@ public class Soldier extends Unit {
 
         if (rc.canCompleteResourcePattern(currSRPLoc)) {
             rc.completeResourcePattern(currSRPLoc);
-            // wanderTarget = null;
             currSRPLoc = null;
         }
     }
 
     /** Paint all nearby marked tiles */
     public static void paintNearbyMarks() throws GameActionException {
+        boolean missedPaint = false;
+
         for (MapInfo tile : rc.senseNearbyMapInfos()) {
             PaintType paintType = tile.getPaint();
             if (paintType == PaintType.ENEMY_PRIMARY || paintType == PaintType.ENEMY_SECONDARY)
                 continue; // can't paint over enemy squares
-            if (paintType == tile.getMark())
-                continue; // already painted the right way
+            if (paintType == tile.getMark() || tile.getMark() == PaintType.EMPTY)
+                continue; // already painted the right way or no paint marker
 
             if (rc.canAttack(tile.getMapLocation())) {
                 rc.attack(tile.getMapLocation(), tile.getMark() == PaintType.ALLY_SECONDARY);
+            } else {
+                missedPaint = true;
+                currPOI = tile.getMapLocation();
             }
+        }
+
+        if (!missedPaint) {
+            currPOI = null;
         }
     }
 

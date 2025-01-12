@@ -14,6 +14,7 @@ public class Unit extends Globals {
     public static MapLocation findRuin() throws GameActionException {
         for (MapInfo tile : rc.senseNearbyMapInfos()) {
             if (tile.hasRuin() && rc.senseRobotAtLocation(tile.getMapLocation()) == null) {
+                rc.setIndicatorString("can see ruin right now");
                 return tile.getMapLocation();
             }
         }
@@ -130,7 +131,7 @@ public class Unit extends Globals {
     }
 
     /** Checks if two 5x5 patterns are the same, ignoring the center square */
-    private static boolean isSameTowerPattern(boolean[][] p1, boolean[][] p2) {
+    public static boolean isSameTowerPattern(boolean[][] p1, boolean[][] p2) {
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
                 if (i == 2 && j == 2)

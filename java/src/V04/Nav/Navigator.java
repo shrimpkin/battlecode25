@@ -1,8 +1,8 @@
-package V1;
+package V03Rush.Nav;
 
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.Direction;
+import V03Rush.Globals;
+import battlecode.common.*;
+
 
 public class Navigator extends Globals {
     private static MapLocation currentTarget;
@@ -10,7 +10,7 @@ public class Navigator extends Globals {
     private static int minDistanceToTarget;
     private static int roundsSinceMovingCloserToTarget;
 
-    public static void moveTo(MapLocation target) throws GameActionException {
+    public static void moveTo(MapLocation target, boolean cheap) throws GameActionException {
         MapLocation myLocation = rc.getLocation();
 
         // draw line to show where its going
@@ -40,11 +40,15 @@ public class Navigator extends Globals {
             roundsSinceMovingCloserToTarget++;
         }
 
-        Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
+        Direction bellmanFordDirection;
+        if(cheap) {
+            bellmanFordDirection = BellmanFordNavigatorCheap.getBestDirection(target);
+        } else {
+            bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
+        }
+        
         if (bellmanFordDirection != null) {
             if (rc.canMove(bellmanFordDirection)) {
-
-
                 rc.move(bellmanFordDirection);
             }
 

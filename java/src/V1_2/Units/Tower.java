@@ -2,7 +2,6 @@ package V1_2.Units;
 
 import V1_2.*;
 import battlecode.common.*;
-import scala.annotation.bridge;
 
 public class Tower extends Globals {
     // round to round info
@@ -67,9 +66,6 @@ public class Tower extends Globals {
     public static void runPaintTower() throws GameActionException {
         if (rc.canBuildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST))) {
             rc.buildRobot(UnitType.SOLDIER, rc.getLocation().add(Direction.EAST));
-        }
-        if (globalRoundNum > 100 && rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST))) {
-            rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.WEST));
         }
     }
 }

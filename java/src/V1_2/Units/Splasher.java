@@ -2,7 +2,6 @@ package V1_2.Units;
 
 import V1_2.*;
 import battlecode.common.*;
-import java.util.Random;
 
 public class Splasher extends Unit {
     // how many tiles need to be enemy tiles to splash
@@ -25,15 +24,16 @@ public class Splasher extends Unit {
         if (rc.getPaint() <= 50) {
             refill(300);
         }
-
-        wander();
+        
+         wander();
     }
 
     public static void splash() throws GameActionException {
         MapLocation currLoc = rc.getLocation();
         int[] currPaintStats = getNearbyPaintStats(); // enemy, ally, obstacle
+        
         boolean shouldSplash = currPaintStats[0] >= minNumEnemySquares || currPaintStats[1] < maxNumAllySquares;
-        if (shouldSplash && rc.canAttack(currLoc)) {
+        if (currLoc.equals(getClosestOptimalLoc(currLoc)) && shouldSplash && rc.canAttack(currLoc)) {
             rc.attack(currLoc);
         }
     }
@@ -85,5 +85,15 @@ public class Splasher extends Unit {
         }
 
         return statuses;
+    }
+
+
+    public static MapLocation getClosestOptimalLoc(MapLocation currLoc) throws GameActionException {
+        int[] pt = {
+                (int) Math.round(mp[0][0] * currLoc.x + mp[0][1] * currLoc.y),
+                (int) Math.round(mp[1][0] * currLoc.x + mp[1][1] * currLoc.y),
+        };
+        int[] remapped = mvmul(rmap, pt);
+        return new MapLocation(remapped[0], remapped[1]);
     }
 }
