@@ -1,6 +1,6 @@
-package V1_2;
+package V01resource;
 
-import V1_2.Units.*;
+import V01resource.Units.*;
 import battlecode.common.*;
 
 public class RobotPlayer {

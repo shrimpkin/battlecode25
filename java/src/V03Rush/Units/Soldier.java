@@ -198,7 +198,7 @@ public class Soldier extends Unit {
             MapInfo[] squaresToMark = rc.senseNearbyMapInfos(ruinLocation, 8);
             for(MapInfo info : squaresToMark) {
                 PaintType paint = info.getPaint();
-                if(isFriendlyPaint(paint)) return;
+                if(paint.isAlly()) return;
 
                 if(paint.equals(PaintType.EMPTY) && rc.canAttack(info.getMapLocation())) {
                     locationToMark = info.getMapLocation();

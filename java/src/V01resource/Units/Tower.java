@@ -1,6 +1,6 @@
-package V1_2.Units;
+package V01resource.Units;
 
-import V1_2.*;
+import V01resource.*;
 import battlecode.common.*;
 
 public class Tower extends Globals {

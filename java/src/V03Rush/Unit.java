@@ -1,12 +1,10 @@
 package V03Rush;
 
 import V03Rush.Nav.Navigator;
+import V04.Globals;
 import battlecode.common.*;
 
 public class Unit extends Globals {
-    // temporary variable representing how many rounds the unit should wander for
-    public static final int SETUP_ROUNDS = 100;
-    
     public static FastIntSet paintTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     public static FastIntSet unusedRuinLocations = new FastIntSet();

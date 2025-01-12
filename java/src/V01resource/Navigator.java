@@ -1,4 +1,4 @@
-package V1_2;
+package V01resource;
 
 import battlecode.common.*;
 
