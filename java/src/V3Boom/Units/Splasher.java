@@ -1,7 +1,7 @@
-package V3.Units;
+package V3Boom.Units;
 
-import V3.*;
-import V3.Nav.Navigator;
+import V3Boom.*;
+import V3Boom.Nav.Navigator;
 import battlecode.common.*;
 
 public class Splasher extends Unit {

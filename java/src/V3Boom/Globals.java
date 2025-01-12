@@ -1,11 +1,42 @@
-package V3;
+package V3Boom;
 
-import battlecode.common.Direction;
-import battlecode.common.MapLocation;
-import battlecode.common.PaintType;
-import battlecode.common.UnitType;
+import battlecode.common.*;
 
-public class Utils {
+/**
+ * Contains methods and fields that everything should have access too 
+ */
+public class Globals {
+    public static RobotController rc;
+
+    public static Team myTeam;
+    public static Team opponentTeam;
+    public static int mapWidth;
+    public static int mapHeight;
+    public static boolean in_debug = true;
+    public static LocMap vis = new LocMap(mapWidth, mapHeight);
+    // stealing an LCG cause nextInt is a bytecode hog
+    private static long seed = -1;
+
+    public static void init(RobotController robotController) {
+        rc = robotController;
+        
+        myTeam = rc.getTeam();
+        opponentTeam = rc.getTeam().opponent();
+        mapHeight = rc.getMapHeight();
+        mapWidth = rc.getMapWidth();
+
+        seed = rc.getID();
+    }
+
+    public static int nextInt() {
+        seed = (seed * 0x5DEECE66DL + 0xBL) & 0xFFFFFFFFFFFFL;
+        return (int) ((seed >>> 16) & 0x7FFFFFFF);
+    }
+
+    public static double nextDouble() {
+        return (double) nextInt() / 0x7FFFFFFF;
+    }
+
     public static final Direction[] directions = {
         Direction.NORTH,
         Direction.NORTHEAST,
@@ -16,17 +47,6 @@ public class Utils {
         Direction.WEST,
         Direction.NORTHWEST,
     };
-
-    // matrices for figuring out optimal splasher locations
-    public static final double[][] mp = {{2/13.0, -3/13.0}, {3/13.0, 2/13.0}};
-    public static final int[][] rmap = {{2, 3}, {-3, 2}};
-
-    public static int[] mvmul(int[][] mat, int[] vect){
-        return new int[]{
-                mat[0][0] * vect[0] + mat[0][1] * vect[1],
-                mat[1][0] * vect[0] + mat[1][1] * vect[1]
-        };
-    }
 
     public static int clamp(int value, int min, int max) {
         if (value < min) return min;

@@ -1,7 +1,7 @@
-package V3.Units;
+package V3Boom.Units;
 
 import battlecode.common.*;
-import V3.*;
+import V3Boom.*;
 
 public class Tower extends Unit {
     public static int numberOfBuiltSoldiers = 0;

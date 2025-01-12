@@ -1,6 +1,6 @@
-package V3;
+package V3Boom;
 
-import V3.Nav.Navigator;
+import V3Boom.Nav.Navigator;
 import battlecode.common.*;
 
 public class Unit extends Globals {
