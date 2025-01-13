@@ -1,6 +1,6 @@
-package V04.Units;
+package V04buildorder.Units;
 
-import V04.*;
+import V04buildorder.*;
 import battlecode.common.*;
 
 public class Tower extends Unit {
@@ -11,12 +11,8 @@ public class Tower extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
         
-        if (rc.getRoundNum() <= 4) {
-            rushBuild();
-        } else {
-            boomBuild();
-        }
-
+        
+        boomBuild();
         attack();
         upgradeTower();
         rc.setIndicatorString(indicator);
@@ -45,12 +41,20 @@ public class Tower extends Unit {
     }
 
     /** Build only moppers and soldiers if round < 1500...? Splashers >= 1500 */
-    public static void boomBuild() throws GameActionException {    
-        if(nextDouble() <= (1 - (8.0 * rc.getRoundNum() / (mapHeight * mapWidth)))) {
+    static int timeSinceBuilt = 20;
+    public static void boomBuild() throws GameActionException { 
+        if(timeSinceBuilt++ < 20) return;
+
+        if(rc.getRoundNum() <= 50 || nextDouble() <= .9) {
             buildRobotType(UnitType.SOLDIER);
-        } else {
+            timeSinceBuilt = 0;
+        } else if(nextDouble() >= .5){
             buildRobotType(UnitType.SPLASHER);
-        }           
+            timeSinceBuilt = 0;
+        } else {
+            buildRobotType(UnitType.MOPPER);
+            timeSinceBuilt = 0;
+        }
     }
 
     /** Build soldier */

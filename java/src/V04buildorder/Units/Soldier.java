@@ -1,7 +1,7 @@
-package V04.Units;
+package V04buildorder.Units;
 
-import V04.*;
-import V04.Nav.*;
+import V04buildorder.*;
+import V04buildorder.Nav.*;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -14,16 +14,14 @@ public class Soldier extends Unit {
 
     // BOOM
     static MapLocation ruinTarget;
-    static MapLocation eastOfRuinTarget;
-    static MapLocation westOfRuinTarget;
-    static MapLocation northOfRuinTarget;
 
     public static void run() throws GameActionException {
         indicator = "";
-
+        int bn1 = Clock.getBytecodeNum();
         updateMode();
         updateTowerLocations();
 
+        int bn2 = Clock.getBytecodeNum();
         if (mode == Modes.REFILL) {
             targetLocation = getClosestLocation(paintTowerLocations);
             move();
@@ -46,23 +44,26 @@ public class Soldier extends Unit {
 
         if (mode == Modes.BOOM) {
             findValidTowerPosition();
-            paintTowerPattern();
             markOneRuinTile();
 
-            if (ruinTarget != null) {
-                targetLocation = new MapLocation(ruinTarget.x - 2 + (nextInt() % 4),
-                        ruinTarget.y - 2 + (nextInt() % 4));
-            } else {
-                targetLocation = null;
-            }
-
+            targetLocation = getClosestUnpaintedTarget();
+            paintTowerPattern();
             move();
             paintBelow();
         }
 
+        int bn3 = Clock.getBytecodeNum();
         attack();
-        tesselate();
-        canCompletePattern();
+
+        int bn4 = Clock.getBytecodeNum();
+        System.out.printf("[Mode: %s] prerun: %d | after updates: %d | after main body %d | after attack %d \n",
+            mode,
+            bn1, bn2, bn3, bn4
+        );
+        if (rc.getChips() < 800) {
+            tesselate();
+            canCompletePattern();
+        }
         debug();
     }
 
@@ -81,26 +82,13 @@ public class Soldier extends Unit {
     /** Paint SRP patterns (tmp) */
     public static void tesselate() throws GameActionException {
         for (MapInfo tile : rc.senseNearbyMapInfos()) {
-            if (tile.getPaint().isAlly() && rc.getNumberTowers() < 10)
-                continue; // already painted by us; prevents overriding tower patterns
+            // if (tile.getPaint().isAlly())
+            //     continue; // already painted by us; prevents overriding tower patterns
             if (tile.getPaint().isEnemy())
                 continue; // can't paint over enemy paint
 
             MapLocation loc = tile.getMapLocation();
-            // int x = loc.x;
-            // int y = loc.y;
             boolean isSecondary = shouldBeSecondary(loc);
-            // if(y % 3 == 0 || y % 3 == 1) {
-            //     isSecondary = ((x + y) % 2 == 0);
-            // } 
-
-            // if(y % 3 == 2) {
-            //     int offset = (y - 2) / 3;
-            //     isSecondary = ((x + y) % 4 == ((offset * 2) % 4));
-            // }
-            
-            if(tile.getPaint().isSecondary() == isSecondary) continue;
-            
             if (rc.canAttack(loc)) {
                 rc.attack(loc, isSecondary);
             }    
@@ -111,7 +99,6 @@ public class Soldier extends Unit {
         for (MapInfo tile : rc.senseNearbyMapInfos()) {
             MapLocation loc = tile.getMapLocation();
             if(loc.y % 3 != 2) continue;
-            
 
             if (rc.canCompleteResourcePattern(loc)) {
                 rc.completeResourcePattern(loc);
@@ -293,81 +280,34 @@ public class Soldier extends Unit {
         }
     }
 
-    /** Determines which tower type to build */
-    public static UnitType decideTowerType() throws GameActionException {
-        if (ruinTarget == null)
-            return null; // no ruin to build on
+    static boolean isSecondary;
 
-        eastOfRuinTarget = ruinTarget.add(Direction.EAST);
-        westOfRuinTarget = ruinTarget.add(Direction.WEST);
-        northOfRuinTarget = ruinTarget.add(Direction.NORTH);
-
-        if (!rc.canSenseLocation(northOfRuinTarget)
-                || !rc.canSenseLocation(eastOfRuinTarget)
-                || !rc.canSenseLocation(westOfRuinTarget))
-            return null;
-
-        if (rc.senseMapInfo(northOfRuinTarget).getMark().equals(PaintType.ALLY_PRIMARY))
-            return UnitType.LEVEL_ONE_DEFENSE_TOWER;
-
-        if (rc.senseMapInfo(eastOfRuinTarget).getMark().equals(PaintType.ALLY_PRIMARY))
+    public static UnitType getTowerType() throws GameActionException {
+        if(rc.getNumberTowers() % 10 < 5) {
             return UnitType.LEVEL_ONE_MONEY_TOWER;
-
-        if (rc.senseMapInfo(westOfRuinTarget).getMark().equals(PaintType.ALLY_PRIMARY))
+        } else {
             return UnitType.LEVEL_ONE_PAINT_TOWER;
-
-        return null;
+        }
     }
 
-    /** Picks a tower to build and builds it */
-    public static void paintTowerPattern() throws GameActionException {
-        if (ruinTarget == null)
-            return; // no ruin to build on 
-        if (!rc.canSenseLocation(ruinTarget))
-            return; // not close enough to build
+    public static MapLocation getClosestUnpaintedTarget() throws GameActionException {
+        if(ruinTarget == null) return null;
+        if(!rc.canSenseLocation(ruinTarget)) return ruinTarget;
 
-        UnitType towerType = decideTowerType();
-
-        northOfRuinTarget = ruinTarget.add(Direction.NORTH);
-        eastOfRuinTarget = ruinTarget.add(Direction.EAST);
-        westOfRuinTarget = ruinTarget.add(Direction.WEST);
-
-        if (towerType == null) { // TODO: logic for what tower to make
-            int key = rc.getNumberTowers() % 2;
-            if (key < 1) {
-                if (rc.canMark(eastOfRuinTarget)) {
-                    towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
-                    rc.mark(eastOfRuinTarget, false);
-                }
-            } else if (key < 2) {
-                if (rc.canMark(westOfRuinTarget)) {
-                    towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
-                    rc.mark(westOfRuinTarget, false);
-                }
-            } else {
-                if (rc.canMark(northOfRuinTarget)) {
-                    towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
-                    rc.mark(northOfRuinTarget, false);
-                }
-            }
-
-            if (towerType == null) 
-                return; // can't mark tower type
+        if(rc.canCompleteTowerPattern(getTowerType(), ruinTarget)) {
+            return ruinTarget;
         }
+
+        UnitType towerType = getTowerType();
+        
 
         MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruinTarget, 8);
         boolean[][] paintPattern = rc.getTowerPattern(towerType);
-
-        if (rc.canCompleteTowerPattern(towerType, ruinTarget)) {
-            rc.completeTowerPattern(towerType, ruinTarget);
-        }
-
+        
         for (MapInfo info : ruinSurroundings) {
             MapLocation loc = info.getMapLocation();
-            if (!rc.canAttack(loc))
-                continue; // unable to attack
-            if (info.hasRuin())
-                continue; // can't paint ruin
+                
+            if (info.hasRuin()) continue; // can't paint ruin
 
             int x = ruinTarget.x - loc.x + 2;
             int y = ruinTarget.y - loc.y + 2;
@@ -377,12 +317,33 @@ public class Soldier extends Unit {
                 continue; // can't paint enemy paint
 
             if (paintPattern[x][y] && paint != PaintType.ALLY_SECONDARY) {
-                rc.attack(loc, true);
-                indicator += loc.toString();
+                isSecondary = true;
+                return loc;
             } else if (!paintPattern[x][y] && paint != PaintType.ALLY_PRIMARY) {
-                rc.attack(loc, false);
-                indicator += loc.toString();
+                isSecondary = false;
+                return loc;
             }
+        }
+
+        return ruinTarget;
+    }
+
+    /** Picks a tower to build and builds it */
+    public static void paintTowerPattern() throws GameActionException {
+        if(ruinTarget == null ) return;
+
+        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget)) {
+            rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget);
+        }
+
+        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget)) {
+            rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget);
+        }
+
+        if(targetLocation == null) return;
+        
+        if(rc.canAttack(targetLocation)) {
+            rc.attack(targetLocation, isSecondary);
         }
     }
 
@@ -393,7 +354,6 @@ public class Soldier extends Unit {
             return; // tile is already painted
 
         if (rc.canAttack(myLocation)) {
-            System.out.println("painting below!");
             rc.attack(myLocation, shouldBeSecondary(myLocation));
         }
     }
@@ -457,7 +417,7 @@ public class Soldier extends Unit {
 
         if (mode == Modes.BOOM) {
             if (ruinTarget != null)
-                indicator += ruinTarget.toString();
+                indicator += "ruin_target: " + ruinTarget.toString();
         }
 
         rc.setIndicatorString(indicator);

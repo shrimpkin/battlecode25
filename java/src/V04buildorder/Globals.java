@@ -1,4 +1,4 @@
-package V04;
+package V04buildorder;
 
 import battlecode.common.*;
 
