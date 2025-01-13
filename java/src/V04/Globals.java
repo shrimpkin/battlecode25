@@ -1,6 +1,5 @@
 package V04;
 
-import V03Rush.LocMap;
 import battlecode.common.*;
 
 /** Contains methods and fields that everything should have access to */
