@@ -76,15 +76,15 @@ public class Soldier extends Unit {
             return;
         }
 
-        if (rc.getRoundNum() <= rc.getMapHeight() + rc.getMapWidth()) {
+        if (rc.getRoundNum() <= rc.getMapHeight() + rc.getMapWidth() 
+            && rc.getMapHeight() <= 25 && rc.getMapWidth() <= 25) {
             mode = Modes.RUSH;
             return;
         }
 
-        if (rc.getRoundNum() >= rc.getMapHeight() + rc.getMapWidth()) {
-            mode = Modes.BOOM;
-            return;
-        }
+        mode = Modes.BOOM;
+        return;
+        
     }
 
     /************************************************************************\
