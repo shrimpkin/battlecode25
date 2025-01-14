@@ -4,23 +4,23 @@ import V04BOTweaked.Unit;
 import battlecode.common.*;
 
 public class Tower extends Unit {
-    public static int numSoldiers = 0;
-    public static int numMoppers = 0;
-    public static int numSplashers = 0;
+    static int timeSinceBuilt = 20;
 
     public static void run() throws GameActionException {
         indicator = "";
-        
-        boomBuild();
+
+        unitBuild();
         attack();
         upgradeTower();
         rc.setIndicatorString(indicator);
     }
 
-    /** Attacks nearest robot and then performs aoe attack */
-    public static void attack() throws GameActionException{
-        for(RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
-            if(rc.canAttack(robot.getLocation())) {
+    /**
+     * Attacks nearest robot and then performs aoe attack
+     */
+    public static void attack() throws GameActionException {
+        for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
+            if (rc.canAttack(robot.getLocation())) {
                 rc.attack(robot.getLocation());
                 break;
             }
@@ -28,7 +28,9 @@ public class Tower extends Unit {
         rc.attack(null);
     }
 
-    /** Attempt to build robot of specified type */
+    /**
+     * Attempt to build robot of specified type
+     */
     public static boolean buildRobotType(UnitType type) throws GameActionException {
         for (MapInfo neighborSquare : rc.senseNearbyMapInfos(GameConstants.BUILD_ROBOT_RADIUS_SQUARED)) {
             if (rc.canBuildRobot(type, neighborSquare.getMapLocation())) {
@@ -39,15 +41,14 @@ public class Tower extends Unit {
         return false;
     }
 
-    /** Build only moppers and soldiers if round < 1500...? Splashers >= 1500 */
-    static int timeSinceBuilt = 20;
-    public static void boomBuild() throws GameActionException {
-        if(timeSinceBuilt++ < 10) return;
+    // TODO: overhaul this
+    public static void unitBuild() throws GameActionException {
+        if (timeSinceBuilt++ < 10 ) return;
 
         if (rc.getRoundNum() <= 50 || rng.nextDouble() <= Math.max(0.25, .75 - (double) rc.getRoundNum() / mapHeight / mapWidth)) {
             buildRobotType(UnitType.SOLDIER);
             if (rc.getMoney() < 3000) timeSinceBuilt = 0;
-        } else if (rng.nextDouble() >= .5) {
+        } else if (rng.nextDouble() >= .4) {
             buildRobotType(UnitType.SPLASHER);
             if (rc.getMoney() < 3000) timeSinceBuilt = 0;
         } else {
@@ -56,19 +57,15 @@ public class Tower extends Unit {
         }
     }
 
-    /** Build soldier */
-    public static void rushBuild() throws GameActionException {
-        if (buildRobotType(UnitType.SOLDIER))
-            numSoldiers++;
-    }
-
-    /** Upgrade tower at robot's location */
+    /**
+     * Upgrade tower at robot's location
+     */
     public static void upgradeTower() throws GameActionException {
-        if(!rc.canUpgradeTower(rc.getLocation())) 
+        if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if(rc.getNumberTowers() <= 5) 
+        if (rc.getNumberTowers() <= 5)
             return; // first wait build clock towers
-        if(rc.getMoney() <= 3000) 
+        if (rc.getMoney() <= 3000)
             return; // BROKE
 
         rc.upgradeTower(rc.getLocation());

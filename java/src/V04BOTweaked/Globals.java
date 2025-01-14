@@ -28,7 +28,7 @@ public class Globals {
         mapHeight = rc.getMapHeight();
         mapWidth = rc.getMapWidth();
 
-        seed = rc.getID();
+        seed = rc.getID() * 3607L + rc.getMapHeight() * 61L + rc.getMapWidth() + rc.getRoundNum();
     }
 
     /** "A Big Line (very steep), modulus" */

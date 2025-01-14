@@ -84,6 +84,7 @@ public class Soldier extends Unit {
             boolean isSecondary = shouldBeSecondary(loc);
             var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
             if (rc.canAttack(loc) && !rc.senseMapInfo(loc).getPaint().equals(idealPaint)) {
+                rc.setIndicatorDot(loc, 40, 40, 128);
                 rc.attack(loc, isSecondary);
             }    
         }
@@ -107,16 +108,16 @@ public class Soldier extends Unit {
 //             return;
 //         }
 
-        if (rc.getNumberTowers() >= 25 && rc.getID() % 20 < 5) {
+        if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
             mode = Modes.ATTACK;
             return;
         }
 
-        if (rc.getRoundNum() <= rc.getMapHeight() + rc.getMapWidth() 
-            && rc.getMapHeight() <= 25 && rc.getMapWidth() <= 25) {
-            mode = Modes.RUSH;
-            return;
-        }
+//        if (rc.getRoundNum() <= rc.getMapHeight() + rc.getMapWidth()
+//            && rc.getMapHeight() <= 25 && rc.getMapWidth() <= 25) {
+//            mode = Modes.RUSH;
+//            return;
+//        }
 
         mode = Modes.BOOM;
         return;
@@ -229,16 +230,20 @@ public class Soldier extends Unit {
         }
 
         if (locationToMark != null) {
+            rc.setIndicatorDot(locationToMark, 255, 0, 0);
             rc.attack(locationToMark);
         }
     }
 
     /** Moves to target location, if no target wanders */
+    private static boolean wasWandering = false;
     public static void move() throws GameActionException {
         if (targetLocation != null) {
             Navigator.moveTo(targetLocation);
+            wasWandering = false;
         } else {
-            wander();
+            wander(wasWandering);
+            wasWandering = true;
         }
     }
 
@@ -275,7 +280,7 @@ public class Soldier extends Unit {
     }
 
     static boolean isSecondary;
-
+    // TODO: overhaul this
     public static UnitType getTowerType() throws GameActionException {
         if(rc.getNumberTowers() % 10 < 5) {
             return UnitType.LEVEL_ONE_MONEY_TOWER;
@@ -324,7 +329,7 @@ public class Soldier extends Unit {
 
     /** Picks a tower to build and builds it */
     public static void paintTowerPattern() throws GameActionException {
-        if(ruinTarget == null ) return;
+        if(ruinTarget == null) return;
 
         if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget)) {
             rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget);
@@ -335,8 +340,8 @@ public class Soldier extends Unit {
         }
 
         if(targetLocation == null) return;
-        
-        if(rc.canAttack(targetLocation)) {
+        // apparently you can attack bare ruins for some ruin -- good stuff
+        if(rc.canAttack(targetLocation) && !rc.senseMapInfo(targetLocation).hasRuin()) {
             rc.attack(targetLocation, isSecondary);
         }
     }
@@ -347,17 +352,18 @@ public class Soldier extends Unit {
         if (!rc.senseMapInfo(myLocation).getPaint().equals(PaintType.EMPTY))
             return; // tile is already painted
 
-        if (rc.canAttack(myLocation)) {
-            rc.attack(myLocation, shouldBeSecondary(myLocation));
+        var isSecondary = shouldBeSecondary(myLocation);
+        var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
+        if (rc.canAttack(myLocation) && !rc.senseMapInfo(myLocation).getPaint().equals(idealPaint)) {
+            rc.attack(myLocation, isSecondary);
         }
     }
 
-    /** Attacks money and paint towers */
+    /** Attacks enemy towers */
     public static void attack() throws GameActionException {
-        for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
-            if ((isPaintTower(robot.getType())
-                    || isMoneyTower(robot.getType()))
-                    && rc.canAttack(robot.getLocation())) {
+        for (RobotInfo robot : rc.senseNearbyRobots(UnitType.SOLDIER.actionRadiusSquared, opponentTeam)) {
+            // tbh not attacking enemy defense towers just makes us sitting ducks, even if they aren't part of the meta
+            if (robot.getType().isTowerType() && rc.canAttack(robot.getLocation())) {
                 rc.attack(robot.getLocation());
             }
         }

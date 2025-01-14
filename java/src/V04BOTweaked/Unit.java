@@ -4,20 +4,20 @@ import V04BOTweaked.Nav.Navigator;
 import battlecode.common.*;
 
 public class Unit extends Globals {
-    public enum Modes {RUSH, BOOM, SIT, NONE, REFILL, ATTACK};
     public static Modes mode = Modes.NONE;
-
     public static MapLocation wanderTarget; // TODO: emily
-
     public static FastIntSet paintTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     public static FastIntSet unusedRuinLocations = new FastIntSet();
-
-    private static LocMap vis = new LocMap(mapWidth, mapHeight);
-
     public static String indicator;
+    public static LocMap vis = new LocMap(rc);
+    static int spawnRound = rc.getRoundNum();
+    // round which the last wander target was chosen -- to check timeout
+    private static int lastWanderTargetTime = rc.getRoundNum();
+    // last time location mapping was updated -- for staggering every 4 rounds
+    private static int lastSeenUpdateTime = rc.getRoundNum();
 
-    /** Look nearby for a ruin */
+    /**  Look nearby for a ruin */
     public static MapLocation findRuin() throws GameActionException {
         MapLocation[] tiles = rc.senseNearbyRuins(-1);
         for (MapLocation tile : tiles) {
@@ -27,29 +27,29 @@ public class Unit extends Globals {
         return null;
     }
 
-    /** Unit picks a random location and moves towards it */
-    public static void wander() throws GameActionException {
+    public static void wander(boolean wasWandering) throws GameActionException {
         if (!rc.isMovementReady())
             return; // cannot move yet
 
-        // 'refresh' the visited nodes every few hundred rounds to account for map
-        // changes over time
-//        if (rc.getRoundNum() % 200 == 0)
-//            // TODO: might be useless
-//            vis.clearAll();
-
-        // pick a new place to go if we don't have one
-        if (wanderTarget != null && rc.canSenseLocation(wanderTarget))
+        // pick a new place to go if we don't have one -- or tried to go somewhere for too long
+        if (!wasWandering
+                || wanderTarget != null && wanderTarget.isWithinDistanceSquared(rc.getLocation(), 9)
+                || (rc.getRoundNum() - lastWanderTargetTime > 20)
+        ) {
             wanderTarget = null;
+        }
         if (wanderTarget == null) {
-            wanderTarget = getExploreTarget();
+            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
+            lastWanderTargetTime = rc.getRoundNum();
         }
         rc.setIndicatorDot(wanderTarget, 255, 0, 255);
         Navigator.moveTo(wanderTarget);
 
-        // update the visited array every few rounds
-//        if (rc.getRoundNum() % 4 == 0)
-//            updateSeen();
+
+        if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
+            updateSeen();
+            lastSeenUpdateTime = rc.getRoundNum();
+        }
     }
 
     /** Maintains correctness of tower sets */
@@ -80,7 +80,9 @@ public class Unit extends Globals {
         }
     }
 
-    /** Gets closest location to robot in provided location set */
+    /**
+     * Gets closest location to robot in provided location set
+     */
     public static MapLocation getClosestLocation(FastIntSet locType) throws GameActionException {
         MapLocation closest = null;
         MapLocation loc = rc.getLocation();
@@ -120,10 +122,10 @@ public class Unit extends Globals {
         }
     }
 
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
 
     // update seen locations in visited set
-    private static void updateSeen() {
+    private static void updateSeen() throws GameActionException {
         for (MapInfo loc : rc.senseNearbyMapInfos()) {
             vis.mark(loc.getMapLocation());
         }
@@ -132,16 +134,28 @@ public class Unit extends Globals {
     // get an exploration target
     private static MapLocation getExploreTarget() {
         MapLocation ret = null;
-        MapLocation current = rc.getLocation();
-//        for (int i = 0; i < 5; i++) {
-        var dist = 4 * nextDouble() + 6;
-        var angle = 2 * Math.PI * nextDouble();
-        ret = new MapLocation(
-                clamp((int) (current.x + Math.cos(angle) * dist), 0, mapWidth - 1),
-                clamp((int) (current.y + Math.sin(angle) * dist), 0, mapHeight - 1));
-//            if (vis.available(ret))
-//                return ret;
-//        }
+        for (int i = 10; i-- > 0; ) {
+            ret = new MapLocation(
+                    (int) (nextDouble() * rc.getMapWidth()), (int) (nextDouble() * rc.getMapHeight())
+            );
+            if (!rc.canSenseLocation(ret) && vis.get(ret) == 0) return ret;
+        }
         return ret;
     }
+
+    private static MapLocation getExploreTargetClose() {
+        MapLocation current = rc.getLocation();
+        MapLocation ret = current;
+        for (int i = 10; i-- > 0; ) {
+            ret = current.translate(
+                    (int) (24.0 * nextDouble() - 12),
+                    (int) (24.0 * nextDouble() - 12)
+            );
+            if (!rc.onTheMap(ret)) continue;
+            if (!rc.canSenseLocation(ret) && vis.get(ret) == 0) return ret;
+        }
+        return ret;
+    }
+
+    public enum Modes {RUSH, BOOM, SIT, NONE, REFILL, ATTACK}
 }

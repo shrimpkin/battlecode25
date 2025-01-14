@@ -6,6 +6,7 @@ import battlecode.common.GameActionException;
 import battlecode.common.MapInfo;
 import battlecode.common.MapLocation;
 
+// TODO: ahahhh fix all of this
 public class Mopper extends Unit {
     static MapLocation TargetLoc = null;
     static Modes mode = Modes.RUSH;
@@ -17,7 +18,7 @@ public class Mopper extends Unit {
             mode = Modes.RUSH;
         }
     }
-
+    private static boolean wasWandering = false;
     public static void run() throws GameActionException {
         indicator = "";
         TargetLoc = null;
@@ -39,8 +40,10 @@ public class Mopper extends Unit {
             if (rc.canMove(rc.getLocation().directionTo(TargetLoc))) {
                 rc.move(rc.getLocation().directionTo(TargetLoc));
             }
+            wasWandering = false;
         } else {
-            wander();
+            wander(wasWandering);
+            wasWandering = true;
         }
 
         rc.setIndicatorString(rc.getRoundNum() + ": " + indicator);

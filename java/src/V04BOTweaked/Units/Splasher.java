@@ -1,5 +1,6 @@
 package V04BOTweaked.Units;
 
+import V04BOTweaked.Nav.Navigator;
 import V04BOTweaked.Unit;
 import battlecode.common.GameActionException;
 import battlecode.common.MapInfo;
@@ -19,7 +20,7 @@ public class Splasher extends Unit {
     public static void run() throws GameActionException {
         updateTowerLocations();
         splash();
-        wander();
+        wander(true);
     }
 
     // TODO: use refill function (FROM UNIT.java) and set the mode when relevant
