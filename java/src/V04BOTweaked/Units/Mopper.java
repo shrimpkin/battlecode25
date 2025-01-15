@@ -2,9 +2,7 @@ package V04BOTweaked.Units;
 
 import V04BOTweaked.Nav.Navigator;
 import V04BOTweaked.Unit;
-import battlecode.common.GameActionException;
-import battlecode.common.MapInfo;
-import battlecode.common.MapLocation;
+import battlecode.common.*;
 
 // TODO: ahahhh fix all of this
 public class Mopper extends Unit {
@@ -25,6 +23,11 @@ public class Mopper extends Unit {
         updateMode();
         updateTowerLocations();
         indicator += "[Mode: " + mode + "] ";
+
+        if (rc.readMessages(-1).length > 0) {
+            defend();
+        }
+        
         if (mode == Modes.REFILL) {
             TargetLoc = getClosestLocation(paintTowerLocations);
             indicator += "(" + paintTowerLocations.size + ")";
@@ -47,6 +50,15 @@ public class Mopper extends Unit {
         }
 
         rc.setIndicatorString(rc.getRoundNum() + ": " + indicator);
+    }
+
+    public static void defend() throws GameActionException {
+        indicator += "defending; ";
+        for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
+            if (rc.canMopSwing(rc.getLocation().directionTo(robot.getLocation()))) {
+                rc.mopSwing(rc.getLocation().directionTo(robot.getLocation()));
+            }
+        }
     }
 
     public static void removeEnemyPaint() throws GameActionException {

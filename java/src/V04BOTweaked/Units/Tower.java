@@ -9,15 +9,33 @@ public class Tower extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
 
+        defend(); // spawns at most 1 mopper
         unitBuild();
         attack();
         upgradeTower();
         rc.setIndicatorString(indicator);
     }
 
-    /**
-     * Attacks nearest robot and then performs aoe attack
-     */
+    /** Checks if there are enemy units nearby, and spawns defensive moppers if so */
+    public static void defend() throws GameActionException {
+        for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
+            indicator += "saw an enemy; ";
+
+            for (MapInfo spawnTile : rc.senseNearbyMapInfos(robot.getLocation(), 2)) {
+                if (rc.canBuildRobot(UnitType.MOPPER, spawnTile.getMapLocation())) {
+                    indicator += "spawning defense mopper; ";
+                    rc.buildRobot(UnitType.MOPPER, spawnTile.getMapLocation());
+
+                    if (rc.canSendMessage(spawnTile.getMapLocation())) {
+                        rc.sendMessage(spawnTile.getMapLocation(), 0);
+                    }   
+                    return; 
+                }
+            }
+        }
+    }
+
+    /** Attacks nearest robot and then performs aoe attack */
     public static void attack() throws GameActionException {
         for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
             if (rc.canAttack(robot.getLocation())) {
@@ -28,9 +46,7 @@ public class Tower extends Unit {
         rc.attack(null);
     }
 
-    /**
-     * Attempt to build robot of specified type
-     */
+    /** Attempt to build robot of specified type on first available square */
     public static boolean buildRobotType(UnitType type) throws GameActionException {
         for (MapInfo neighborSquare : rc.senseNearbyMapInfos(GameConstants.BUILD_ROBOT_RADIUS_SQUARED)) {
             if (rc.canBuildRobot(type, neighborSquare.getMapLocation())) {
@@ -57,9 +73,7 @@ public class Tower extends Unit {
         }
     }
 
-    /**
-     * Upgrade tower at robot's location
-     */
+    /** Upgrade tower at robot's location */
     public static void upgradeTower() throws GameActionException {
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade

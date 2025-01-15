@@ -49,6 +49,10 @@ public class Soldier extends Unit {
             markOneRuinTile();
 
             targetLocation = getClosestUnpaintedTarget();
+            // NAV NOT CLOSE ENOUGH
+            if (targetLocation != null && rc.canMove(rc.getLocation().directionTo(targetLocation))) {
+                rc.move(rc.getLocation().directionTo(targetLocation));
+            }
             paintTowerPattern();
             move();
             paintBelow();
