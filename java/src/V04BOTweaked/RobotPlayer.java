@@ -15,10 +15,7 @@ public class RobotPlayer {
     public static void run(RobotController rc) throws GameActionException {
         while (true) {
             turnCount += 1;
-            if (turnCount == 1) {
-                init(rc);
-            }
-
+            if (turnCount == 1) init(rc);
             try {
                 switch (rc.getType()) {
                     case SOLDIER:  Soldier.run();  break;
@@ -36,6 +33,6 @@ public class RobotPlayer {
     }
 
     public static void init(RobotController rc) {
-        BellmanFordNavigator.init(rc);
+        Globals.init(rc);
     }
 }

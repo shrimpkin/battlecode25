@@ -14,12 +14,12 @@ public class Navigator extends Globals {
             return; // already there
 
         rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 0);
-
-        Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
-        if (bellmanFordDirection != null) {
-            if (rc.canMove(bellmanFordDirection)) {
-                rc.move(bellmanFordDirection);
-            }
-        }
+        BugNavigator.move(target);
+//        Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
+//        if (bellmanFordDirection != null) {
+//            if (rc.canMove(bellmanFordDirection)) {
+//                rc.move(bellmanFordDirection);
+//            }
+//        }
     }
 }
