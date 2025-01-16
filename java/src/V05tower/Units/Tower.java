@@ -1,26 +1,87 @@
-package V05.Units;
+package V05tower.Units;
 
-import V05.Comms;
-import V05.Unit;
+import V05tower.Comms;
+import V05tower.Unit;
 import battlecode.common.*;
 
 public class Tower extends Unit {
-    static int timeSinceBuilt = 20;
+    static private enum Modes {NONE, NEW, STABLE, UNDER_ATTACK, NEAR_DEATH};
+
+    static int timeSinceBuilt = 0;
+    static int timeSinceAttacked = 0;
+    static int timeSinceLastSoldier = 0;
+
+    static boolean spawnSplasherFirst = true;
+    static private Modes mode;
 
     public static void run() throws GameActionException {
         indicator = "";
-        
-        if (rc.getRoundNum() <= 75 || rng.nextDouble() <= Math.max(0.25, .75 - (double) rc.getRoundNum() / mapHeight / mapWidth)) {
-            buildRobotType(UnitType.SOLDIER);
-        } else {
-            spawnDefense();
-        }
+        updateMode();
 
+        indicator += "[" + mode + "] ";
+        
+        spawn();
         attack();
-        spawnOffense();
         upgradeTower();
 
         rc.setIndicatorString(indicator);
+    }
+
+    /** Determines if the tower is under attack or not */
+    public static void updateMode() throws GameActionException {
+        timeSinceBuilt++;
+        timeSinceAttacked++;
+
+        if (mode == Modes.NEAR_DEATH)
+            return; // keep spawn patterns when the tower is near death
+
+        if (isUnderAttack())
+            return; // if true, mode is determined by health of tower
+
+        if (timeSinceAttacked > 150) {
+            mode = Modes.STABLE; // backline tower that is not threatened
+        } else {
+            if (timeSinceBuilt <= 75) {
+                mode = Modes.NEW;
+            } else {
+                mode = Modes.NONE; // not new, not under attack, but was recently attacked
+            }
+        }
+
+        indicator = timeSinceAttacked + "; ";
+    }
+
+    /** Determines what units to spawn based on current mode */
+    public static void spawn() throws GameActionException {
+        System.out.println(((60 - mapHeight + 60 - mapWidth) / 2));
+        if (mode == Modes.NEW || timeSinceBuilt < ((60 - mapHeight + 60 - mapWidth) / 2)) {
+            buildRobotType(UnitType.SOLDIER);
+            buildRobotType(UnitType.SOLDIER);
+            return;
+        }
+
+        if (mode == Modes.NEAR_DEATH) {
+            if (timeSinceAttacked < 2) {
+                buildRobotType(UnitType.SOLDIER);
+                buildRobotType(UnitType.SOLDIER);
+            } 
+        }
+
+        if (mode == Modes.UNDER_ATTACK) {
+            if (rc.getRoundNum() % rc.getNumberTowers() == 0) {
+                buildRobotType(UnitType.SOLDIER);
+            } else {
+                spawnDefense();
+            }
+        }
+
+        if (mode == Modes.NONE || mode == Modes.STABLE) {
+            spawnDefense();
+
+            if (rc.getRoundNum() % 20 == 0) {
+                spawnOffense();
+            } 
+        }
     }
 
     public static void spawnDefense() throws GameActionException {
@@ -40,11 +101,22 @@ public class Tower extends Unit {
     }
 
     public static void spawnOffense() throws GameActionException {
-        if (rc.getRoundNum() % 100 != 0) 
-            return; // only launch offense every 100 rounds
+        // if (rc.getRoundNum() < 200) {
+        //     if (rc.getRoundNum() % 75 != 0 || rc.getChips() < 1000) 
+        //         return; // only launch offense every 100 rounds in early game
+        // } else {
+        //     if (rc.getRoundNum() % 10 != 0 || rc.getChips() < 1000) 
+        //         return; // launch offense every 20 rounds in mid/late game
+        // }
 
-        buildRobotType(UnitType.SPLASHER);
-        buildRobotType(UnitType.MOPPER);
+        if (spawnSplasherFirst) {
+            buildRobotType(UnitType.SPLASHER);
+            buildRobotType(UnitType.MOPPER);
+        } else {
+            buildRobotType(UnitType.MOPPER);
+            buildRobotType(UnitType.SPLASHER);
+        }
+        spawnSplasherFirst = !spawnSplasherFirst;
     }
 
     /** Upgrade tower at robot's location */
@@ -62,6 +134,13 @@ public class Tower extends Unit {
     /*************
      ** HELPERS **
      *************/
+
+    /** Send a message to the specified location, telling it to go to a target location */
+    public static void tell(MapLocation loc, MapLocation target) throws GameActionException {
+        // if (rc.canSendMessage(loc)) {
+        //     rc.sendMessage(loc, Comms.encodeMsg(target.x, target.y));
+        // }
+    }
 
     /** Spawns moppers based on presence of enemy units */
     public static void spawnDefenseMopper() throws GameActionException {
@@ -83,12 +162,17 @@ public class Tower extends Unit {
         if (numMoppers > numEnemies) { // tell nearby moppers to come back
             indicator += "want return; ";
 
-            int msg = Comms.encodeMsg(rc.getLocation().x, rc.getLocation().y, rc.getLocation().x, rc.getLocation().y);
+            int msg = Comms.encodeMsg(rc.getLocation().x, rc.getLocation().y);
+            int calledMoppers = 2;
 
             for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
                 if (robot.type == UnitType.MOPPER) {
                     if (rc.canSendMessage(robot.location)) {
                         rc.sendMessage(robot.location, msg);
+                        calledMoppers--;
+                        
+                        if (calledMoppers == 0)
+                            return; // called enough moppers home
                     }    
                 }
             }
@@ -96,9 +180,9 @@ public class Tower extends Unit {
         } else { // spawn new defensive moppers
             indicator += "want new; ";
 
-            int newMoppers = Math.max(1, (int) Math.round(numEnemies / 3.0));
+            int newMoppers = Math.max(0, (int) Math.round(numEnemies / 3.0));
             for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) { 
-                int msg = Comms.encodeMsg(rc.getLocation().x, rc.getLocation().y, robot.getLocation().x, robot.getLocation().y);
+                int msg = Comms.encodeMsg(robot.getLocation().x, robot.getLocation().y);
 
                 for (MapInfo spawnTile : rc.senseNearbyMapInfos(robot.getLocation(), 2)) {
                     if (rc.canBuildRobot(UnitType.MOPPER, spawnTile.getMapLocation())) {
@@ -140,14 +224,29 @@ public class Tower extends Unit {
         }
     }
 
+    /** Checks if there are any enemy units nearby and resets attack timer */
+    public static boolean isUnderAttack() throws GameActionException {
+        RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(-1, opponentTeam);
+        if (nearbyEnemies.length > 0) {
+            timeSinceAttacked = 0;
+            mode = Modes.UNDER_ATTACK;
+
+            if (rc.getHealth() <= 100) {
+                mode = Modes.NEAR_DEATH;
+            }
+            return true;
+        }
+        return false;
+    }
+
     /** Attempt to build robot of specified type on first available square */
-    public static boolean buildRobotType(UnitType type) throws GameActionException {
+    public static MapLocation buildRobotType(UnitType type) throws GameActionException {
         for (MapInfo neighborSquare : rc.senseNearbyMapInfos(GameConstants.BUILD_ROBOT_RADIUS_SQUARED)) {
             if (rc.canBuildRobot(type, neighborSquare.getMapLocation())) {
                 rc.buildRobot(type, neighborSquare.getMapLocation());
-                return true;
+                return neighborSquare.getMapLocation();
             }
         }
-        return false;
+        return null;
     }
 }

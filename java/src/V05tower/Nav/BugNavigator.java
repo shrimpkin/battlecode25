@@ -1,8 +1,8 @@
-package V05.Nav;
+package V05tower.Nav;
 
-import V05.FastIntSet;
-import V05.FastLocSet;
-import V05.Globals;
+import V05tower.FastIntSet;
+import V05tower.FastLocSet;
+import V05tower.Globals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;

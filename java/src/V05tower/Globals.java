@@ -1,4 +1,4 @@
-package V05;
+package V05tower;
 
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;

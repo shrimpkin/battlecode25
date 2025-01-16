@@ -1,6 +1,6 @@
-package V05.Units;
+package V05tower.Units;
 
-import V05.Unit;
+import V05tower.Unit;
 import battlecode.common.*;
 
 public class Splasher extends Unit {

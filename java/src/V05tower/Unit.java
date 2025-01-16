@@ -1,6 +1,6 @@
-package V05;
+package V05tower;
 
-import V05.Nav.Navigator;
+import V05tower.Nav.Navigator;
 import battlecode.common.*;
 
 public class Unit extends Globals {
@@ -260,7 +260,7 @@ public class Unit extends Globals {
     };
 
     public static void canCompletePattern() throws GameActionException {
-        for (MapInfo tile : rc.senseNearbyMapInfos(GameConstants.RESOURCE_PATTERN_RADIUS_SQUARED)) {
+        for (MapInfo tile : rc.senseNearbyMapInfos()) {
             MapLocation loc = tile.getMapLocation();
             if(loc.x % 4 != 2 || loc.y % 4 != 2) 
                 continue; // not a center location

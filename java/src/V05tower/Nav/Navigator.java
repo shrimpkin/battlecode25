@@ -1,6 +1,6 @@
-package V05.Nav;
+package V05tower.Nav;
 
-import V05.Globals;
+import V05tower.Globals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;

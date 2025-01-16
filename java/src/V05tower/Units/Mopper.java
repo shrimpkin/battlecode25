@@ -1,8 +1,8 @@
-package V05.Units;
+package V05tower.Units;
 
-import V05.Comms;
-import V05.Unit;
-import V05.Nav.Navigator;
+import V05tower.Comms;
+import V05tower.Unit;
+import V05tower.Nav.Navigator;
 import battlecode.common.*;
 
 // TODO: maybe fix modes
@@ -46,8 +46,7 @@ public class Mopper extends Unit {
 
         // TODO: read more than 1 msg
         int[] decodedMsg = Comms.decodeMsg(msgs[0].getBytes());
-        // MapLocation senderLoc = new MapLocation(decodedMsg[0], decodedMsg[1]);
-        MapLocation requestedLoc = new MapLocation(decodedMsg[2], decodedMsg[3]);
+        MapLocation requestedLoc = new MapLocation(decodedMsg[0], decodedMsg[1]);
         TargetLoc = requestedLoc;
         indicator += "->defense; ";
         lastCalledHome = 0;

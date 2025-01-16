@@ -1,6 +1,6 @@
-package V05;
+package V05tower;
 
-import V05.Units.*;
+import V05tower.Units.*;
 import battlecode.common.*;
 
 public class RobotPlayer {
