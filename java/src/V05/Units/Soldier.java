@@ -59,11 +59,14 @@ public class Soldier extends Unit {
         }
         attack();
 
-        if (rc.getChips() < 800) {
-            tessellate();
-            if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
-                canCompletePattern();
+        if (rc.getChips() < 800 || rc.getPaint() > 150) { // not interfering with ruin construction
+            if (ruinTarget == null || !ruinTarget.isWithinDistanceSquared(rc.getLocation(), 8)){
+                tessellate();
+            }
         }
+
+        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
+            canCompletePattern();
 
         debug();
     }
@@ -102,12 +105,11 @@ public class Soldier extends Unit {
             mode = Modes.ATTACK;
             return;
         }
-
-//        if (rc.getRoundNum() <= rc.getMapHeight() + rc.getMapWidth()
-//            && rc.getMapHeight() <= 25 && rc.getMapWidth() <= 25) {
-//            mode = Modes.RUSH;
-//            return;
-//        }
+        // intermittent rushing in midgame
+        if (rc.getRoundNum() > 200 && rc.getRoundNum() % 100 < 25) {
+            mode = Modes.ATTACK;
+            return;
+        }
 
         mode = Modes.BOOM;
         return;
