@@ -52,6 +52,34 @@ public class Unit extends Globals {
         }
     }
 
+    /**
+     * Overloaded version: set paintless to true if you want to avoid stepping off paint
+     */
+    public static void wander(boolean wasWandering, boolean paintless) throws GameActionException {
+        if (!rc.isMovementReady())
+            return; // cannot move yet
+
+        // pick a new place to go if we don't have one -- or tried to go somewhere for too long
+        if (!wasWandering
+                || wanderTarget != null && wanderTarget.isWithinDistanceSquared(rc.getLocation(), 9)
+                || (rc.getRoundNum() - lastWanderTargetTime > 20)
+        ) {
+            wanderTarget = null;
+        }
+        if (wanderTarget == null) {
+            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
+            lastWanderTargetTime = rc.getRoundNum();
+        }
+        // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
+        if(paintless) Navigator.paintlessMoveTo(wanderTarget);
+        else Navigator.moveTo(wanderTarget);
+
+        if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
+            updateSeen();
+            lastSeenUpdateTime = rc.getRoundNum();
+        }
+    }
+
     /** Maintains correctness of tower sets */
     public static void updateTowerLocations() throws GameActionException {
         MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
@@ -116,46 +144,37 @@ public class Unit extends Globals {
 
     /** Checks nearby allies and paints and moves away from them to mitigate crowd penalty */
     // TODO: this eats a lot of bytecode i think...
+    // I think we are under 1500 now, this completely depends on robot density though 
     public static void recenter() throws GameActionException {
-        RobotInfo[] allyRobots = rc.senseNearbyRobots(2, myTeam);
+        int num1 = Clock.getBytecodeNum();
+        MapInfo[] adjacentLocations = rc.senseNearbyMapInfos(rc.getLocation(), 2);
+        RobotInfo[] robots = rc.senseNearbyRobots(8);
         MapLocation currLoc = rc.getLocation();
         Direction[] dirs = Direction.allDirections();
-        int[] weights = {0, 0, 0, 0, 0, 0, 0, 0};
-
-        // weight ally robots
-        for (RobotInfo robot : allyRobots) {
-            for (MapInfo tile : rc.senseNearbyMapInfos(robot.getLocation(), 2)) {
-                for (int i = 0; i < 8; i++) {
-                    if (currLoc.add(dirs[i]).equals(tile.getMapLocation())) {
-                        weights[i]++;
-                    }
-                }
-            }
-        }
-
-        // mark squares you can't step on
-        for (MapInfo info : rc.senseNearbyMapInfos(2)) {
-            for (int i = 0; i < 8; i++) {
-                if (info.hasRuin() && rc.senseRobotAtLocation(info.getMapLocation()) != null && rc.getLocation().add(dirs[i]).equals(info.getMapLocation())) {
-                    weights[i] = 2000;
-                }
-            }
-        }
+        int[] weights = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
         // weight neutral and enemy paints
-        for (int i = 0; i < 8; i++) {
-            try {
-                MapInfo info = rc.senseMapInfo(rc.getLocation().add(dirs[i]));
-                if (!info.isPassable()) {
-                    weights[i] = 2000;
-                } else if (info.getPaint().isEnemy()) {
-                    weights[i] += 10;
-                } else if (info.getPaint() == PaintType.EMPTY) {
-                    weights[i] += 7;
-                }    
-            } catch (GameActionException e) {
-                // target location is not on the map, just keep going
-                continue;
+        for (int i = 0; i < adjacentLocations.length; i++) {
+            MapInfo info = adjacentLocations[i];
+            MapLocation loc = info.getMapLocation();
+            Direction dir = currLoc.directionTo(loc);
+
+            if (!rc.canMove(dir)) {
+                weights[i] = 2000;
+            } else if (info.getPaint().isEnemy()) {
+                weights[i] += GameConstants.PENALTY_ENEMY_TERRITORY;
+            } else if (info.getPaint() == PaintType.EMPTY) {
+                weights[i] += GameConstants.PENALTY_NEUTRAL_TERRITORY;
+            }     
+        }
+
+        // weight robots
+        for(RobotInfo robot : robots) {
+            for (int i = 0; i < adjacentLocations.length; i++) {
+                MapInfo info = adjacentLocations[i];
+                if (info.getMapLocation().distanceSquaredTo(robot.getLocation()) <= 2) {
+                    weights[i] += 1 * (rc.getTeam() == myTeam ? 1 : 2); //I don't know where the adjacent robot penalty is 
+                }
             }
         }
 
@@ -170,9 +189,12 @@ public class Unit extends Globals {
         if (!hasMeaningfulWeights)
             return; // no enemies nearby, all ally paint, no need to recenter
 
-        for (int weight : weights) {
-            System.out.println(rc.getRoundNum() + "--" + rc.getID() + ": " + weight);
+        boolean should_print = false;
+        String weight_info = "Weights around: " + rc.getLocation().toString();
+        for (int i = 0; i < adjacentLocations.length; i++) {
+            weight_info += "\n" + adjacentLocations[i].getMapLocation().toString() + "--" + weights[i];
         }
+        if(should_print) System.out.println(weight_info);
 
         int minWeight = Integer.MAX_VALUE;
         int minWeightIdx = -1;
@@ -189,6 +211,8 @@ public class Unit extends Globals {
                 rc.move(dirs[minWeightIdx]);
             }
         }
+        int num2 = Clock.getBytecodeNum();
+        System.out.println("Delta: " + (num2 - num1));
     }
     
 

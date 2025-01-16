@@ -56,10 +56,10 @@ public class Soldier extends Unit {
         attack();
 
         int bn4 = Clock.getBytecodeNum();
-        System.out.printf("[Mode: %s] prerun: %d | after updates: %d | after main body %d | after attack %d \n",
-            mode,
-            bn1, bn2, bn3, bn4
-        );
+        // System.out.printf("[Mode: %s] prerun: %d | after updates: %d | after main body %d | after attack %d \n",
+        //     mode,
+        //     bn1, bn2, bn3, bn4
+        // );
         if (rc.getChips() < 800) {
             tesselate();
             canCompletePattern();

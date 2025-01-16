@@ -39,7 +39,6 @@ public class Navigator extends Globals {
             if (bellmanFordDirection != null) {
                 
                 if (rc.canMove(bellmanFordDirection)) {
-                    System.out.println("Attempting Bellman Ford Direction.");
                     rc.move(bellmanFordDirection);
                 }
 
@@ -51,7 +50,6 @@ public class Navigator extends Globals {
             return;
         }
 
-        System.out.println("Attempting Bugnav Move.");
         BugNavigator.move(target);
     }
 

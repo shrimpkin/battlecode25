@@ -106,10 +106,10 @@ public class Mopper extends Unit {
                 indicator += "moving; ";
                 Navigator.moveTo(TargetLoc);
                 rc.setIndicatorLine(rc.getLocation(), TargetLoc, 100, 100, 0);
-                // THE NAV DOESN'T GET CLOSE ENOUGH!!!!!!!!!!!!!!
-                if (rc.canMove(rc.getLocation().directionTo(TargetLoc))) {
-                    rc.move(rc.getLocation().directionTo(TargetLoc));
-                }
+                // // THE NAV DOESN'T GET CLOSE ENOUGH!!!!!!!!!!!!!!
+                // if (rc.canMove(rc.getLocation().directionTo(TargetLoc))) {
+                //     rc.move(rc.getLocation().directionTo(TargetLoc));
+                // }
                 wasWandering = false;    
             }
 
