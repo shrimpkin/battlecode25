@@ -10,33 +10,21 @@ public class Tower extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
         
-        defend();
-        unitBuild();
+        if (rc.getRoundNum() <= 75 || rng.nextDouble() <= Math.max(0.25, .75 - (double) rc.getRoundNum() / mapHeight / mapWidth)) {
+            buildRobotType(UnitType.SOLDIER);
+        } else {
+            spawnDefense();
+        }
+
         attack();
         upgradeTower();
 
         rc.setIndicatorString(indicator);
     }
 
-    public static void defend() throws GameActionException {
+    public static void spawnDefense() throws GameActionException {
         spawnDefenseMopper();
-        // spawnDefenseSplasher();
-    }
-
-    // TODO: overhaul this
-    public static void unitBuild() throws GameActionException {
-        if (timeSinceBuilt++ < 5) return;
-
-        if (rc.getRoundNum() <= 50 || rng.nextDouble() <= Math.max(0.25, .75 - (double) rc.getRoundNum() / mapHeight / mapWidth)) {
-            buildRobotType(UnitType.SOLDIER);
-            if (rc.getMoney() < 3000) timeSinceBuilt = 0;
-        } else if (rng.nextDouble() >= .4) {
-            buildRobotType(UnitType.SPLASHER);
-            if (rc.getMoney() < 3000) timeSinceBuilt = 0;
-        } else {
-            buildRobotType(UnitType.MOPPER);
-            if (rc.getMoney() < 3000) timeSinceBuilt = 0;
-        }
+        spawnDefenseSplasher();
     }
 
     /** Attacks nearest robot and then performs aoe attack */
@@ -83,10 +71,10 @@ public class Tower extends Unit {
         if (numEnemies == 0)
             return; // no enemies; no need to spawn moppers
         
-        int msg = Comms.encodeMsg(UnitType.MOPPER, rc.getLocation().x, rc.getLocation().y);
-
         if (numMoppers > numEnemies) { // tell nearby moppers to come back
             indicator += "want return; ";
+
+            int msg = Comms.encodeMsg(rc.getLocation().x, rc.getLocation().y, rc.getLocation().x, rc.getLocation().y);
 
             for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
                 if (robot.type == UnitType.MOPPER) {
@@ -100,7 +88,9 @@ public class Tower extends Unit {
             indicator += "want new; ";
 
             int newMoppers = Math.max(1, (int) Math.round(numEnemies / 3.0));
-            for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {    
+            for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) { 
+                int msg = Comms.encodeMsg(rc.getLocation().x, rc.getLocation().y, robot.getLocation().x, robot.getLocation().y);
+
                 for (MapInfo spawnTile : rc.senseNearbyMapInfos(robot.getLocation(), 2)) {
                     if (rc.canBuildRobot(UnitType.MOPPER, spawnTile.getMapLocation())) {
                         indicator += "spawn; ";
@@ -134,10 +124,7 @@ public class Tower extends Unit {
             }
         }
 
-        if (numEnemyPaint > 0) {
-            System.out.println(rc.getID() + " " + (double) numEnemyPaint / nearbyTiles.length);
-        }
-        if ((double) numEnemyPaint / nearbyTiles.length > 0.7) {
+        if ((double) numEnemyPaint / nearbyTiles.length > 0.4) {
             if (rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST))) {
                 rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST));
             }
