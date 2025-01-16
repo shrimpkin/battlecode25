@@ -1,6 +1,6 @@
-package V05;
+package V05test;
 
-import V05.Nav.Navigator;
+import V05test.Nav.Navigator;
 import battlecode.common.*;
 
 public class Unit extends Globals {
@@ -126,13 +126,13 @@ public class Unit extends Globals {
     }
 
     /** Tries to take paint from last recorded paint tower */
-    public static boolean requestPaint(MapLocation tower, int amount) throws GameActionException {
+    public static void requestPaint(MapLocation tower, int amount) throws GameActionException {
         if (tower == null)
-            return false; // no paint tower to go to
+            return; // no paint tower to go to
         if (!rc.canSenseLocation(tower))
-            return false; // cannot sense paint tower
+            return; // cannot sense paint tower
         if(rc.senseRobotAtLocation(tower) == null) 
-            return false; // no longer a paint tower there
+            return; //no longer a paint tower there
 
         int amtPaintInTower = rc.senseRobotAtLocation(tower).getPaintAmount();
         int amtToTransfer = Math.min(amtPaintInTower, amount);
@@ -140,9 +140,7 @@ public class Unit extends Globals {
         rc.setIndicatorString("transfering paint");
         if (rc.canTransferPaint(tower, -amtToTransfer)) {
             rc.transferPaint(tower, -amtToTransfer);
-            return true;
         }
-        return false;
     }
 
     /** Checks nearby allies and paints and moves away from them to mitigate crowd penalty */
@@ -258,15 +256,13 @@ public class Unit extends Globals {
             {1,0,0,0,1},
             {1,1,0,1,1}
     };
-
     public static void canCompletePattern() throws GameActionException {
         for (MapInfo tile : rc.senseNearbyMapInfos(GameConstants.RESOURCE_PATTERN_RADIUS_SQUARED)) {
             MapLocation loc = tile.getMapLocation();
-            if(loc.x % 4 != 2 || loc.y % 4 != 2) 
-                continue; // not a center location
+            if(loc.x % 4 != 2 || loc.y % 4 != 2) continue;
             if (rc.canCompleteResourcePattern(loc)) {
                 rc.completeResourcePattern(loc);
-                return; // complete 1st available pattern and return
+                return;
             }
         }
     }
