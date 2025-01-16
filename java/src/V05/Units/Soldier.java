@@ -228,7 +228,11 @@ public class Soldier extends Unit {
     /** Moves to target location, if no target wanders */
     private static boolean wasWandering = false;
     public static void move() throws GameActionException {
-        if (targetLocation != null) {
+        RobotInfo[] robots = rc.senseNearbyRobots(8, myTeam);
+
+        if(robots.length > 4) {
+            recenter();
+        } else if (targetLocation != null) {
             Navigator.moveTo(targetLocation);
             wasWandering = false;
         } else {
