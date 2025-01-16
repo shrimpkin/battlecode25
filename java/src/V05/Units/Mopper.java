@@ -25,6 +25,9 @@ public class Mopper extends Unit {
         swingMop();
         removeEnemyPaint();
         move();
+
+        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
+            canCompletePattern();
         if(mode == Modes.REFILL) requestPaint(TargetLoc, 100);
 
         rc.setIndicatorString(rc.getRoundNum() + ": {" + TargetLoc + "} " + indicator);
