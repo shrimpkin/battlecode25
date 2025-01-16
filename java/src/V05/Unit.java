@@ -145,11 +145,9 @@ public class Unit extends Globals {
     // TODO: this eats a lot of bytecode i think...
     // I think we are under 1500 now, this completely depends on robot density though 
     public static void recenter() throws GameActionException {
-        int num1 = Clock.getBytecodeNum();
         MapInfo[] adjacentLocations = rc.senseNearbyMapInfos(rc.getLocation(), 2);
         RobotInfo[] robots = rc.senseNearbyRobots(8);
         MapLocation currLoc = rc.getLocation();
-        Direction[] dirs = Direction.allDirections();
         int[] weights = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
         // weight neutral and enemy paints
@@ -179,7 +177,7 @@ public class Unit extends Globals {
 
         boolean hasMeaningfulWeights = false;
         for (int weight : weights) {
-            if (weight != 0) {
+            if (weight != 0 && weight < 2000) {
                 hasMeaningfulWeights = true;
                 break;
             }
@@ -206,12 +204,11 @@ public class Unit extends Globals {
         }
 
         if (minWeightIdx != -1) {
-            if (rc.canMove(dirs[minWeightIdx])) {
-                rc.move(dirs[minWeightIdx]);
+            Direction dir = currLoc.directionTo(adjacentLocations[minWeightIdx].getMapLocation());
+            if (rc.canMove(dir)) {
+                rc.move(dir);
             }
         }
-        int num2 = Clock.getBytecodeNum();
-        System.out.println("Delta: " + (num2 - num1));
     }
     
 
