@@ -10,33 +10,21 @@ public class Tower extends Unit {
     public static void run() throws GameActionException {
         indicator = "";
         
-        defend();
-        unitBuild();
+        if (rc.getRoundNum() <= 75 || rng.nextDouble() <= Math.max(0.25, .75 - (double) rc.getRoundNum() / mapHeight / mapWidth)) {
+            buildRobotType(UnitType.SOLDIER);
+        } else {
+            spawnDefense();
+        }
+
         attack();
         upgradeTower();
 
         rc.setIndicatorString(indicator);
     }
 
-    public static void defend() throws GameActionException {
+    public static void spawnDefense() throws GameActionException {
         spawnDefenseMopper();
-        // spawnDefenseSplasher();
-    }
-
-    // TODO: overhaul this
-    public static void unitBuild() throws GameActionException {
-        if (timeSinceBuilt++ < 5) return;
-
-        if (rc.getRoundNum() <= 50 || rng.nextDouble() <= Math.max(0.25, .75 - (double) rc.getRoundNum() / mapHeight / mapWidth)) {
-            buildRobotType(UnitType.SOLDIER);
-            if (rc.getMoney() < 3000) timeSinceBuilt = 0;
-        } else if (rng.nextDouble() >= .4) {
-            buildRobotType(UnitType.SPLASHER);
-            if (rc.getMoney() < 3000) timeSinceBuilt = 0;
-        } else {
-            buildRobotType(UnitType.MOPPER);
-            if (rc.getMoney() < 3000) timeSinceBuilt = 0;
-        }
+        spawnDefenseSplasher();
     }
 
     /** Attacks nearest robot and then performs aoe attack */
@@ -136,7 +124,7 @@ public class Tower extends Unit {
             }
         }
 
-        if ((double) numEnemyPaint / nearbyTiles.length > 0.7) {
+        if ((double) numEnemyPaint / nearbyTiles.length > 0.4) {
             if (rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST))) {
                 rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST));
             }
