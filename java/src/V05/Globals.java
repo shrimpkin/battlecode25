@@ -1,4 +1,4 @@
-package V04BOTweakedPatch;
+package V05;
 
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;

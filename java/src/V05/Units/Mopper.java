@@ -1,14 +1,18 @@
-package V04BOTweakedPatch.Units;
+package V05.Units;
 
-import V04BOTweakedPatch.Unit;
-import V04BOTweakedPatch.Nav.Navigator;
+import V05.Comms;
+import V05.Unit;
+import V05.Nav.Navigator;
 import battlecode.common.*;
 
 // TODO: maybe fix modes
 
 public class Mopper extends Unit {
-    static MapLocation TargetLoc = null;
-    static Modes mode = Modes.RUSH;
+    static MapLocation TargetLoc;
+    static Modes mode;
+    static MapLocation currTower;
+
+    private static int lastCalledHome;
     private static boolean wasWandering = false;
 
     public static void run() throws GameActionException {
@@ -17,43 +21,56 @@ public class Mopper extends Unit {
 
         indicator = "[" + mode + "]; ";
 
-        defend();     
-        attack();
+        read();
+        swingMop();
         removeEnemyPaint();
         move();
 
-        rc.setIndicatorString(rc.getRoundNum() + ": " + indicator);
+        rc.setIndicatorString(rc.getRoundNum() + ": {" + TargetLoc + "} " + indicator);
     }
 
     /********************
      ** CORE FUNCTIONS **
      ********************/
 
-    /** Set unit mode based on paint level and nearby paint */
+    /** Set unit mode based on paint level and nearby paint (TODO) */
     public static void updateMode() throws GameActionException {
-        if (mode == Modes.DEFEND) 
-            return;
+        lastCalledHome++;
 
-        if (rc.getPaint() < 30 && !rc.senseMapInfo(rc.getLocation()).getPaint().isAlly()) {
-            mode = Modes.REFILL;
-        } else {
-            mode = Modes.RUSH;
+        if (mode == Modes.DEFEND) { // changes from DEFEND -> RUSH if unit has sat a long time
+            if (lastCalledHome > 30) {
+                mode = Modes.RUSH;
+            }
         }
     }
 
-    /** Checks if a nearby tower needs defending */
-    public static void defend() throws GameActionException {
-        // TODO
-        // this should set TargetLoc
+    /** Reads message queue and updates mode and target information */
+    public static void read() throws GameActionException {
+        Message[] msgs = rc.readMessages(-1);
+        if (msgs.length == 0)
+            return; // no messages to read
+
+        // TODO: read more than 1 msg
+        int[] decodedMsg = Comms.decodeMsg(msgs[0].getBytes());
+        MapLocation senderLoc = new MapLocation(decodedMsg[1], decodedMsg[2]);
+        TargetLoc = senderLoc;
+        indicator += "->tower; ";
+        lastCalledHome = 0;
+        mode = Modes.DEFEND;
     }
 
     /** Attacks direction with most enemies, if possible */
-    public static void attack() throws GameActionException {
+    public static void swingMop() throws GameActionException {
         Direction bestDir = getBestMopSwingDir();
         if (bestDir != null && rc.canMopSwing(bestDir)) {
             indicator += "swung " + bestDir + "; ";
             rc.mopSwing(bestDir);
-            TargetLoc = rc.getLocation().add(bestDir);
+
+            if (TargetLoc == null) {
+                // move one step towards enemy
+                indicator += "->unit; ";
+                TargetLoc = rc.getLocation().add(bestDir);
+            }
         }
     }
 
@@ -65,7 +82,8 @@ public class Mopper extends Unit {
                     rc.attack(loc.getMapLocation());
                 } else {
                     if (TargetLoc == null) {
-                        // remember loc of enemy paint to remove if there's nothing else to do 
+                        // remember loc of enemy paint to remove
+                        indicator += "->paint; ";
                         TargetLoc = loc.getMapLocation();
                     }
                 }
@@ -75,19 +93,38 @@ public class Mopper extends Unit {
 
     /** Movement decisions based on unit's target location */
     public static void move() throws GameActionException {
-        // TODO: revamp this to use dynamic TargetLoc
         if (TargetLoc != null) {
+            if (TargetLoc.equals(rc.getLocation()) || (rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable())) {
+                // reset the target location if we're at the desired target
+                // or if the target is a tower and we can sense the tower
+                indicator += "reached target + recenter; ";
+                TargetLoc = null;
+                recenter();
+                
+            } else {
+                // try to move to the target location
+                indicator += "moving; ";
                 Navigator.moveTo(TargetLoc);
                 rc.setIndicatorLine(rc.getLocation(), TargetLoc, 100, 100, 0);
                 // THE NAV DOESN'T GET CLOSE ENOUGH!!!!!!!!!!!!!!
                 if (rc.canMove(rc.getLocation().directionTo(TargetLoc))) {
                     rc.move(rc.getLocation().directionTo(TargetLoc));
-                    TargetLoc = null;
                 }
                 wasWandering = false;    
+            }
+
         } else {
-            wander(wasWandering);
-            wasWandering = true;
+            if (mode != Modes.DEFEND) { 
+                // if not defending (rushing), then go somewhere new
+                indicator += "wandering; ";
+                wander(wasWandering);
+                wasWandering = true;   
+
+            } else {
+                // defenders find optimal sitting spot and don't move for a few rounds
+                indicator += "defense recenter; ";
+                recenter();
+            }
         }
     }
 
@@ -97,7 +134,7 @@ public class Mopper extends Unit {
 
     /** Returns cardinal direction with the most enemies, null otherwise */
     public static Direction getBestMopSwingDir() throws GameActionException {
-        int[] numEnemies = {0, 0, 0, 0};
+        int[] numEnemies = {0, 0, 0, 0}; // N E S W
         RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1, opponentTeam);
         MapLocation currLoc = rc.getLocation();
 
@@ -128,6 +165,6 @@ public class Mopper extends Unit {
         if (bestDir == 0) 
             return null; // no hit-able enemies in any direction
         
-        return Direction.cardinalDirections()[bestDirIdx]; // N E S W
+        return Direction.cardinalDirections()[bestDirIdx];
     }
 }

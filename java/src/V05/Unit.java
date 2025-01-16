@@ -1,6 +1,6 @@
-package V04BOTweakedPatch;
+package V05;
 
-import V04BOTweakedPatch.Nav.Navigator;
+import V05.Nav.Navigator;
 import battlecode.common.*;
 
 public class Unit extends Globals {
@@ -42,7 +42,7 @@ public class Unit extends Globals {
             wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
-        rc.setIndicatorDot(wanderTarget, 255, 0, 255);
+        // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
         Navigator.moveTo(wanderTarget);
 
 
@@ -80,9 +80,7 @@ public class Unit extends Globals {
         }
     }
 
-    /**
-     * Gets closest location to robot in provided location set
-     */
+    /** Gets closest location to robot in provided location set */
     public static MapLocation getClosestLocation(FastIntSet locType) throws GameActionException {
         MapLocation closest = null;
         MapLocation loc = rc.getLocation();
@@ -100,27 +98,99 @@ public class Unit extends Globals {
         return closest;
     }
 
-    /** Moves unit to last recorded paint tower and requests paint */
-    public static void refill(int amount) throws GameActionException {
-        Navigator.moveTo(getClosestLocation(paintTowerLocations));
-        requestPaint(amount);
-    }
-
     /** Tries to take paint from last recorded paint tower */
-    public static void requestPaint(int amount) throws GameActionException {
-        MapLocation closestPaintTower = getClosestLocation(paintTowerLocations);
-        if (closestPaintTower == null)
+    public static void requestPaint(MapLocation tower, int amount) throws GameActionException {
+        if (tower == null)
             return; // no paint tower to go to
-        if (!rc.canSenseLocation(closestPaintTower))
+        if (!rc.canSenseLocation(tower))
             return; // cannot sense paint tower
 
-        int amtPaintInTower = rc.senseRobotAtLocation(closestPaintTower).getPaintAmount();
+        int amtPaintInTower = rc.senseRobotAtLocation(tower).getPaintAmount();
         int amtToTransfer = Math.min(amtPaintInTower, amount);
 
-        if (rc.canTransferPaint(closestPaintTower, -amtToTransfer)) {
-            rc.transferPaint(closestPaintTower, -amtToTransfer);
+        rc.setIndicatorString("transfering paint");
+        if (rc.canTransferPaint(tower, -amtToTransfer)) {
+            rc.transferPaint(tower, -amtToTransfer);
         }
     }
+
+    /** Checks nearby allies and paints and moves away from them to mitigate crowd penalty */
+    // TODO: this eats a lot of bytecode i think...
+    public static void recenter() throws GameActionException {
+        RobotInfo[] allyRobots = rc.senseNearbyRobots(2, myTeam);
+        MapLocation currLoc = rc.getLocation();
+        Direction[] dirs = Direction.allDirections();
+        int[] weights = {0, 0, 0, 0, 0, 0, 0, 0};
+
+        // weight ally robots
+        for (RobotInfo robot : allyRobots) {
+            for (MapInfo tile : rc.senseNearbyMapInfos(robot.getLocation(), 2)) {
+                for (int i = 0; i < 8; i++) {
+                    if (currLoc.add(dirs[i]).equals(tile.getMapLocation())) {
+                        weights[i]++;
+                    }
+                }
+            }
+        }
+
+        // mark squares you can't step on
+        for (MapInfo info : rc.senseNearbyMapInfos(2)) {
+            for (int i = 0; i < 8; i++) {
+                if (info.hasRuin() && rc.senseRobotAtLocation(info.getMapLocation()) != null && rc.getLocation().add(dirs[i]).equals(info.getMapLocation())) {
+                    weights[i] = 2000;
+                }
+            }
+        }
+
+        // weight neutral and enemy paints
+        for (int i = 0; i < 8; i++) {
+            try {
+                MapInfo info = rc.senseMapInfo(rc.getLocation().add(dirs[i]));
+                if (!info.isPassable()) {
+                    weights[i] = 2000;
+                } else if (info.getPaint().isEnemy()) {
+                    weights[i] += 10;
+                } else if (info.getPaint() == PaintType.EMPTY) {
+                    weights[i] += 7;
+                }    
+            } catch (GameActionException e) {
+                // target location is not on the map, just keep going
+                continue;
+            }
+        }
+
+        boolean hasMeaningfulWeights = false;
+        for (int weight : weights) {
+            if (weight != 0) {
+                hasMeaningfulWeights = true;
+                break;
+            }
+        }
+
+        if (!hasMeaningfulWeights)
+            return; // no enemies nearby, all ally paint, no need to recenter
+
+        for (int weight : weights) {
+            System.out.println(rc.getRoundNum() + "--" + rc.getID() + ": " + weight);
+        }
+
+        int minWeight = Integer.MAX_VALUE;
+        int minWeightIdx = -1;
+
+        for (int i = 0; i < 8; i++) {
+            if (weights[i] <= minWeight) {
+                minWeight = weights[i];
+                minWeightIdx = i;
+            }
+        }
+
+        if (minWeightIdx != -1) {
+            if (rc.canMove(dirs[minWeightIdx])) {
+                rc.move(dirs[minWeightIdx]);
+            }
+        }
+    }
+    
 
     /// /////////////////////////////////////////////
 

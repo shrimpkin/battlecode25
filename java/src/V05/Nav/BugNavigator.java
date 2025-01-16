@@ -1,8 +1,8 @@
-package V04BOTweakedPatch.Nav;
+package V05.Nav;
 
-import V04BOTweakedPatch.FastIntSet;
-import V04BOTweakedPatch.FastLocSet;
-import V04BOTweakedPatch.Globals;
+import V05.FastIntSet;
+import V05.FastLocSet;
+import V05.Globals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;

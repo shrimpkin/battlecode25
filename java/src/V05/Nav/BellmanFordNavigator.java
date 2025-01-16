@@ -1,6 +1,6 @@
-package V04BOTweakedPatch.Nav;
+package V05.Nav;
 
-import V04BOTweakedPatch.Globals;
+import V05.Globals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;

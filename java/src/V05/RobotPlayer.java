@@ -1,10 +1,10 @@
-package V04BOTweakedPatch;
+package V05;
 
-import V04BOTweakedPatch.Nav.BellmanFordNavigator;
-import V04BOTweakedPatch.Units.Mopper;
-import V04BOTweakedPatch.Units.Soldier;
-import V04BOTweakedPatch.Units.Splasher;
-import V04BOTweakedPatch.Units.Tower;
+import V05.Nav.BellmanFordNavigator;
+import V05.Units.Mopper;
+import V05.Units.Soldier;
+import V05.Units.Splasher;
+import V05.Units.Tower;
 import battlecode.common.Clock;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;

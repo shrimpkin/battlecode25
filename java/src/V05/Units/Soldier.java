@@ -1,8 +1,8 @@
-package V04BOTweakedPatch.Units;
+package V05.Units;
 
-import V04BOTweakedPatch.FastIntSet;
-import V04BOTweakedPatch.Unit;
-import V04BOTweakedPatch.Nav.Navigator;
+import V05.FastIntSet;
+import V05.Unit;
+import V05.Nav.Navigator;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
