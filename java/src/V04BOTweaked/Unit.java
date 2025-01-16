@@ -157,5 +157,27 @@ public class Unit extends Globals {
         return ret;
     }
 
+    // piss poor impl of new resource patterns
+    public static void canCompletePattern() throws GameActionException {
+        for (MapInfo tile : rc.senseNearbyMapInfos(GameConstants.RESOURCE_PATTERN_RADIUS_SQUARED)) {
+            MapLocation loc = tile.getMapLocation();
+            if(loc.x % 4 != 2 || loc.y % 4 != 2) return;
+            if (rc.canCompleteResourcePattern(loc)) {
+                rc.completeResourcePattern(loc);
+            }
+        }
+    }
+
+    private static final int[][] pattern = {
+            {1,1,0,1,1},
+            {1,0,0,0,1},
+            {0,0,1,0,0},
+            {1,0,0,0,1},
+            {1,1,0,1,1}
+    };
+    public static boolean shouldBeSecondary(MapLocation loc) {
+        return pattern[loc.x % 4][loc.y % 4] == 1;
+    }
+
     public enum Modes {RUSH, BOOM, SIT, NONE, REFILL, ATTACK}
 }
