@@ -131,7 +131,9 @@ public class Unit extends Globals {
             return; // no paint tower to go to
         if (!rc.canSenseLocation(tower))
             return; // cannot sense paint tower
-
+        if(rc.senseRobotAtLocation(tower) == null) 
+            return; //no longer a paint tower there
+            
         int amtPaintInTower = rc.senseRobotAtLocation(tower).getPaintAmount();
         int amtToTransfer = Math.min(amtPaintInTower, amount);
 

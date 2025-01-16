@@ -13,7 +13,7 @@ public class Navigator extends Globals {
         if (myLocation.equals(target))
             return; // already there
 
-        rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 0);
+        if(rc.onTheMap(target)) rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 0);
         BugNavigator.move(target);
 //        Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
 //        if (bellmanFordDirection != null) {

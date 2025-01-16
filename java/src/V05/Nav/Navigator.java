@@ -3,6 +3,7 @@ package V05.Nav;
 import V05.Globals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 
 
@@ -14,7 +15,7 @@ public class Navigator extends Globals {
 
     public static void moveTo(MapLocation target) throws GameActionException {
         MapLocation myLocation = rc.getLocation();
-        rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 0);
+        if(rc.onTheMap(target)) rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 0);
 
         if (myLocation.equals(target)) {
             return;

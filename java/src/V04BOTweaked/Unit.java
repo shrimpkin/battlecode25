@@ -42,7 +42,7 @@ public class Unit extends Globals {
             wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
-        rc.setIndicatorDot(wanderTarget, 255, 0, 255);
+        //rc.setIndicatorDot(wanderTarget, 255, 0, 255);
         Navigator.moveTo(wanderTarget);
 
 
