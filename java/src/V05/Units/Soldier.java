@@ -96,24 +96,26 @@ public class Soldier extends Unit {
 
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
     public static void updateMode() throws GameActionException {
-//         if(rc.getPaint() <= 40 && rc.senseNearbyRobots(-1, myTeam).length < 5 && timeOnRefill < 10 && timeOffRefill > 10) {
-//             mode = Modes.REFILL;
-//             return;
-//         }
+        
 
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
             mode = Modes.ATTACK;
             return;
         }
+
         // intermittent rushing in midgame
         if (rc.getRoundNum() > 200 && rc.getRoundNum() % 100 < 25) {
             mode = Modes.ATTACK;
             return;
         }
 
+        if(rc.getPaint() <= 40 && rc.senseNearbyRobots(-1, myTeam).length < 5) {
+            mode = Modes.REFILL;
+            return;
+        }
+
         mode = Modes.BOOM;
         return;
-        
     }
 
     /************************************************************************\
@@ -230,11 +232,7 @@ public class Soldier extends Unit {
     /** Moves to target location, if no target wanders */
     private static boolean wasWandering = false;
     public static void move() throws GameActionException {
-        RobotInfo[] robots = rc.senseNearbyRobots(8, myTeam);
-
-        if(robots.length > 4) {
-            recenter();
-        } else if (targetLocation != null) {
+        if (targetLocation != null) {
             Navigator.moveTo(targetLocation);
             wasWandering = false;
         } else {
@@ -253,6 +251,13 @@ public class Soldier extends Unit {
         MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
 
         for (MapLocation ruin : ruinLocations) {
+            int numNearbySoliders = 0;
+            for(RobotInfo robot : rc.senseNearbyRobots(ruin, 8, myTeam)) {
+                if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
+            }
+            if(numNearbySoliders > 2) continue;
+
+            
             RobotInfo robot = rc.senseRobotAtLocation(ruin);
 
             if (robot != null)
