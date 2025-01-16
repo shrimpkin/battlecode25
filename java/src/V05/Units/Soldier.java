@@ -85,7 +85,10 @@ public class Soldier extends Unit {
             if (tile.getPaint().isEnemy())
                 continue; // can't paint over enemy paint
 
-            MapLocation loc = tile.getMapLocation();
+            if(ruinTarget != null && tile.getMapLocation().distanceSquaredTo(ruinTarget) <= 8) 
+                continue; //we might be painting this ruin 
+
+            MapLocation loc = tile.getMapLocation();    
             boolean isSecondary = shouldBeSecondary(loc);
             var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
             if (rc.canAttack(loc) && !rc.senseMapInfo(loc).getPaint().equals(idealPaint)) {
