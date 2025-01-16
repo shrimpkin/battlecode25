@@ -63,6 +63,7 @@ public class Soldier extends Unit {
             tessellate();
             canCompletePattern();
         }
+
         debug();
     }
 

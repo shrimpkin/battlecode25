@@ -134,18 +134,7 @@ public class BugNavigator extends Globals {
 
         static int getTurnDir(Direction dir) throws GameActionException {
             return nextInt() % 2;
-//        int ansL = simulate(LEFT, dir), ansR = simulate(RIGHT, dir);
-//        if (ansL == ansR) return nextInt() % 2;
-//        if (ansR == -1 || ansL <= ansR) return LEFT;
-//        return RIGHT;
         }
-
-//    static int simulate(int turnDir, Direction dir) {
-//        int orig = turnDir;
-//        var now = rc.getLocation();
-//        var stk = new DirStack();
-//        while (!)
-//    }
     }
 }
 
