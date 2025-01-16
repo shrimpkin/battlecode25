@@ -1,11 +1,7 @@
 package V05.Units;
 
 import V05.Unit;
-import V05.Nav.Navigator;
-import battlecode.common.GameActionException;
-import battlecode.common.MapInfo;
-import battlecode.common.MapLocation;
-import battlecode.common.UnitType;
+import battlecode.common.*;
 
 public class Splasher extends Unit {
     private static final int PaintLimit = UnitType.SPLASHER.paintCapacity;
