@@ -133,7 +133,7 @@ public class Unit extends Globals {
             return; // cannot sense paint tower
         if(rc.senseRobotAtLocation(tower) == null) 
             return; //no longer a paint tower there
-            
+
         int amtPaintInTower = rc.senseRobotAtLocation(tower).getPaintAmount();
         int amtToTransfer = Math.min(amtPaintInTower, amount);
 
@@ -205,7 +205,7 @@ public class Unit extends Globals {
             }
         }
 
-        if (minWeightIdx != -1) {
+        if (minWeightIdx > -1 && minWeightIdx < adjacentLocations.length) {
             Direction dir = currLoc.directionTo(adjacentLocations[minWeightIdx].getMapLocation());
             if (rc.canMove(dir)) {
                 rc.move(dir);
