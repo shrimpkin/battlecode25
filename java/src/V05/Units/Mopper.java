@@ -10,25 +10,26 @@ import battlecode.common.*;
 public class Mopper extends Unit {
     static MapLocation TargetLoc;
     static Modes mode;
-    static MapLocation currTower;
 
     private static int lastCalledHome;
     private static boolean wasWandering = false;
 
     public static void run() throws GameActionException {
+        // determine mode and update info
+        read();
         updateMode();
         updateTowerLocations();
 
         indicator = "[" + mode + "]; ";
 
-        read();
         swingMop();
         removeEnemyPaint();
         move();
 
         if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
             canCompletePattern();
-        if(mode == Modes.REFILL) requestPaint(TargetLoc, 100);
+
+        _refill();
 
         rc.setIndicatorString(rc.getRoundNum() + ": {" + TargetLoc + "} " + indicator);
     }
@@ -37,26 +38,8 @@ public class Mopper extends Unit {
      ** CORE FUNCTIONS **
      ********************/
 
-    /** Set unit mode based on paint level and nearby paint (TODO) */
-    public static void updateMode() throws GameActionException {
-        lastCalledHome++;
-
-        if (mode == Modes.DEFEND) { // changes from DEFEND -> RUSH if unit has sat a long time
-            if (lastCalledHome > 30) {
-                mode = Modes.RUSH;
-            }
-        }
-
-        if(rc.getPaint() <= 20) {
-            mode = Modes.REFILL;
-        } else {
-            mode = Modes.NONE;
-        }
-    }
-
     /** Reads message queue and updates mode and target information */
     public static void read() throws GameActionException {
-
         Message[] msgs = rc.readMessages(-1);
         if (msgs.length == 0)
             return; // no messages to read
@@ -69,6 +52,28 @@ public class Mopper extends Unit {
         indicator += "->defense; ";
         lastCalledHome = 0;
         mode = Modes.DEFEND;
+    }
+
+    /** Set unit mode based on paint level and current mode */
+    public static void updateMode() throws GameActionException {
+        lastCalledHome++;
+
+        if (mode == Modes.DEFEND) { // changes from DEFEND -> RUSH if unit has sat a long time
+            if (lastCalledHome > 20) {
+                mode = Modes.RUSH;
+            }
+            return; // if defending, can't change modes unless defense wears off
+        }
+
+        if (rc.getPaint() <= 20) {
+            indicator += "->refill; ";
+            mode = Modes.REFILL;
+
+            // new target loc overrides any existing one
+            TargetLoc = getClosestLocation(paintTowerLocations);
+        } else {
+            mode = Modes.NONE;
+        }
     }
 
     /** Attacks direction with most enemies, if possible */
@@ -105,10 +110,12 @@ public class Mopper extends Unit {
 
     /** Movement decisions based on unit's target location */
     public static void move() throws GameActionException {
-        if(mode == Modes.REFILL) TargetLoc = getClosestLocation(paintTowerLocations);
-
         if (TargetLoc != null) {
-            if (TargetLoc.equals(rc.getLocation()) || (mode != Modes.REFILL && rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable())) {
+            boolean atLocation = TargetLoc.equals(rc.getLocation());
+            boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable();
+            boolean isCloseToTarget = rc.getLocation().distanceSquaredTo(TargetLoc) < 2;
+
+            if (atLocation || (cannotReachTarget && isCloseToTarget)) {
                 // reset the target location if we're at the desired target
                 // or if the target is a tower and we can sense the tower
                 indicator += "reached target + recenter; ";
@@ -124,7 +131,7 @@ public class Mopper extends Unit {
             }
 
         } else {
-            if (mode != Modes.DEFEND) { 
+            if (mode != Modes.DEFEND && mode != Modes.REFILL) { 
                 // if not defending (rushing), then go somewhere new
                 indicator += "wandering; ";
                 wander(wasWandering);
@@ -132,9 +139,26 @@ public class Mopper extends Unit {
 
             } else {
                 // defenders find optimal sitting spot and don't move for a few rounds
+                // refills are also sitting until they successfully refill
                 indicator += "defense recenter; ";
                 recenter();
             }
+        }
+    }
+
+    /*****************************
+     ** MODE-SPECIFIC FUNCTIONS **
+     *****************************/
+
+    /** Attempts to refill */
+    public static void _refill() throws GameActionException {
+        if (mode != Modes.REFILL)
+            return; // not in refill mode
+
+        if (requestPaint(TargetLoc, 100)) {
+            // upon successful refill, reset target and mode
+            TargetLoc = null;
+            mode = Modes.NONE;
         }
     }
 

@@ -126,13 +126,13 @@ public class Unit extends Globals {
     }
 
     /** Tries to take paint from last recorded paint tower */
-    public static void requestPaint(MapLocation tower, int amount) throws GameActionException {
+    public static boolean requestPaint(MapLocation tower, int amount) throws GameActionException {
         if (tower == null)
-            return; // no paint tower to go to
+            return false; // no paint tower to go to
         if (!rc.canSenseLocation(tower))
-            return; // cannot sense paint tower
+            return false; // cannot sense paint tower
         if(rc.senseRobotAtLocation(tower) == null) 
-            return; //no longer a paint tower there
+            return false; // no longer a paint tower there
 
         int amtPaintInTower = rc.senseRobotAtLocation(tower).getPaintAmount();
         int amtToTransfer = Math.min(amtPaintInTower, amount);
@@ -140,7 +140,9 @@ public class Unit extends Globals {
         rc.setIndicatorString("transfering paint");
         if (rc.canTransferPaint(tower, -amtToTransfer)) {
             rc.transferPaint(tower, -amtToTransfer);
+            return true;
         }
+        return false;
     }
 
     /** Checks nearby allies and paints and moves away from them to mitigate crowd penalty */
@@ -256,13 +258,15 @@ public class Unit extends Globals {
             {1,0,0,0,1},
             {1,1,0,1,1}
     };
+
     public static void canCompletePattern() throws GameActionException {
         for (MapInfo tile : rc.senseNearbyMapInfos()) {
             MapLocation loc = tile.getMapLocation();
-            if(loc.x % 4 != 2 || loc.y % 4 != 2) continue;
+            if(loc.x % 4 != 2 || loc.y % 4 != 2) 
+                continue; // not a center location
             if (rc.canCompleteResourcePattern(loc)) {
                 rc.completeResourcePattern(loc);
-                return;
+                return; // complete 1st available pattern and return
             }
         }
     }
