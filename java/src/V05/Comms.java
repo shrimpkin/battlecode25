@@ -19,7 +19,7 @@ public class Comms extends Globals {
             msg & 0x3F, 
             (msg & 0xFC0) >> 6, 
             (msg & 0x3F000) >> 12,
-            (msg & 0x3FC000) >> 18
+            (msg & 0xFC0000) >> 18
         };
         return decodedMsg;
     }
