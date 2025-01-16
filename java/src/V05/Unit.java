@@ -71,8 +71,7 @@ public class Unit extends Globals {
             lastWanderTargetTime = rc.getRoundNum();
         }
         // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
-        if(paintless) Navigator.paintlessMoveTo(wanderTarget);
-        else Navigator.moveTo(wanderTarget);
+        Navigator.moveTo(wanderTarget);
 
         if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
             updateSeen();
