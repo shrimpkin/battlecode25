@@ -108,7 +108,8 @@ public class Mopper extends Unit {
         if(mode == Modes.REFILL) TargetLoc = getClosestLocation(paintTowerLocations);
 
         if (TargetLoc != null) {
-            if (TargetLoc.equals(rc.getLocation()) || (mode != Modes.REFILL && rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable())) {
+            if (TargetLoc.equals(rc.getLocation()) 
+                || (mode != Modes.REFILL && rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable())) {
                 // reset the target location if we're at the desired target
                 // or if the target is a tower and we can sense the tower
                 indicator += "reached target + recenter; ";
