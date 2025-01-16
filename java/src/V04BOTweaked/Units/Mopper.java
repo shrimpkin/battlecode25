@@ -49,6 +49,7 @@ public class Mopper extends Unit {
             wasWandering = true;
         }
 
+        canCompletePattern();
         rc.setIndicatorString(rc.getRoundNum() + ": " + indicator);
     }
 
