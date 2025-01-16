@@ -17,6 +17,7 @@ public class Tower extends Unit {
         }
 
         attack();
+        spawnOffense();
         upgradeTower();
 
         rc.setIndicatorString(indicator);
@@ -36,6 +37,14 @@ public class Tower extends Unit {
             }
         }
         rc.attack(null);
+    }
+
+    public static void spawnOffense() throws GameActionException {
+        if (rc.getRoundNum() % 100 != 0) 
+            return; // only launch offense every 100 rounds
+
+        buildRobotType(UnitType.SPLASHER);
+        buildRobotType(UnitType.MOPPER);
     }
 
     /** Upgrade tower at robot's location */
