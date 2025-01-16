@@ -61,22 +61,15 @@ public class Soldier extends Unit {
 
         if (rc.getChips() < 800) {
             tessellate();
-            canCompletePattern();
+            if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
+                canCompletePattern();
         }
 
         debug();
     }
 
     public static boolean shouldBeSecondary(MapLocation loc) {
-        int x = loc.x;
-        int y = loc.y;
-
-        if (y%3 == 0 || y %3 == 1) {
-            return (x+y)%2 == 0;
-        } else {
-            int offset = (y-2)/3;
-            return ((x+y)%4 == ((offset*2) % 4));
-        }
+        return pattern[loc.x % 4][loc.y % 4] == 1;
     }
 
     /** Paint SRP patterns (tmp) */
@@ -95,17 +88,6 @@ public class Soldier extends Unit {
                 rc.setIndicatorDot(loc, 40, 40, 128);
                 rc.attack(loc, isSecondary);
             }    
-        }
-    }
-
-    public static void canCompletePattern() throws GameActionException {
-        for (MapInfo tile : rc.senseNearbyMapInfos()) {
-            MapLocation loc = tile.getMapLocation();
-            if(loc.y % 3 != 2) continue;
-
-            if (rc.canCompleteResourcePattern(loc)) {
-                rc.completeResourcePattern(loc);
-            }
         }
     }
 

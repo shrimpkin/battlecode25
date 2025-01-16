@@ -249,5 +249,23 @@ public class Unit extends Globals {
         return ret;
     }
 
+    protected static int[][] pattern = {
+            {1,1,0,1,1},
+            {1,0,0,0,1},
+            {0,0,1,0,0},
+            {1,0,0,0,1},
+            {1,1,0,1,1}
+    };
+    public static void canCompletePattern() throws GameActionException {
+        for (MapInfo tile : rc.senseNearbyMapInfos()) {
+            MapLocation loc = tile.getMapLocation();
+            if(loc.x % 4 != 2 || loc.y % 4 != 2) continue;
+            if (rc.canCompleteResourcePattern(loc)) {
+                rc.completeResourcePattern(loc);
+                return;
+            }
+        }
+    }
+
     public enum Modes {RUSH, BOOM, SIT, NONE, REFILL, ATTACK, DEFEND}
 }

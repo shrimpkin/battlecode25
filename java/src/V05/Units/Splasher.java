@@ -17,6 +17,8 @@ public class Splasher extends Unit {
         updateTowerLocations();
         splash();
         wander(true);
+        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
+            canCompletePattern();
     }
 
     // TODO: use refill function (FROM UNIT.java) and set the mode when relevant
@@ -50,15 +52,21 @@ public class Splasher extends Unit {
     /** Calculates the value obtained from a splash */
     public static int getSplashScore(MapLocation center) throws GameActionException {
         int util = 0;
-        for (MapInfo info : rc.senseNearbyMapInfos(center, 2)) {
+        for (MapInfo info : rc.senseNearbyMapInfos(center, GameConstants.SPLASHER_ATTACK_AOE_RADIUS_SQUARED)) {
             // depending on how things play out -- maybe also count nearby enemy towers as well
+            var loc = info.getMapLocation();
+            if (info.hasRuin()) {
+                var robot = rc.senseRobotAtLocation(loc);
+                if (robot != null && robot.getTeam() == opponentTeam) util += EnemyTowerWeight;
+            }
             if (!info.isPassable()) continue;
             switch (info.getPaint()) {
                 case EMPTY:
                     util += EmptyWeight;
                     break;
                 case ENEMY_PRIMARY, ENEMY_SECONDARY:
-                    util += EnemyWeight;
+                    if (info.getMapLocation().isWithinDistanceSquared(center, GameConstants.SPLASHER_ATTACK_ENEMY_PAINT_RADIUS_SQUARED))
+                        util += EnemyWeight;
                     break;
                 default: 
                     break;
