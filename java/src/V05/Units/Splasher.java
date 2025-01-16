@@ -60,11 +60,11 @@ public class Splasher extends Unit {
             if (!info.isPassable()) continue;
             switch (info.getPaint()) {
                 case EMPTY:
-                    if (info.getMapLocation().isWithinDistanceSquared(center, GameConstants.SPLASHER_ATTACK_ENEMY_PAINT_RADIUS_SQUARED))
-                        util +=  EmptyWeight;
+                    util += EmptyWeight;
                     break;
                 case ENEMY_PRIMARY, ENEMY_SECONDARY:
-                    util += EnemyWeight;
+                    if (info.getMapLocation().isWithinDistanceSquared(center, GameConstants.SPLASHER_ATTACK_ENEMY_PAINT_RADIUS_SQUARED))
+                        util += EnemyWeight;
                     break;
                 default: 
                     break;
