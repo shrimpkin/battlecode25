@@ -21,6 +21,7 @@ public class Splasher extends Unit {
         updateTowerLocations();
         splash();
         wander(true);
+        canCompletePattern();
     }
 
     // TODO: use refill function (FROM UNIT.java) and set the mode when relevant

@@ -52,9 +52,10 @@ public class Mopper extends Unit {
 
         // TODO: read more than 1 msg
         int[] decodedMsg = Comms.decodeMsg(msgs[0].getBytes());
-        MapLocation senderLoc = new MapLocation(decodedMsg[1], decodedMsg[2]);
-        TargetLoc = senderLoc;
-        indicator += "->tower; ";
+        // MapLocation senderLoc = new MapLocation(decodedMsg[0], decodedMsg[1]);
+        MapLocation requestedLoc = new MapLocation(decodedMsg[2], decodedMsg[3]);
+        TargetLoc = requestedLoc;
+        indicator += "->defense; ";
         lastCalledHome = 0;
         mode = Modes.DEFEND;
     }
