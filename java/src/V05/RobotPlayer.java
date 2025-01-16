@@ -1,13 +1,7 @@
 package V05;
 
-import V05.Nav.BellmanFordNavigator;
-import V05.Units.Mopper;
-import V05.Units.Soldier;
-import V05.Units.Splasher;
-import V05.Units.Tower;
-import battlecode.common.Clock;
-import battlecode.common.GameActionException;
-import battlecode.common.RobotController;
+import V05.Units.*;
+import battlecode.common.*;
 
 public class RobotPlayer {
     static int turnCount = 0;

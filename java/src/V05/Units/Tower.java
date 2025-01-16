@@ -9,7 +9,7 @@ public class Tower extends Unit {
 
     public static void run() throws GameActionException {
         indicator = "";
-
+        
         defend();
         unitBuild();
         attack();
@@ -18,65 +18,9 @@ public class Tower extends Unit {
         rc.setIndicatorString(indicator);
     }
 
-    /** Checks if there are enemy units nearby, and spawns defensive moppers if so */
-    // check
-    // 1. presense of enemy robots 
-    // TODO: 2. presense of enemy paint
-    // spawn moppers when either one gets too high
     public static void defend() throws GameActionException {
-        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1);
-        int numMoppers = 0;
-        int numEnemies = 0;
-
-        for (RobotInfo robot : nearbyRobots) {
-            if (robot.type == UnitType.MOPPER) {
-                numMoppers++;
-            }
-            if (robot.team == opponentTeam) {
-                numEnemies++;
-            }
-        }
-
-        if (numEnemies == 0) {
-            return;
-        } else {
-            indicator += "saw enemy; ";
-        }
-
-        if (numMoppers > numEnemies) { // tell nearby moppers to come back
-            indicator += "sharing return msg; ";
-            int msg = Comms.encodeMsg(UnitType.MOPPER, rc.getLocation().x, rc.getLocation().y);
-
-            for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
-                if (rc.canSendMessage(robot.location)) {
-                    rc.sendMessage(robot.location, msg);
-                }
-            }   
-
-            rc.broadcastMessage(msg);
-        
-        } else { // spawn new defensive moppers
-            int newMoppers = Math.max(1, (int) Math.round(numEnemies / 3.0));
-            
-            // TODO: maybe rewrite this
-            for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {    
-                for (MapInfo spawnTile : rc.senseNearbyMapInfos(robot.getLocation(), 2)) {
-                    if (rc.canBuildRobot(UnitType.MOPPER, spawnTile.getMapLocation())) {
-                        indicator += "spawn defense mopper; ";
-                        rc.buildRobot(UnitType.MOPPER, spawnTile.getMapLocation());
-    
-                        if (rc.canSendMessage(spawnTile.getMapLocation())) {
-                            indicator += "sent msg; ";
-                            // rc.sendMessage(spawnTile.getMapLocation(), 0);
-                        }   
-
-                        newMoppers--;
-                        if (newMoppers == 0)
-                            return; // spawned all moppers
-                    }
-                }
-            }
-        }
+        spawnDefenseMopper();
+        // spawnDefenseSplasher();
     }
 
     // TODO: overhaul this
@@ -121,6 +65,84 @@ public class Tower extends Unit {
     /*************
      ** HELPERS **
      *************/
+
+    /** Spawns moppers based on presence of enemy units */
+    public static void spawnDefenseMopper() throws GameActionException {
+        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1);
+        int numMoppers = 0;
+        int numEnemies = 0;
+
+        for (RobotInfo robot : nearbyRobots) {
+            if (robot.team == opponentTeam) {
+                numEnemies++;
+            } else if (robot.type == UnitType.MOPPER) { // ally moppers only
+                numMoppers++;
+            }
+        }
+
+        if (numEnemies == 0)
+            return; // no enemies; no need to spawn moppers
+        
+        int msg = Comms.encodeMsg(UnitType.MOPPER, rc.getLocation().x, rc.getLocation().y);
+
+        if (numMoppers > numEnemies) { // tell nearby moppers to come back
+            indicator += "want return; ";
+
+            for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
+                if (robot.type == UnitType.MOPPER) {
+                    if (rc.canSendMessage(robot.location)) {
+                        rc.sendMessage(robot.location, msg);
+                    }    
+                }
+            }
+        
+        } else { // spawn new defensive moppers
+            indicator += "want new; ";
+
+            int newMoppers = Math.max(1, (int) Math.round(numEnemies / 3.0));
+            for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {    
+                for (MapInfo spawnTile : rc.senseNearbyMapInfos(robot.getLocation(), 2)) {
+                    if (rc.canBuildRobot(UnitType.MOPPER, spawnTile.getMapLocation())) {
+                        indicator += "spawn; ";
+
+                        rc.buildRobot(UnitType.MOPPER, spawnTile.getMapLocation());
+                        if (rc.canSendMessage(spawnTile.getMapLocation())) {
+                            rc.sendMessage(spawnTile.getMapLocation(), msg);
+                        }
+
+                        newMoppers--;
+                        if (newMoppers == 0) {
+                            return; // spawned all moppers
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    /** Spawns splashers based on presence of enemy paint */
+    public static void spawnDefenseSplasher() throws GameActionException {
+        if (rc.getRoundNum() < 100)
+            return; // too early in the game to spawn defense splashers?
+
+        int numEnemyPaint = 0;
+        MapInfo[] nearbyTiles = rc.senseNearbyMapInfos(GameConstants.BUILD_ROBOT_RADIUS_SQUARED);
+        for (MapInfo tile : nearbyTiles) {
+            if (tile.getPaint().isEnemy()) {
+                numEnemyPaint++;
+            }
+        }
+
+        if (numEnemyPaint > 0) {
+            System.out.println(rc.getID() + " " + (double) numEnemyPaint / nearbyTiles.length);
+        }
+        if ((double) numEnemyPaint / nearbyTiles.length > 0.7) {
+            if (rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST))) {
+                rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST));
+            }
+        }
+    }
 
     /** Attempt to build robot of specified type on first available square */
     public static boolean buildRobotType(UnitType type) throws GameActionException {
