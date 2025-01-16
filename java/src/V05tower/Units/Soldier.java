@@ -27,14 +27,7 @@ public class Soldier extends Unit {
             if (rc.getPaint() >= 15) {
                 paintBelow();
             }
-        }
-
-        if (mode == Modes.RUSH) {
-            getRushTargetsBySymmetry();
-            updateSymmetryTargets();
-            markOneRuinTile();
-            targetLocation = getRushMoveTarget();
-            move();
+            requestPaint(targetLocation, 200);
         }
 
         if (mode == Modes.ATTACK) {
@@ -111,6 +104,11 @@ public class Soldier extends Unit {
 
         if(rc.getPaint() <= 40 && rc.senseNearbyRobots(-1, myTeam).length < 5) {
             mode = Modes.REFILL;
+            return;
+        }
+
+        if(enemyTowerLocations.size > 0 && unusedRuinLocations.size == 0) {
+            mode = Modes.ATTACK;
             return;
         }
 
