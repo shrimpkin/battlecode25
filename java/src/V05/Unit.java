@@ -196,7 +196,7 @@ public class Unit extends Globals {
         int minWeight = Integer.MAX_VALUE;
         int minWeightIdx = -1;
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < adjacentLocations.length; i++) {
             if (weights[i] <= minWeight) {
                 minWeight = weights[i];
                 minWeightIdx = i;

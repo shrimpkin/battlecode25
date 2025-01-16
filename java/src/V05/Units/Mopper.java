@@ -25,6 +25,7 @@ public class Mopper extends Unit {
         swingMop();
         removeEnemyPaint();
         move();
+        if(mode == Modes.REFILL) requestPaint(TargetLoc, 100);
 
         rc.setIndicatorString(rc.getRoundNum() + ": {" + TargetLoc + "} " + indicator);
     }
@@ -42,10 +43,17 @@ public class Mopper extends Unit {
                 mode = Modes.RUSH;
             }
         }
+
+        if(rc.getPaint() <= 20) {
+            mode = Modes.REFILL;
+        } else {
+            mode = Modes.NONE;
+        }
     }
 
     /** Reads message queue and updates mode and target information */
     public static void read() throws GameActionException {
+
         Message[] msgs = rc.readMessages(-1);
         if (msgs.length == 0)
             return; // no messages to read
@@ -94,8 +102,10 @@ public class Mopper extends Unit {
 
     /** Movement decisions based on unit's target location */
     public static void move() throws GameActionException {
+        if(mode == Modes.REFILL) TargetLoc = getClosestLocation(paintTowerLocations);
+
         if (TargetLoc != null) {
-            if (TargetLoc.equals(rc.getLocation()) || (rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable())) {
+            if (TargetLoc.equals(rc.getLocation()) || (mode != Modes.REFILL && rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable())) {
                 // reset the target location if we're at the desired target
                 // or if the target is a tower and we can sense the tower
                 indicator += "reached target + recenter; ";
@@ -107,10 +117,6 @@ public class Mopper extends Unit {
                 indicator += "moving; ";
                 Navigator.moveTo(TargetLoc);
                 rc.setIndicatorLine(rc.getLocation(), TargetLoc, 100, 100, 0);
-                // // THE NAV DOESN'T GET CLOSE ENOUGH!!!!!!!!!!!!!!
-                // if (rc.canMove(rc.getLocation().directionTo(TargetLoc))) {
-                //     rc.move(rc.getLocation().directionTo(TargetLoc));
-                // }
                 wasWandering = false;    
             }
 
