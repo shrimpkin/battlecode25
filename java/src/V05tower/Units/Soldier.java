@@ -80,7 +80,7 @@ public class Soldier extends Unit {
             MapLocation loc = tile.getMapLocation();    
             boolean isSecondary = shouldBeSecondary(loc);
             var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
-            if (rc.canAttack(loc) && !rc.senseMapInfo(loc).getPaint().equals(idealPaint) && !rc.senseMapInfo(targetLocation).hasRuin()) {
+            if (rc.canAttack(loc) && !rc.senseMapInfo(loc).getPaint().equals(idealPaint) && !rc.senseMapInfo(loc).hasRuin()) {
                 rc.setIndicatorDot(loc, 40, 40, 128);
                 rc.attack(loc, isSecondary);
             }    
