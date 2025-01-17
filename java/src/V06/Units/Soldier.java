@@ -291,9 +291,9 @@ public class Soldier extends Unit {
     // TODO: overhaul this
     public static UnitType getTowerType() throws GameActionException {
         if(rc.getNumberTowers() % 3 == 0) {
-            return UnitType.LEVEL_ONE_MONEY_TOWER;
-        } else {
             return UnitType.LEVEL_ONE_PAINT_TOWER;
+        } else {
+            return UnitType.LEVEL_ONE_MONEY_TOWER;
         }
     }
 
