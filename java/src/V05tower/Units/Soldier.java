@@ -80,7 +80,7 @@ public class Soldier extends Unit {
             MapLocation loc = tile.getMapLocation();    
             boolean isSecondary = shouldBeSecondary(loc);
             var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
-            if (rc.canAttack(loc) && !rc.senseMapInfo(loc).getPaint().equals(idealPaint)) {
+            if (rc.canAttack(loc) && !rc.senseMapInfo(loc).getPaint().equals(idealPaint) && !rc.senseMapInfo(loc).hasRuin()) {
                 rc.setIndicatorDot(loc, 40, 40, 128);
                 rc.attack(loc, isSecondary);
             }    
@@ -271,7 +271,16 @@ public class Soldier extends Unit {
                 }
             }
 
-            if (!hasEnemyPaint) {
+            boolean isCloser;
+            if(ruinTarget != null) isCloser = rc.getLocation().distanceSquaredTo(ruin) < rc.getLocation().distanceSquaredTo(ruinTarget);
+            else isCloser = true;
+
+            MapLocation center = new MapLocation(mapWidth / 2, mapHeight / 2);
+            boolean isClosestToCenter;
+            if(ruinTarget != null) isClosestToCenter = center.distanceSquaredTo(ruin) < center.distanceSquaredTo(ruinTarget);
+            else isClosestToCenter = true;
+
+            if (!hasEnemyPaint && isCloser) {
                 ruinTarget = ruin;
                 break;
             }
