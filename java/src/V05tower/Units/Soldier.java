@@ -271,7 +271,16 @@ public class Soldier extends Unit {
                 }
             }
 
-            if (!hasEnemyPaint) {
+            boolean isClosest;
+            if(ruinTarget != null) isClosest = rc.getLocation().distanceSquaredTo(ruin) < rc.getLocation().distanceSquaredTo(ruinTarget);
+            else isClosest = true;
+
+            MapLocation center = new MapLocation(mapWidth / 2, mapHeight / 2);
+            boolean isClosestToCenter;
+            if(ruinTarget != null) isClosestToCenter = center.distanceSquaredTo(ruin) < center.distanceSquaredTo(ruinTarget);
+            else isClosestToCenter = true;
+
+            if (!hasEnemyPaint && isClosest) {
                 ruinTarget = ruin;
                 break;
             }
