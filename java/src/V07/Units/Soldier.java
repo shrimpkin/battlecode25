@@ -1,8 +1,8 @@
-package V05tower.Units;
+package V07.Units;
 
-import V05tower.FastIntSet;
-import V05tower.Unit;
-import V05tower.Nav.Navigator;
+import V07.FastIntSet;
+import V07.Nav.Navigator;
+import V07.Unit;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -27,6 +27,7 @@ public class Soldier extends Unit {
         if (mode == Modes.REFILL) {
             targetLocation = getClosestLocation(paintTowerLocations);
             move();
+            // TODO: betterize this
             if (rc.getPaint() >= 15 && targetLocation != null && rc.getLocation().distanceSquaredTo(targetLocation) < rc.getPaint() + 10) {
                 paintBelow();
             }
@@ -65,7 +66,9 @@ public class Soldier extends Unit {
             tessellate();
         }
 
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200) canCompletePattern();
+        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
+            canCompletePattern();
+
         debug();
     }
 
@@ -306,15 +309,11 @@ public class Soldier extends Unit {
 
     static boolean isSecondary;
     // TODO: overhaul this
-    public static UnitType getTowerType() {
-        if (rc.getNumberTowers() < 6) {
-            if (rc.getNumberTowers() % 3 == 0) {
-                return UnitType.LEVEL_ONE_MONEY_TOWER;
-            } else {
-                return UnitType.LEVEL_ONE_PAINT_TOWER;
-            }
+    public static UnitType getTowerType() throws GameActionException {
+        if(rc.getNumberTowers() % 3 == 0) {
+            return UnitType.LEVEL_ONE_PAINT_TOWER;
         } else {
-            return rc.getNumberTowers() % 6 <= 2 ? UnitType.LEVEL_ONE_MONEY_TOWER : UnitType.LEVEL_ONE_PAINT_TOWER;
+            return UnitType.LEVEL_ONE_MONEY_TOWER;
         }
     }
 
