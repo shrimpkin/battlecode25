@@ -16,12 +16,15 @@ public class Soldier extends Unit {
     // BOOM
     static MapLocation ruinTarget;
     static MapLocation lastRuinTarget;
+    static int roundNum;
 
     public static void run() throws GameActionException {
         indicator = "";
         Modes prev = mode;
+        roundNum = rc.getRoundNum();
+
         updateMode();
-        if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = rc.getRoundNum();
+        if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
         updateTowerLocations();
 
         if (mode == Modes.REFILL) {
@@ -63,11 +66,19 @@ public class Soldier extends Unit {
         attack();
 
         if (rc.getChips() < 800 && mode != Modes.REFILL || rc.getPaint() > 150 ) { // not interfering with ruin construction
-            tessellate();
+            tessellate(); // 2600 bytecode
+
         }
 
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
+        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200) {
+            int start = Clock.getBytecodeNum();
+
             canCompletePattern();
+
+            int end = Clock.getBytecodeNum();
+    
+            System.out.println((end - start));
+        }
 
         debug();
     }
@@ -77,28 +88,27 @@ public class Soldier extends Unit {
     }
 
     public static boolean paintSRP(MapInfo tile) throws GameActionException {
-        // can't paint over enemy paint
-        if (tile.getPaint().isEnemy()) return false;
-        // don't paint on the ruin tiles
-        if (tile.hasRuin()) return false;
-        // prioritize painting non-ally tiles in early game
-        if (rc.getRoundNum() < 50 && tile.getPaint().isAlly()) return false;
         MapLocation loc = tile.getMapLocation();
-        for (var ruin : nearbyRuins) {
+        boolean isSecondary = shouldBeSecondary(loc);
+        PaintType idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
+        PaintType paintType = tile.getPaint();
+
+        if(!rc.canAttack(loc)) return false;
+        if (paintType.isEnemy()) return false;
+        if (tile.hasRuin()) return false;
+        if (roundNum < 50 && paintType.isAlly()) return false;
+        if(paintType.equals(idealPaint)) return false;
+
+        for (MapLocation ruin : nearbyRuins) {
             if (rc.canSenseRobotAtLocation(ruin)) continue; // only consider unbuilt ruins
             if (ruin.isWithinDistanceSquared(loc, 8)) {
                 return false; // inside the 5x5 area of an unbuilt ruin -- don't tessellate here
             }
         }
 
-        boolean isSecondary = shouldBeSecondary(loc);
-        var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
-        if (rc.canAttack(loc) && !tile.getPaint().equals(idealPaint) ) {
-            rc.setIndicatorDot(loc, 40, 40, 128);
-            rc.attack(loc, isSecondary);
-            return true;
-        }
-        return false;
+        rc.setIndicatorDot(loc, 40, 40, 128);
+        rc.attack(loc, isSecondary);
+        return true;        
     }
 
     /** Paint SRP patterns (tmp) */
@@ -117,12 +127,12 @@ public class Soldier extends Unit {
 
         // intermittent rushing in midgame
         var span = Math.max(mapHeight, mapWidth);
-        if (rc.getRoundNum() > 200 && rc.getPaint() > 2*span && rc.getRoundNum() % 100 < span) {
+        if (roundNum > 200 && rc.getPaint() > 2*span && roundNum % 100 < span) {
             mode = Modes.ATTACK;
             return;
         }
 
-        if(rc.getPaint() <= 40 && rc.getRoundNum() - lastRefillEnd > 10) {
+        if(rc.getPaint() <= 40 && roundNum - lastRefillEnd > 10) {
             mode = Modes.REFILL;
             if (ruinTarget != null) {
                 lastRuinTarget = ruinTarget;

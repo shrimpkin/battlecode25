@@ -15,7 +15,7 @@ public class Globals {
     public static Team opponentTeam;
     public static int mapWidth;
     public static int mapHeight;
-    public static boolean in_debug = true;
+    public static boolean in_debug = false;
     public static final Random rng = new Random(6147);
     // stealing an LCG cause nextInt is a bytecode hog
     private static long seed = -1;
