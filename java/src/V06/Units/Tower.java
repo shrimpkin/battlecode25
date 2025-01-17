@@ -101,9 +101,11 @@ public class Tower extends Unit {
 
     /** Upgrade tower at robot's location */
     public static void upgradeTower() throws GameActionException {
+        if (!isPaintTower(rc.getType()))
+            return; // only upgrade paint towers
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (rc.getMoney() <= 3000)
+        if (rc.getMoney() <= 2000)
             return; // BROKE
 
         rc.upgradeTower(rc.getLocation());
