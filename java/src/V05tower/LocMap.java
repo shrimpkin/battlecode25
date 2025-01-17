@@ -9,8 +9,7 @@ public class LocMap {
     private final RobotController rc;
 
     private static final String repr = "\0".repeat(4096); // very cheap for some reason
-    private static final int SEEN_BIT = 1, WALL_BIT = 2, RUIN_BIT = 4;
-
+    private static final int SEEN_BIT = 1, WALL_BIT = 2, RUIN_BIT = 4, ALLY_PAINT_BIT = 8, ENEMY_PAINT_BIT = 16;
     // additional possible additions:
     // ENEMY_ROBOT_BIT = 8, ENEMY_TOWER_BIT = 16, ALLY_ROBOT_BIT = 32, ALLY_TOWER_BIT = 64
 
@@ -27,12 +26,13 @@ public class LocMap {
 
     /** Marks location */
     public void mark(MapLocation loc) throws GameActionException {
-        char v = SEEN_BIT;
-        var mapinfo = rc.senseMapInfo(loc);
-        if (mapinfo.hasRuin()) v |= RUIN_BIT;
-        if (mapinfo.isWall()) v |= WALL_BIT;
-
-        marked[loc.x * rc.getMapHeight() + loc.y] = v;
+//        char v = SEEN_BIT;
+//        var mapinfo = rc.senseMapInfo(loc);
+//        if (mapinfo.hasRuin()) v |= RUIN_BIT;
+//        if (mapinfo.isWall()) v |= WALL_BIT;
+//        if (mapinfo.getPaint().isAlly()) v |= ALLY_PAINT_BIT;
+//        if (mapinfo.getPaint().isEnemy()) v |= ENEMY_PAINT_BIT;
+        marked[loc.x * rc.getMapHeight() + loc.y] = SEEN_BIT;
     }
 
     /** Removes all marks */

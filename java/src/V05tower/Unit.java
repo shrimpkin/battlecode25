@@ -9,28 +9,24 @@ public class Unit extends Globals {
     public static FastIntSet paintTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     public static FastIntSet unusedRuinLocations = new FastIntSet();
+    public static MapLocation[] nearbyRuins;
     public static String indicator;
     public static LocMap vis = new LocMap(rc);
+    protected static int[][] pattern = {
+            {1, 1, 0, 1, 1},
+            {1, 0, 0, 0, 1},
+            {0, 0, 1, 0, 0},
+            {1, 0, 0, 0, 1},
+            {1, 1, 0, 1, 1}
+    };
     static int spawnRound = rc.getRoundNum();
     // round which the last wander target was chosen -- to check timeout
     private static int lastWanderTargetTime = rc.getRoundNum();
     // last time location mapping was updated -- for staggering every 4 rounds
     private static int lastSeenUpdateTime = rc.getRoundNum();
 
-    /**  Look nearby for a ruin */
-    public static MapLocation findRuin() throws GameActionException {
-        MapLocation[] tiles = rc.senseNearbyRuins(-1);
-        for (MapLocation tile : tiles) {
-            if (rc.senseRobotAtLocation(tile) == null)
-                return tile;
-        }
-        return null;
-    }
-
     public static void wander(boolean wasWandering) throws GameActionException {
-        if (!rc.isMovementReady())
-            return; // cannot move yet
-
+        if (!rc.isMovementReady()) return; // cannot move yet
         // pick a new place to go if we don't have one -- or tried to go somewhere for too long
         if (!wasWandering
                 || wanderTarget != null && wanderTarget.isWithinDistanceSquared(rc.getLocation(), 9)
@@ -42,14 +38,7 @@ public class Unit extends Globals {
             wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
-        // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
         Navigator.moveTo(wanderTarget);
-
-
-        if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
-            updateSeen();
-            lastSeenUpdateTime = rc.getRoundNum();
-        }
     }
 
     /**
@@ -73,17 +62,19 @@ public class Unit extends Globals {
         // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
         Navigator.moveTo(wanderTarget);
 
-        if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
+        if ((rc.getRoundNum() - lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
             updateSeen();
             lastSeenUpdateTime = rc.getRoundNum();
         }
     }
 
-    /** Maintains correctness of tower sets */
+    /**
+     * Maintains correctness of tower sets
+     */
     public static void updateTowerLocations() throws GameActionException {
-        MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
+        nearbyRuins = rc.senseNearbyRuins(-1);
 
-        for (MapLocation ruin : ruinLocations) {
+        for (MapLocation ruin : nearbyRuins) {
             RobotInfo robot = rc.senseRobotAtLocation(ruin);
             int packedLocation = pack(ruin);
 
@@ -107,7 +98,9 @@ public class Unit extends Globals {
         }
     }
 
-    /** Gets closest location to robot in provided location set */
+    /**
+     * Gets closest location to robot in provided location set
+     */
     public static MapLocation getClosestLocation(FastIntSet locType) throws GameActionException {
         MapLocation closest = null;
         MapLocation loc = rc.getLocation();
@@ -125,13 +118,15 @@ public class Unit extends Globals {
         return closest;
     }
 
-    /** Tries to take paint from last recorded paint tower */
+    /**
+     * Tries to take paint from last recorded paint tower
+     */
     public static boolean requestPaint(MapLocation tower, int amount) throws GameActionException {
         if (tower == null)
             return false; // no paint tower to go to
         if (!rc.canSenseLocation(tower))
             return false; // cannot sense paint tower
-        if(rc.senseRobotAtLocation(tower) == null) 
+        if (rc.senseRobotAtLocation(tower) == null)
             return false; // no longer a paint tower there
 
         int amtPaintInTower = rc.senseRobotAtLocation(tower).getPaintAmount();
@@ -145,9 +140,11 @@ public class Unit extends Globals {
         return false;
     }
 
-    /** Checks nearby allies and paints and moves away from them to mitigate crowd penalty */
+    /**
+     * Checks nearby allies and paints and moves away from them to mitigate crowd penalty
+     */
     // TODO: this eats a lot of bytecode i think...
-    // I think we are under 1500 now, this completely depends on robot density though 
+    // I think we are under 1500 now, this completely depends on robot density though
     public static void recenter() throws GameActionException {
         MapInfo[] adjacentLocations = rc.senseNearbyMapInfos(rc.getLocation(), 2);
         RobotInfo[] robots = rc.senseNearbyRobots(8);
@@ -166,15 +163,15 @@ public class Unit extends Globals {
                 weights[i] += GameConstants.PENALTY_ENEMY_TERRITORY;
             } else if (info.getPaint() == PaintType.EMPTY) {
                 weights[i] += GameConstants.PENALTY_NEUTRAL_TERRITORY;
-            }     
+            }
         }
 
         // weight robots
-        for(RobotInfo robot : robots) {
+        for (RobotInfo robot : robots) {
             for (int i = 0; i < adjacentLocations.length; i++) {
                 MapInfo info = adjacentLocations[i];
                 if (info.getMapLocation().distanceSquaredTo(robot.getLocation()) <= 2) {
-                    weights[i] += 1 * (rc.getTeam() == myTeam ? 1 : 2); //I don't know where the adjacent robot penalty is 
+                    weights[i] += 1 * (rc.getTeam() == myTeam ? 1 : 2); //I don't know where the adjacent robot penalty is
                 }
             }
         }
@@ -195,7 +192,7 @@ public class Unit extends Globals {
         for (int i = 0; i < adjacentLocations.length; i++) {
             weight_info += "\n" + adjacentLocations[i].getMapLocation().toString() + "--" + weights[i];
         }
-        if(should_print) System.out.println(weight_info);
+        if (should_print) System.out.println(weight_info);
 
         int minWeight = Integer.MAX_VALUE;
         int minWeightIdx = -1;
@@ -214,14 +211,14 @@ public class Unit extends Globals {
             }
         }
     }
-    
 
     /// /////////////////////////////////////////////
 
     // update seen locations in visited set
-    private static void updateSeen() throws GameActionException {
-        for (MapInfo loc : rc.senseNearbyMapInfos()) {
-            vis.mark(loc.getMapLocation());
+    public static void updateSeen() throws GameActionException {
+        var nearby = rc.senseNearbyMapInfos();
+        for (int i = nearby.length - 1; i --> 0;) {
+            vis.mark(nearby[i].getMapLocation());
         }
     }
 
@@ -251,18 +248,10 @@ public class Unit extends Globals {
         return ret;
     }
 
-    protected static int[][] pattern = {
-            {1,1,0,1,1},
-            {1,0,0,0,1},
-            {0,0,1,0,0},
-            {1,0,0,0,1},
-            {1,1,0,1,1}
-    };
-
     public static void canCompletePattern() throws GameActionException {
         for (MapInfo tile : rc.senseNearbyMapInfos()) {
             MapLocation loc = tile.getMapLocation();
-            if(loc.x % 4 != 2 || loc.y % 4 != 2) 
+            if (loc.x % 4 != 2 || loc.y % 4 != 2)
                 continue; // not a center location
             if (rc.canCompleteResourcePattern(loc)) {
                 rc.completeResourcePattern(loc);

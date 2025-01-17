@@ -1,171 +1,156 @@
 package V05tower.Nav;
 
 import V05tower.FastIntSet;
-import V05tower.FastLocSet;
 import V05tower.Globals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 
 public class BugNavigator extends Globals {
-    static final int LEFT = 0, RIGHT = 1;
-    public static int stuckCnt;
-    private static MapLocation target = null;
+    private static MapLocation currentTarget;
 
-    public static void move(MapLocation loc) throws GameActionException {
-        if (!rc.isMovementReady() || loc == null) return;
-        target = loc;
-        var dir = BugNav.getMoveDir();
-        if (dir == null) return;
-        if (rc.canMove(dir)) rc.move(dir);
-    }
+    private static int minDistanceToTarget;
+    private static boolean obstacleOnRight;
+    private static MapLocation currentObstacle;
+    private static FastIntSet visitedStates;
+    private static final Direction[] adjacentDirections = {
+            Direction.NORTH,
+            Direction.EAST,
+            Direction.SOUTH,
+            Direction.WEST,
+            Direction.NORTHEAST,
+            Direction.SOUTHEAST,
+            Direction.SOUTHWEST,
+            Direction.NORTHWEST
+    };
 
-    public class BugNav {
-        static final int MAX_DEPTH = 20, BC_CUTOFF = 6000;
-        static DirStack stk = new DirStack();
-        static MapLocation prevTarget = null;
-        static FastLocSet vis = new FastLocSet();
-        static int currentTurnDir = 0;
-        static int stkDepthCutoff = 8;
-        static int lastMoveRound = -1;
-
-        static void resetPathfinding() {
-            stkDepthCutoff = 8;
-            stk.clear();
-            stuckCnt = 0;
-            vis.clear();
+    public static void moveTo(MapLocation target) throws GameActionException {
+        if (currentTarget == null || !currentTarget.equals(target)) {
+            reset();
         }
 
-        static Direction turn(Direction dir) {
-            return currentTurnDir == 0 ? dir.rotateLeft() : dir.rotateRight();
+        boolean hasOptions = false;
+        for (int i = adjacentDirections.length; --i >= 0; ) {
+            if (rc.canMove(adjacentDirections[i])) {
+                hasOptions = true;
+                break;
+            }
         }
 
-        static Direction turn(Direction dir, int turnDir) {
-            return turnDir == 0 ? dir.rotateLeft() : dir.rotateRight();
+        if (!hasOptions) return;
+
+        MapLocation myLocation = rc.getLocation();
+
+        int distanceToTarget = Math.max(Math.abs(myLocation.x - target.x), Math.abs(myLocation.y - target.y));
+        if (distanceToTarget < minDistanceToTarget) {
+            reset();
+            minDistanceToTarget = distanceToTarget;
         }
 
-        static Direction getMoveDir() throws GameActionException {
-            if (rc.getRoundNum() == lastMoveRound) return null;
-            lastMoveRound = rc.getRoundNum();
-            if (prevTarget == null || target.distanceSquaredTo(prevTarget) < 2) resetPathfinding();
-            if (vis.contains(rc.getLocation())) stuckCnt++;
-            else {
-                stuckCnt = 0;
-                vis.add(rc.getLocation());
+        if (currentObstacle != null && rc.canSenseLocation(currentObstacle) && rc.sensePassability(currentObstacle)) {
+            reset();
+        }
+
+        if (!visitedStates.add(getState(target))) {
+            reset();
+        }
+
+        currentTarget = target;
+
+        if (currentObstacle == null) {
+            Direction forward = myLocation.directionTo(target);
+            if (rc.canMove(forward)) {
+                rc.move(forward);
+                return;
             }
 
-            if (stk.size == 0) {
-                stkDepthCutoff = 8;
-                var dir = rc.getLocation().directionTo(target);
-                if (rc.canMove(dir)) return dir;
-                if (rc.canSenseLocation(rc.getLocation().add(dir))) {
-                    Direction dl = dir.rotateLeft(), dr = dir.rotateRight();
-                    MapLocation l = rc.getLocation().add(dl), r = rc.getLocation().add(dr);
-                    if (target.distanceSquaredTo(l) < target.distanceSquaredTo(r)) {
-                        if (rc.canMove(dl)) return dl;
-                        if (rc.canMove(dr)) return dr;
-                    } else {
-                        if (rc.canMove(dr)) return dr;
-                        if (rc.canMove(dl)) return dl;
-                    }
-                }
-                currentTurnDir = getTurnDir(dir);
-                while (!rc.canMove(dir) && stk.size < 8) {
-                    if (!rc.onTheMap(rc.getLocation().add(dir))) {
-                        currentTurnDir ^= 1;
-                        stk.clear();
-                        return null;
-                    }
-                    stk.push(dir);
-                    dir = turn(dir);
-                }
-                if (stk.size != 8) return dir;
-            } else {
-                if (stk.size > 1 && rc.canMove(stk.top(2))) {
-                    stk.pop(2);
-                } else if (stk.size == 1 && rc.canMove(turn(stk.top(), 1 - currentTurnDir))) {
-                    Direction d = turn(stk.top(), 1 - currentTurnDir);
-                    stk.pop();
-                    return d;
-                }
-                while (stk.size > 0 && rc.canMove(stk.top())) {
-                    stk.pop();
-                }
-                if (stk.size == 0) {
-                    var dir = rc.getLocation().directionTo(target);
-                    if (rc.canMove(dir)) return dir;
-                    if (rc.canSenseLocation(rc.getLocation().add(dir))) {
-                        Direction dl = dir.rotateLeft(), dr = dir.rotateRight();
-                        MapLocation l = rc.getLocation().add(dl), r = rc.getLocation().add(dr);
-                        if (target.distanceSquaredTo(l) < target.distanceSquaredTo(r)) {
-                            if (rc.canMove(dl)) return dl;
-                            if (rc.canMove(dr)) return dr;
-                        } else {
-                            if (rc.canMove(dr)) return dr;
-                            if (rc.canMove(dl)) return dl;
-                        }
-                    }
-                    stk.push(dir);
-                }
-                Direction curDir;
-                int stkSizeLim = Math.min(stk.size + 8, DirStack.STACK_SIZE);
-                while (stk.size > 0 && !rc.canMove(curDir = stk.top())) {
-                    if (!rc.onTheMap(rc.getLocation().add(curDir))) {
-                        currentTurnDir ^= 1;
-                        stk.clear();
-                        return null;
-                    }
-                    stk.push(curDir);
-                    if (stk.size == stkSizeLim) {
-                        stk.clear();
-                        return null;
-                    }
-                }
-                if (stk.size >= stkDepthCutoff) {
-                    int cutoff = stkDepthCutoff + 8;
-                    stk.clear();
-                    stkDepthCutoff = cutoff;
-                }
-                Direction moveDir = stk.size == 0 ? stk.dirs[0] : turn(stk.top());
-                if (rc.canMove(moveDir)) return moveDir;
+            setInitialDirection();
+        }
+
+        followWall(true);
+    }
+
+    public static void reset() {
+        currentTarget = null;
+        minDistanceToTarget = Integer.MAX_VALUE;
+        obstacleOnRight = true;
+        currentObstacle = null;
+        visitedStates = new FastIntSet();
+    }
+
+    private static void setInitialDirection() throws GameActionException {
+        MapLocation myLocation = rc.getLocation();
+        Direction forward = myLocation.directionTo(currentTarget);
+
+        Direction left = forward.rotateLeft();
+        for (int i = 8; --i >= 0; ) {
+            MapLocation location = rc.adjacentLocation(left);
+            if (rc.onTheMap(location) && rc.sensePassability(location)) {
+                break;
             }
-            return null;
+
+            left = left.rotateLeft();
         }
 
-        static int getTurnDir(Direction dir) throws GameActionException {
-            return nextInt() % 2;
+        Direction right = forward.rotateRight();
+        for (int i = 8; --i >= 0; ) {
+            MapLocation location = rc.adjacentLocation(right);
+            if (rc.onTheMap(location) && rc.sensePassability(location)) {
+                break;
+            }
+
+            right = right.rotateRight();
+        }
+
+        MapLocation leftLocation = rc.adjacentLocation(left);
+        MapLocation rightLocation = rc.adjacentLocation(right);
+
+        int leftDistance = Math.max(Math.abs(leftLocation.x - currentTarget.x), Math.abs(leftLocation.y - currentTarget.y));
+        int rightDistance = Math.max(Math.abs(rightLocation.x - currentTarget.x), Math.abs(rightLocation.y - currentTarget.y));
+
+        if (leftDistance < rightDistance) {
+            obstacleOnRight = true;
+        } else if (rightDistance < leftDistance) {
+            obstacleOnRight = false;
+        } else {
+            obstacleOnRight = myLocation.distanceSquaredTo(leftLocation) < myLocation.distanceSquaredTo(rightLocation);
+        }
+
+        if (obstacleOnRight) {
+            currentObstacle = rc.adjacentLocation(left.rotateRight());
+        } else {
+            currentObstacle = rc.adjacentLocation(right.rotateLeft());
         }
     }
-}
 
+    private static void followWall(boolean canRotate) throws GameActionException {
+        Direction direction = rc.getLocation().directionTo(currentObstacle);
 
-class DirStack {
-    static int STACK_SIZE = 60;
-    int size = 0;
-    Direction[] dirs = new Direction[STACK_SIZE];
+        for (int i = 8; --i >= 0; ) {
+            direction = obstacleOnRight ? direction.rotateLeft() : direction.rotateRight();
+            if (rc.canMove(direction)) {
+                rc.move(direction);
+                return;
+            }
 
-    final void clear() {
-        size = 0;
+            MapLocation location = rc.adjacentLocation(direction);
+            if (canRotate && !rc.onTheMap(location)) {
+                obstacleOnRight = !obstacleOnRight;
+                followWall(false);
+                return;
+            }
+
+            if (rc.onTheMap(location) && !rc.sensePassability(location)) {
+                currentObstacle = location;
+            }
+        }
     }
 
-    final void push(Direction d) {
-        dirs[size++] = d;
+    private static char getState(MapLocation target) {
+        MapLocation myLocation = rc.getLocation();
+        Direction direction = myLocation.directionTo(currentObstacle != null ? currentObstacle : target);
+        int rotation = obstacleOnRight ? 1 : 0;
+        return (char) ((((myLocation.x << 6) | myLocation.y) << 4) | (direction.ordinal() << 1) | rotation);
     }
 
-    final Direction top() {
-        return dirs[size - 1];
-    }
-
-    /// gets the nth element from the top
-    final Direction top(int n) {
-        return dirs[size - n];
-    }
-
-    final void pop() {
-        size--;
-    }
-
-    final void pop(int n) {
-        size -= n;
-    }
 }

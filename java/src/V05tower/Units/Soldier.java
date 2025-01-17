@@ -8,23 +8,28 @@ import battlecode.common.*;
 public class Soldier extends Unit {
     static FastIntSet symmetryLocations = new FastIntSet();
     static MapLocation targetLocation = null;
-
+    static int lastRefillEnd;
     // RUSH
     static boolean addedPaintTowerSymmetryLocs = false;
     static boolean addedMoneyTowerSymmetryLocs = false;
 
     // BOOM
     static MapLocation ruinTarget;
+    static MapLocation lastRuinTarget;
 
     public static void run() throws GameActionException {
         indicator = "";
-
+        Modes prev = mode;
         updateMode();
+        if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = rc.getRoundNum();
         updateTowerLocations();
+
+        if (rc.getRoundNum() > 1200) rc.resign();
+
         if (mode == Modes.REFILL) {
             targetLocation = getClosestLocation(paintTowerLocations);
             move();
-            if (rc.getPaint() >= 15) {
+            if (rc.getPaint() >= 15 && rc.getLocation().distanceSquaredTo(targetLocation) < rc.getPaint() + 10) {
                 paintBelow();
             }
             requestPaint(targetLocation, 200);
@@ -38,29 +43,31 @@ public class Soldier extends Unit {
         }
 
         if (mode == Modes.BOOM) {
-            findValidTowerPosition();
-            markOneRuinTile();
-
-            targetLocation = getClosestUnpaintedTarget();
+            if (lastRuinTarget != null && !rc.canSenseLocation(lastRuinTarget)) {
+                targetLocation = lastRuinTarget;
+                rc.setIndicatorDot(lastRuinTarget, 255, 255, 0);
+            } else {
+                lastRuinTarget = null;
+                findValidTowerPosition(); // 1030 bytecode
+                markOneRuinTile();
+                targetLocation = getClosestUnpaintedTarget();
+            }
             // NAV NOT CLOSE ENOUGH
             if (targetLocation != null && rc.canMove(rc.getLocation().directionTo(targetLocation))) {
                 rc.move(rc.getLocation().directionTo(targetLocation));
             }
-            paintTowerPattern();
+            paintTowerPattern(); // 1614 bytecode
             move();
             paintBelow();
         }
+        updateSeen();
         attack();
 
-        if (rc.getChips() < 800 || rc.getPaint() > 150) { // not interfering with ruin construction
-            if (ruinTarget == null || !ruinTarget.isWithinDistanceSquared(rc.getLocation(), 8)){
-                tessellate();
-            }
+        if (rc.getChips() < 800 && mode != Modes.REFILL || rc.getPaint() > 150 ) { // not interfering with ruin construction
+            tessellate();
         }
 
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
-            canCompletePattern();
-
+        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200) canCompletePattern();
         debug();
     }
 
@@ -68,42 +75,58 @@ public class Soldier extends Unit {
         return pattern[loc.x % 4][loc.y % 4] == 1;
     }
 
+    public static boolean paintSRP(MapInfo tile) throws GameActionException {
+        // can't paint over enemy paint
+        if (tile.getPaint().isEnemy()) return false;
+        // don't paint on the ruin tiles
+        if (tile.hasRuin()) return false;
+        // prioritize painting non-ally tiles in early game
+        if (rc.getRoundNum() < 50 && tile.getPaint().isAlly()) return false;
+        MapLocation loc = tile.getMapLocation();
+        for (var ruin : nearbyRuins) {
+            if (rc.canSenseRobotAtLocation(ruin)) continue; // only consider unbuilt ruins
+            if (ruin.isWithinDistanceSquared(loc, 8)) {
+                return false; // inside the 5x5 area of an unbuilt ruin -- don't tessellate here
+            }
+        }
+
+        boolean isSecondary = shouldBeSecondary(loc);
+        var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
+        if (rc.canAttack(loc) && !tile.getPaint().equals(idealPaint) ) {
+            rc.setIndicatorDot(loc, 40, 40, 128);
+            rc.attack(loc, isSecondary);
+            return true;
+        }
+        return false;
+    }
+
     /** Paint SRP patterns (tmp) */
     public static void tessellate() throws GameActionException {
-        for (MapInfo tile : rc.senseNearbyMapInfos()) {
-            if (tile.getPaint().isEnemy())
-                continue; // can't paint over enemy paint
-
-            if(ruinTarget != null && tile.getMapLocation().distanceSquaredTo(ruinTarget) <= 8) 
-                continue; //we might be painting this ruin 
-
-            MapLocation loc = tile.getMapLocation();    
-            boolean isSecondary = shouldBeSecondary(loc);
-            var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
-            if (rc.canAttack(loc) && !rc.senseMapInfo(loc).getPaint().equals(idealPaint) && !rc.senseMapInfo(loc).hasRuin()) {
-                rc.setIndicatorDot(loc, 40, 40, 128);
-                rc.attack(loc, isSecondary);
-            }    
+        for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
+            if (paintSRP(tile)) return;
         }
     }
 
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
     public static void updateMode() throws GameActionException {
-        
-
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
             mode = Modes.ATTACK;
             return;
         }
 
         // intermittent rushing in midgame
-        if (rc.getRoundNum() > 200 && rc.getRoundNum() % 100 < 25) {
+        var span = Math.max(mapHeight, mapWidth);
+        if (rc.getRoundNum() > 200 && rc.getPaint() > 2*span && rc.getRoundNum() % 100 < span) {
             mode = Modes.ATTACK;
             return;
         }
 
-        if(rc.getPaint() <= 40 && rc.senseNearbyRobots(-1, myTeam).length < 5) {
+        if(rc.getPaint() <= 40 && rc.getRoundNum() - lastRefillEnd > 10) {
             mode = Modes.REFILL;
+            if (ruinTarget != null) {
+                lastRuinTarget = ruinTarget;
+                indicator += "last ruin target: " + ruinTarget;
+            }
             return;
         }
 
@@ -113,7 +136,6 @@ public class Soldier extends Unit {
         }
 
         mode = Modes.BOOM;
-        return;
     }
 
     /************************************************************************\
@@ -201,15 +223,12 @@ public class Soldier extends Unit {
         MapLocation locationToMark = null;
         for (int i = 0; i < unusedRuinLocations.size; i++) {
             MapLocation ruinLocation = unpack(unusedRuinLocations.keys.charAt(i));
-
-            if (!rc.canSenseLocation(ruinLocation))
-                continue;
+            if (!rc.canSenseLocation(ruinLocation)) continue;
 
             MapInfo[] squaresToMark = rc.senseNearbyMapInfos(ruinLocation, 8);
             for (MapInfo info : squaresToMark) {
                 PaintType paint = info.getPaint();
-                if (paint.isAlly())
-                    return;
+                if (paint.isAlly()) return;
 
                 if (paint.equals(PaintType.EMPTY) && rc.canAttack(info.getMapLocation())) {
                     locationToMark = info.getMapLocation();
@@ -255,11 +274,10 @@ public class Soldier extends Unit {
             }
             if(numNearbySoliders > 2) continue;
 
-            
+
             RobotInfo robot = rc.senseRobotAtLocation(ruin);
 
-            if (robot != null)
-                continue;
+            if (robot != null) continue;
 
             MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruin, 8);
             boolean hasEnemyPaint = false;
@@ -272,13 +290,14 @@ public class Soldier extends Unit {
             }
 
             boolean isCloser;
-            if(ruinTarget != null) isCloser = rc.getLocation().distanceSquaredTo(ruin) < rc.getLocation().distanceSquaredTo(ruinTarget);
+            if(ruinTarget != null)
+                isCloser = rc.getLocation().distanceSquaredTo(ruin) < rc.getLocation().distanceSquaredTo(ruinTarget);
             else isCloser = true;
 
-            MapLocation center = new MapLocation(mapWidth / 2, mapHeight / 2);
-            boolean isClosestToCenter;
-            if(ruinTarget != null) isClosestToCenter = center.distanceSquaredTo(ruin) < center.distanceSquaredTo(ruinTarget);
-            else isClosestToCenter = true;
+//            MapLocation center = new MapLocation(mapWidth / 2, mapHeight / 2);
+//            boolean isClosestToCenter;
+//            if(ruinTarget != null) isClosestToCenter = center.distanceSquaredTo(ruin) < center.distanceSquaredTo(ruinTarget);
+//            else isClosestToCenter = true;
 
             if (!hasEnemyPaint && isCloser) {
                 ruinTarget = ruin;
@@ -289,11 +308,15 @@ public class Soldier extends Unit {
 
     static boolean isSecondary;
     // TODO: overhaul this
-    public static UnitType getTowerType() throws GameActionException {
-        if(rc.getNumberTowers() % 3 == 0) {
-            return UnitType.LEVEL_ONE_MONEY_TOWER;
+    public static UnitType getTowerType() {
+        if (rc.getNumberTowers() < 6) {
+            if (rc.getNumberTowers() % 3 == 0) {
+                return UnitType.LEVEL_ONE_MONEY_TOWER;
+            } else {
+                return UnitType.LEVEL_ONE_PAINT_TOWER;
+            }
         } else {
-            return UnitType.LEVEL_ONE_PAINT_TOWER;
+            return rc.getNumberTowers() % 6 <= 2 ? UnitType.LEVEL_ONE_MONEY_TOWER : UnitType.LEVEL_ONE_PAINT_TOWER;
         }
     }
 
@@ -306,14 +329,14 @@ public class Soldier extends Unit {
         }
 
         UnitType towerType = getTowerType();
-        
+
 
         MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruinTarget, 8);
         boolean[][] paintPattern = rc.getTowerPattern(towerType);
-        
+
         for (MapInfo info : ruinSurroundings) {
             MapLocation loc = info.getMapLocation();
-                
+
             if (info.hasRuin()) continue; // can't paint ruin
 
             int x = ruinTarget.x - loc.x + 2;
@@ -356,15 +379,7 @@ public class Soldier extends Unit {
 
     /** Paints square below unit */
     public static void paintBelow() throws GameActionException {
-        MapLocation myLocation = rc.getLocation();
-        if (!rc.senseMapInfo(myLocation).getPaint().equals(PaintType.EMPTY))
-            return; // tile is already painted
-
-        var isSecondary = shouldBeSecondary(myLocation);
-        var idealPaint = isSecondary ? PaintType.ALLY_SECONDARY : PaintType.ALLY_PRIMARY;
-        if (rc.canAttack(myLocation) && !rc.senseMapInfo(myLocation).getPaint().equals(idealPaint)) {
-            rc.attack(myLocation, isSecondary);
-        }
+        paintSRP(rc.senseMapInfo(rc.getLocation()));
     }
 
     /** Attacks enemy towers */
@@ -383,49 +398,23 @@ public class Soldier extends Unit {
 
     /** Prints all debug info */
     public static void debug() {
-        if (!in_debug)
-            return;
+        if (!in_debug) return;
 
-        switch (mode) {
-            case BOOM:
-                indicator += "Boom: ";
-                break;
-            case NONE:
-                indicator += "None: ";
-                break;
-            case RUSH:
-                indicator += "Rush: ";
-                break;
-            case SIT:
-                indicator += "Sit: ";
-                break;
-            case REFILL:
-                indicator += "Getting Paint: ";
-                break;
-            default:
-                break;
-        }
-
-        indicator += "Move Target: ";
-        if (targetLocation != null) {
-            indicator += targetLocation.toString() + "\n";
-        } else {
-            indicator += "null target\n";
-        }
+        indicator += mode + ": Move Target: " + targetLocation + "\n";
 
         if (mode == Modes.RUSH) {
             for (int i = 0; i < enemyTowerLocations.size; i++) {
-                indicator += unpack(enemyTowerLocations.keys.charAt(i)).toString() + ", \n";
+                indicator += unpack(enemyTowerLocations.keys.charAt(i)) + ", \n";
             }
 
             for (int i = 0; i < symmetryLocations.size; i++) {
-                indicator += unpack(symmetryLocations.keys.charAt(i)).toString() + ", \n";
+                indicator += unpack(symmetryLocations.keys.charAt(i)) + ", \n";
             }
         }
 
         if (mode == Modes.BOOM) {
             if (ruinTarget != null)
-                indicator += "ruin_target: " + ruinTarget.toString();
+                indicator += "ruin_target: " + ruinTarget;
         }
 
         rc.setIndicatorString(indicator);

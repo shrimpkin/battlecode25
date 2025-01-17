@@ -3,7 +3,6 @@ package V05tower.Nav;
 import V05tower.Globals;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 
 
@@ -36,24 +35,24 @@ public class Navigator extends Globals {
         }
 
         if (roundsSinceMovingCloserToTarget < 3) {
-            Direction bellmanFordDirection = BellmanFordNavigator.getBestDirection(target);
+            Direction bellmanFordDirection = NewBellmanFordNavigator.getBestDirection(target);
             if (bellmanFordDirection != null) {
-                
+
                 if (rc.canMove(bellmanFordDirection)) {
                     rc.move(bellmanFordDirection);
                 }
 
                 return;
-            } 
-        } 
+            }
+        }
 
         if (!rc.isMovementReady()) {
             return;
         }
 
-        BugNavigator.move(target);
+        BugNavigator.moveTo(target);
     }
-    
+
     /**
      * @param paintless true if the robot shouldn't move onto any squares that cost paint
      */
@@ -82,20 +81,20 @@ public class Navigator extends Globals {
         if (roundsSinceMovingCloserToTarget < 3) {
             Direction bellmanFordDirection = PaintlessPath.getBestDirection(target);
             if (bellmanFordDirection != null) {
-                
+
                 if (rc.canMove(bellmanFordDirection)) {
                     rc.move(bellmanFordDirection);
                 }
 
                 return;
-            } 
-        } 
+            }
+        }
 
         if (!rc.isMovementReady()) {
             return;
         }
 
-        BugNavigator.move(target);
+        BugNavigator.moveTo(target);
     }
 
     public static void reset() {

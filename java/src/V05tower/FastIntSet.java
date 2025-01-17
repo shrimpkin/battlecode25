@@ -11,22 +11,26 @@ public class FastIntSet {
     }
 
     /** Adds element to set */
-    public void add(int i) {
+    public boolean add(int i) {
         String key = String.valueOf((char) i);
         if (keys.indexOf(key) < 0) {
             keys.append(key);
             size++;
+            return true;
         }
+        return false;
     }
 
     /** Removes an element from the set, if it's there */
-    public void remove(int i) {
+    public boolean remove(int i) {
         String key = String.valueOf((char) i);
         int index;
         if ((index = keys.indexOf(key)) >= 0) {
             keys.deleteCharAt(index);
             size--;
+            return true;
         }
+        return false;
     }
 
     /** Checks if element exists in set */
