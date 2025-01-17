@@ -9,7 +9,11 @@ public class Tower extends Unit {
 
     static int timeSinceBuilt = 0;
     static int timeSinceAttacked = 0;
-    static int timeSinceLastSoldier = 0;
+
+    // mode multipliers
+    static double tileMultiplier = ((double) mapHeight * mapWidth) / (3600.0 - 400.0); // 400-3600
+    static int minNEW = 5, maxNEW = 25;
+    static int minSTABLE = 50, maxSTABLE = 250;
 
     static boolean spawnSplasherFirst = true;
     static private Modes mode;
@@ -38,10 +42,12 @@ public class Tower extends Unit {
         if (isUnderAttack())
             return; // if true, mode is determined by health of tower
 
-        if (timeSinceAttacked > 150) {
+        
+        System.out.println((maxSTABLE - minSTABLE) * tileMultiplier);
+        if (timeSinceAttacked > (maxSTABLE - minSTABLE) * tileMultiplier) {
             mode = Modes.STABLE; // backline tower that is not threatened
         } else {
-            if (timeSinceBuilt <= 75) {
+            if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
                 mode = Modes.NEW;
             } else {
                 mode = Modes.NONE; // not new, not under attack, but was recently attacked
@@ -54,33 +60,37 @@ public class Tower extends Unit {
     /** Determines what units to spawn based on current mode */
     public static void spawn() throws GameActionException {
         System.out.println(((60 - mapHeight + 60 - mapWidth) / 2));
-        if (mode == Modes.NEW || timeSinceBuilt < ((60 - mapHeight + 60 - mapWidth) / 2)) {
+        if (mode == Modes.NEW || timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
             buildRobotType(UnitType.SOLDIER);
-            buildRobotType(UnitType.SOLDIER);
-            return;
         }
 
         if (mode == Modes.NEAR_DEATH) {
             if (timeSinceAttacked < 2) {
-                buildRobotType(UnitType.SOLDIER);
-                buildRobotType(UnitType.SOLDIER);
-            } 
-        }
-
-        if (mode == Modes.UNDER_ATTACK) {
-            if (rc.getRoundNum() % rc.getNumberTowers() == 0) {
                 buildRobotType(UnitType.SOLDIER);
             } else {
                 spawnDefense();
             }
         }
 
-        if (mode == Modes.NONE || mode == Modes.STABLE) {
+        if (mode == Modes.UNDER_ATTACK) {
+            buildRobotType(UnitType.SOLDIER);
             spawnDefense();
+        }
 
-            if (rc.getRoundNum() % 20 == 0) {
+        if (mode == Modes.NONE) {
+            if (rng.nextDouble() >= rc.getHealth() / 1000 / 10) {
+                buildRobotType(UnitType.SOLDIER);
+            } else {
                 spawnOffense();
-            } 
+            }
+        }
+        
+        if (mode == Modes.STABLE) {
+            if (rng.nextDouble() <= rc.getHealth() / 1000) {
+                spawnOffense();
+            } else {
+                buildRobotType(UnitType.SOLDIER);
+            }
         }
     }
 
@@ -110,13 +120,14 @@ public class Tower extends Unit {
         // }
 
         if (spawnSplasherFirst) {
-            buildRobotType(UnitType.SPLASHER);
-            buildRobotType(UnitType.MOPPER);
+            if (buildRobotType(UnitType.MOPPER) != null) {
+                spawnSplasherFirst = !spawnSplasherFirst;
+            }
         } else {
-            buildRobotType(UnitType.MOPPER);
-            buildRobotType(UnitType.SPLASHER);
+            if (buildRobotType(UnitType.SPLASHER) != null) {
+                spawnSplasherFirst = !spawnSplasherFirst;
+            }
         }
-        spawnSplasherFirst = !spawnSplasherFirst;
     }
 
     /** Upgrade tower at robot's location */
@@ -206,21 +217,16 @@ public class Tower extends Unit {
 
     /** Spawns splashers based on presence of enemy paint */
     public static void spawnDefenseSplasher() throws GameActionException {
-        if (rc.getRoundNum() < 100)
-            return; // too early in the game to spawn defense splashers?
-
         int numEnemyPaint = 0;
         MapInfo[] nearbyTiles = rc.senseNearbyMapInfos(GameConstants.BUILD_ROBOT_RADIUS_SQUARED);
         for (MapInfo tile : nearbyTiles) {
-            if (tile.getPaint().isEnemy()) {
+            if (tile.getPaint().isEnemy() || tile.getPaint() == PaintType.EMPTY) {
                 numEnemyPaint++;
             }
         }
 
         if ((double) numEnemyPaint / nearbyTiles.length > 0.4) {
-            if (rc.canBuildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST))) {
-                rc.buildRobot(UnitType.SPLASHER, rc.getLocation().add(Direction.EAST));
-            }
+            buildRobotType(UnitType.SPLASHER);
         }
     }
 
