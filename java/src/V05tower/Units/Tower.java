@@ -88,11 +88,6 @@ public class Tower extends Unit {
         }
     }
 
-    public static void spawnDefense() throws GameActionException {
-        spawnDefenseMopper();
-        spawnDefenseSplasher();
-    }
-
     /** Attacks nearest robot and then performs aoe attack */
     public static void attack() throws GameActionException {
         for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
@@ -102,18 +97,6 @@ public class Tower extends Unit {
             }
         }
         rc.attack(null);
-    }
-
-    public static void spawnOffense() throws GameActionException {
-        if (spawnSplasherFirst) {
-            if (buildRobotType(UnitType.MOPPER) != null) {
-                spawnSplasherFirst = !spawnSplasherFirst;
-            }
-        } else {
-            if (buildRobotType(UnitType.SPLASHER) != null) {
-                spawnSplasherFirst = !spawnSplasherFirst;
-            }
-        }
     }
 
     /** Upgrade tower at robot's location */
@@ -135,6 +118,12 @@ public class Tower extends Unit {
         // if (rc.canSendMessage(loc)) {
         //     rc.sendMessage(loc, Comms.encodeMsg(target.x, target.y));
         // }
+    }
+
+    /** Spawn or call units in reaction to surrounding enemies and paint */
+    public static void spawnDefense() throws GameActionException {
+        spawnDefenseMopper();
+        spawnDefenseSplasher();
     }
 
     /** Spawns moppers based on presence of enemy units */
@@ -211,6 +200,19 @@ public class Tower extends Unit {
 
         if ((double) numEnemyPaint / nearbyTiles.length > 0.4) {
             buildRobotType(UnitType.SPLASHER);
+        }
+    }
+
+    /** Alternate spawning moppers and splashers  */
+    public static void spawnOffense() throws GameActionException {
+        if (spawnSplasherFirst) {
+            if (buildRobotType(UnitType.MOPPER) != null) {
+                spawnSplasherFirst = !spawnSplasherFirst;
+            }
+        } else {
+            if (buildRobotType(UnitType.SPLASHER) != null) {
+                spawnSplasherFirst = !spawnSplasherFirst;
+            }
         }
     }
 
