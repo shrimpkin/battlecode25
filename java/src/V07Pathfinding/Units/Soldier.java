@@ -1,8 +1,8 @@
-package V07.Units;
+package V07Pathfinding.Units;
 
-import V07.FastIntSet;
-import V07.Nav.Navigator;
-import V07.Unit;
+import V07Pathfinding.FastIntSet;
+import V07Pathfinding.Nav.Navigator;
+import V07Pathfinding.Unit;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -255,7 +255,10 @@ public class Soldier extends Unit {
     private static boolean wasWandering = false;
     public static void move() throws GameActionException {
         if (targetLocation != null) {
+            int start = Clock.getBytecodeNum();
             Navigator.moveTo(targetLocation);
+            int end = Clock.getBytecodeNum();
+            System.out.println("Delta: " + (end - start));
             wasWandering = false;
         } else {
             wander(wasWandering);
