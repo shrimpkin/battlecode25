@@ -281,7 +281,7 @@ public class Soldier extends Unit {
     static boolean isSecondary;
     // TODO: overhaul this
     public static UnitType getTowerType() throws GameActionException {
-        if(rc.getNumberTowers() % 2 == 0) {
+        if(rc.getNumberTowers() % 3 == 0) {
             return UnitType.LEVEL_ONE_MONEY_TOWER;
         } else {
             return UnitType.LEVEL_ONE_PAINT_TOWER;

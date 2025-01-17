@@ -5,7 +5,7 @@ import V05tower.Unit;
 import battlecode.common.*;
 
 public class Tower extends Unit {
-    static private enum Modes {NONE, NEW, STABLE, UNDER_ATTACK, NEAR_DEATH};
+    static private enum Modes {NONE, STABLE, UNDER_ATTACK, NEAR_DEATH};
 
     static int timeSinceBuilt = 0;
     static int timeSinceAttacked = 0;
@@ -36,61 +36,55 @@ public class Tower extends Unit {
         timeSinceBuilt++;
         timeSinceAttacked++;
 
-        if (mode == Modes.NEAR_DEATH)
-            return; // keep spawn patterns when the tower is near death
-
         if (isUnderAttack())
             return; // if true, mode is determined by health of tower
-
         
-        System.out.println((maxSTABLE - minSTABLE) * tileMultiplier);
         if (timeSinceAttacked > (maxSTABLE - minSTABLE) * tileMultiplier) {
             mode = Modes.STABLE; // backline tower that is not threatened
         } else {
-            if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
-                mode = Modes.NEW;
-            } else {
-                mode = Modes.NONE; // not new, not under attack, but was recently attacked
-            }
+            mode = Modes.NONE; // not new, not under attack, but was recently attacked
         }
-
-        indicator = timeSinceAttacked + "; ";
     }
 
     /** Determines what units to spawn based on current mode */
     public static void spawn() throws GameActionException {
-        System.out.println(((60 - mapHeight + 60 - mapWidth) / 2));
-        if (mode == Modes.NEW || timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
+        if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
             buildRobotType(UnitType.SOLDIER);
+            // TODO: maybe build early moppers to get rid of paint marks on ruins
+            // need to build moppers with the intent of
+            // - staying on ally territory
+            // - prioritizing removing enemy paint
         }
 
-        if (mode == Modes.NEAR_DEATH) {
-            if (timeSinceAttacked < 2) {
+        switch (mode) {
+            case Modes.NEAR_DEATH:
+                if (timeSinceAttacked < 5) {
+                    buildRobotType(UnitType.SOLDIER); // for rebuilding
+                } else {
+                    spawnDefense();
+                }
+                break;
+
+            case Modes.UNDER_ATTACK:
                 buildRobotType(UnitType.SOLDIER);
-            } else {
                 spawnDefense();
-            }
-        }
+                break;
 
-        if (mode == Modes.UNDER_ATTACK) {
-            buildRobotType(UnitType.SOLDIER);
-            spawnDefense();
-        }
+            case Modes.NONE:
+                if (rng.nextDouble() >= rc.getHealth() / 1000 / 10) {
+                    buildRobotType(UnitType.SOLDIER);
+                } else {
+                    spawnOffense();
+                }
+                break;
 
-        if (mode == Modes.NONE) {
-            if (rng.nextDouble() >= rc.getHealth() / 1000 / 10) {
-                buildRobotType(UnitType.SOLDIER);
-            } else {
-                spawnOffense();
-            }
-        }
-        
-        if (mode == Modes.STABLE) {
-            if (rng.nextDouble() <= rc.getHealth() / 1000) {
-                spawnOffense();
-            } else {
-                buildRobotType(UnitType.SOLDIER);
-            }
+            case Modes.STABLE:
+                if (rng.nextDouble() <= rc.getHealth() / 1000) {
+                    spawnOffense();
+                } else {
+                    buildRobotType(UnitType.SOLDIER);
+                }
+                break;
         }
     }
 
@@ -111,14 +105,6 @@ public class Tower extends Unit {
     }
 
     public static void spawnOffense() throws GameActionException {
-        // if (rc.getRoundNum() < 200) {
-        //     if (rc.getRoundNum() % 75 != 0 || rc.getChips() < 1000) 
-        //         return; // only launch offense every 100 rounds in early game
-        // } else {
-        //     if (rc.getRoundNum() % 10 != 0 || rc.getChips() < 1000) 
-        //         return; // launch offense every 20 rounds in mid/late game
-        // }
-
         if (spawnSplasherFirst) {
             if (buildRobotType(UnitType.MOPPER) != null) {
                 spawnSplasherFirst = !spawnSplasherFirst;
@@ -134,8 +120,6 @@ public class Tower extends Unit {
     public static void upgradeTower() throws GameActionException {
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (rc.getNumberTowers() <= 5)
-            return; // first wait build clock towers
         if (rc.getMoney() <= 3000)
             return; // BROKE
 
@@ -237,7 +221,7 @@ public class Tower extends Unit {
             timeSinceAttacked = 0;
             mode = Modes.UNDER_ATTACK;
 
-            if (rc.getHealth() <= 100) {
+            if (rc.getHealth() <= 200) {
                 mode = Modes.NEAR_DEATH;
             }
             return true;
