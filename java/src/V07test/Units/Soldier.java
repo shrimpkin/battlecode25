@@ -1,8 +1,8 @@
-package V07.Units;
+package V07test.Units;
 
-import V07.FastIntSet;
-import V07.Nav.Navigator;
-import V07.Unit;
+import V07test.FastIntSet;
+import V07test.Nav.Navigator;
+import V07test.Unit;
 import battlecode.common.*;
 
 public class Soldier extends Unit {

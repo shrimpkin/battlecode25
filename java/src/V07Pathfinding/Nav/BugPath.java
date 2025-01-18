@@ -234,10 +234,6 @@ public class BugPath extends Globals {
     }
 
     void softReset(MapLocation target){
-        /*if (rc.getType() == RobotType.AMPLIFIER){
-            resetPathfinding();
-            return;
-        }*/
         if (DEBUG_BUGPATH == 1) System.out.println("soft reset!");
         if (minLocationToTarget != null) minDistToTarget = minLocationToTarget.distanceSquaredTo(target);
         else resetPathfinding();
