@@ -12,7 +12,7 @@ public class Tower extends Unit {
 
     // mode multipliers
     static double tileMultiplier = ((double) mapHeight * mapWidth) / (3600.0 - 400.0); // 400-3600
-    static int minNEW = 5, maxNEW = 25;
+    static int minNEW = 5, maxNEW = 100;
     static int minSTABLE = 50, maxSTABLE = 250;
 
     static boolean spawnSplasherFirst = true;
@@ -48,12 +48,20 @@ public class Tower extends Unit {
 
     /** Determines what units to spawn based on current mode */
     public static void spawn() throws GameActionException {
-        if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
+        if (timeSinceBuilt == 1) {
             buildRobotType(UnitType.SOLDIER);
-            // TODO: maybe build early moppers to get rid of paint marks on ruins
-            // need to build moppers with the intent of
-            // - staying on ally territory
-            // - prioritizing removing enemy paint
+            buildRobotType(UnitType.SOLDIER);
+            return;
+        }
+
+        if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
+            if (rc.getChips() > 1000) {
+                buildRobotType(UnitType.SOLDIER);
+                // TODO: maybe build early moppers to get rid of paint marks on ruins
+                // need to build moppers with the intent of
+                // - staying on ally territory
+                // - prioritizing removing enemy paint
+            }
         }
 
         switch (mode) {
