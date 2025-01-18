@@ -43,11 +43,11 @@ public class Soldier extends Unit {
             move();
         }
 
-        updateSeen();
         attack();
         paintBelow();
         tessellate(); // 2600 bytecode
-        
+        canCompletePattern();
+        updateSeen();
         debug();
     }
 
@@ -337,15 +337,10 @@ public class Soldier extends Unit {
 
     /** Paint SRP patterns */
     public static void tessellate() throws GameActionException {
-        if(rc.getChips() >= 800 && rc.getChips() <= 3000) return; //time to build towers
-        if(mode == Modes.REFILL || rc.getPaint() < 150 ) return; //should conserve paint
+        if(rc.getChips() >= 800 && rc.getChips() <= 3000 && rc.getPaint() < 150) return; //time to build towers
           
         for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
             if (paintSRP(tile)) return;
-        }
-
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200) {
-            canCompletePattern();
         }
     }
 
