@@ -17,8 +17,7 @@ public class Splasher extends Unit {
         updateTowerLocations();
         splash();
         wander(true);
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
-            canCompletePattern();
+        canCompletePattern();
     }
 
     // TODO: use refill function (FROM UNIT.java) and set the mode when relevant

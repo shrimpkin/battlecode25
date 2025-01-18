@@ -226,7 +226,6 @@ public class Soldier extends Unit {
                 return loc;
             }
         }
-
         return ruinTarget;
     }
 
@@ -284,14 +283,15 @@ public class Soldier extends Unit {
 
     /** Paints square below unit */
     public static void paintBelow() throws GameActionException {
+        if(!rc.isActionReady()) return;
         if(rc.getPaint() < 15) return; //conserve paint
-        if(targetLocation != null && rc.getLocation().distanceSquaredTo(targetLocation) >= rc.getPaint() + 10) return; //conserve paint
-
+        if(targetLocation != null && Math.sqrt(rc.getLocation().distanceSquaredTo(targetLocation)) >= rc.getPaint() + 10) return; //conserve paint
         paintSRP(rc.senseMapInfo(rc.getLocation()));
     }
 
     /** Attacks enemy towers */
     public static void attack() throws GameActionException {
+        if (!rc.isActionReady()) return;
         for (RobotInfo robot : rc.senseNearbyRobots(UnitType.SOLDIER.actionRadiusSquared, opponentTeam)) {
             // tbh not attacking enemy defense towers just makes us sitting ducks, even if they aren't part of the meta
             if (robot.getType().isTowerType() && rc.canAttack(robot.getLocation())) {
@@ -337,8 +337,9 @@ public class Soldier extends Unit {
 
     /** Paint SRP patterns */
     public static void tessellate() throws GameActionException {
-        if(rc.getChips() >= 800 && rc.getChips() <= 3000 && rc.getPaint() < 150) return; //time to build towers
-          
+        if (!rc.isActionReady()) return;
+        if (rc.getChips() >= 800 && rc.getChips() <= 3000 && rc.getPaint() < 150) return; //time to build towers
+        if (rc.getPaint() < 15) return; // don't suicide paint
         for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
             if (paintSRP(tile)) return;
         }
