@@ -234,10 +234,10 @@ public class Soldier extends Unit {
         if(westInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_MONEY_TOWER;
 
         UnitType towerType;
-        if(rc.getNumberTowers() % 3 == 0) {
-            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
-        } else {
+        if((rc.getNumberTowers() == 2 || nextDouble() < .66) && rc.getNumberTowers() < 12) {
             towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
+        } else {
+            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
         }
 
         if(isPaintTower(towerType)) {
@@ -338,7 +338,7 @@ public class Soldier extends Unit {
         markOneRuinTile();
         paintSRPBelow();
 
-        if((rc.getChips() < 800 || rc.getChips() > 3000) && rc.getPaint() >= 150) {
+        if((rc.getChips() < 800 || rc.getChips() > 3000) && rc.getPaint() >= 50) {
             for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
                 if (paintSRP(tile)) return;
             }
