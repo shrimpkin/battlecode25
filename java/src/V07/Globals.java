@@ -24,7 +24,6 @@ public class Globals {
     public static final int[][] dxMop = {{-1, 0, 1, -1, 0, 1}, {1, 1, 1, 2, 2, 2}, {-1, 0, 1, -1, 0, 1}, {-1, -1, -1, -2, -2, -2}};
     public static final int[][] dyMop = {{1, 1, 1, 2, 2, 2}, {-1, 0, 1, -1, 0, 1}, {-1, -1, -1, -2, -2, -2}, {-1, 0, 1, -1, 0, 1}};
 
-
     public static void init(RobotController robotController) {
         rc = robotController;
 

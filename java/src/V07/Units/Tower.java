@@ -71,7 +71,7 @@ public class Tower extends Unit {
                 break;
 
             case Modes.NONE:
-                if (rng.nextDouble() >= rc.getHealth() / 1000 / 10) {
+                if (rng.nextDouble() >= rc.getHealth() / 10000.0) {
                     buildRobotType(UnitType.SOLDIER);
                 } else {
                     spawnOffense();
@@ -79,7 +79,7 @@ public class Tower extends Unit {
                 break;
 
             case Modes.STABLE:
-                if (rng.nextDouble() <= rc.getHealth() / 1000) {
+                if (rng.nextDouble() <= rc.getHealth() / 1000.0) {
                     spawnOffense();
                 } else {
                     buildRobotType(UnitType.SOLDIER);
@@ -90,19 +90,24 @@ public class Tower extends Unit {
 
     /** Attacks nearest robot and then performs aoe attack */
     public static void attack() throws GameActionException {
-        for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
-            if (rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-                break;
+        int lowestHealth = 1000;
+        MapLocation target = null;
+        for (RobotInfo robot : rc.senseNearbyRobots(rc.getType().actionRadiusSquared, opponentTeam)) {
+            if (!rc.canAttack(robot.getLocation())) continue;
+            // attack lowest health, active robots
+            if (robot.health < lowestHealth && robot.paintAmount > 0) {
+                target = robot.getLocation();
+                lowestHealth = robot.health;
             }
         }
+        if (target != null) rc.attack(target);
         rc.attack(null);
     }
 
     /** Upgrade tower at robot's location */
     public static void upgradeTower() throws GameActionException {
-        if (!isPaintTower(rc.getType()))
-            return; // only upgrade paint towers
+        if (!isPaintTower(rc.getType()) || rc.getMoney() > 10000)
+            return; // only upgrade paint towers -- or have enough dough to throw around
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
         if (rc.getMoney() <= 2000)
