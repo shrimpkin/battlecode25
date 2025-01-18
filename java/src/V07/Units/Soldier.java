@@ -14,6 +14,7 @@ public class Soldier extends Unit {
     static MapLocation ruinTarget;
     static MapLocation lastRuinTarget;
     static int roundNum;
+    static int DEBUG = 1;
 
     public static void run() throws GameActionException {
         indicator = "";
@@ -27,26 +28,22 @@ public class Soldier extends Unit {
 
         if (mode == Modes.REFILL) {
             targetLocation = getClosestLocation(paintTowerLocations);
-            move();
             requestPaint(targetLocation, 200);
         }
 
         if (mode == Modes.ATTACK) {
             targetLocation = getAttackMoveTarget();
-            move();
         }
 
         if (mode == Modes.BOOM) {
             findValidTowerPosition(); // 1030 bytecode
             targetLocation = getClosestUnpaintedTarget();
             paintTowerPattern(); // 1614 bytecode
-            move();
         }
 
+        move();
         attack();
-        paintBelow();
-        tessellate(); // 2600 bytecode
-        canCompletePattern();
+        tessellate(); 
         updateSeen();
         debug();
     }
@@ -83,11 +80,7 @@ public class Soldier extends Unit {
     }
 
     /************************************************************************\
-    |*                                 SIT                                  *|
-    \************************************************************************/
-
-    /************************************************************************\
-    |*                                 RUSH                                 *|
+    |*                                 Attack                               *|
     \************************************************************************/
 
     /** Returns location of a tower that has been seen otherwise null*/
@@ -99,34 +92,6 @@ public class Soldier extends Unit {
         }
 
         return bestLocation;
-    }
-
-    /** Paints one tile of every adjacent ruin */
-    public static void markOneRuinTile() throws GameActionException {
-        MapLocation locationToMark = null;
-        for (int i = 0; i < unusedRuinLocations.size; i++) {
-            MapLocation ruinLocation = unpack(unusedRuinLocations.keys.charAt(i));
-            if (!rc.canSenseLocation(ruinLocation)) continue;
-
-            MapInfo[] squaresToMark = rc.senseNearbyMapInfos(ruinLocation, 8);
-            for (MapInfo info : squaresToMark) {
-                PaintType paint = info.getPaint();
-                if (paint.isAlly()) return;
-
-                if (paint.equals(PaintType.EMPTY) && rc.canAttack(info.getMapLocation())) {
-                    locationToMark = info.getMapLocation();
-                    break;
-                }
-            }
-
-            if (locationToMark != null)
-                break;
-        }
-
-        if (locationToMark != null) {
-            rc.setIndicatorDot(locationToMark, 255, 0, 0);
-            rc.attack(locationToMark);
-        }
     }
 
     /** Moves to target location, if no target wanders */
@@ -141,8 +106,18 @@ public class Soldier extends Unit {
         }
     }
 
+    /** Attacks enemy towers */
+    public static void attack() throws GameActionException {
+        for (RobotInfo robot : rc.senseNearbyRobots(UnitType.SOLDIER.actionRadiusSquared, opponentTeam)) {
+            // tbh not attacking enemy defense towers just makes us sitting ducks, even if they aren't part of the meta
+            if (robot.getType().isTowerType() && rc.canAttack(robot.getLocation())) {
+                rc.attack(robot.getLocation());
+            }
+        }
+    }
+    
     /************************************************************************\
-    |*                                 BOOM                                 *|
+    |*                                 Tower                                *|
     \************************************************************************/
 
     /** Attempts to build a tower on nearby empty ruins */
@@ -158,7 +133,7 @@ public class Soldier extends Unit {
             for(RobotInfo robot : rc.senseNearbyRobots(ruin, 8, myTeam)) {
                 if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
             }
-            if(numNearbySoliders > 2) continue;
+            if(numNearbySoliders > 1) continue;
 
             boolean hasEnemyPaint = false;
             MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruin, 8);
@@ -184,19 +159,12 @@ public class Soldier extends Unit {
     }
 
     static boolean isSecondary;
-    public static UnitType getTowerType() throws GameActionException {
-        if(rc.getNumberTowers() % 3 == 0) {
-            return UnitType.LEVEL_ONE_PAINT_TOWER;
-        } else {
-            return UnitType.LEVEL_ONE_MONEY_TOWER;
-        }
-    }
-
     public static MapLocation getClosestUnpaintedTarget() throws GameActionException {
         if(ruinTarget == null) return null;
         if(!rc.canSenseLocation(ruinTarget)) return ruinTarget;
 
-        if(rc.canCompleteTowerPattern(getTowerType(), ruinTarget)) {
+        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget)
+            || rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget)) {
             return ruinTarget;
         }
 
@@ -266,7 +234,13 @@ public class Soldier extends Unit {
         if(eastInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_PAINT_TOWER;
         if(westInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_MONEY_TOWER;
 
-        UnitType towerType = getTowerType();
+        UnitType towerType;
+        if(rc.getNumberTowers() % 3 == 0) {
+            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+        } else {
+            towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
+        }
+
         if(isPaintTower(towerType)) {
             if(rc.canMark(east)) {
                 rc.mark(east, false);
@@ -282,25 +256,6 @@ public class Soldier extends Unit {
         return null;
     }
 
-    /** Paints square below unit */
-    public static void paintBelow() throws GameActionException {
-        if(rc.getPaint() < 15) return; //conserve paint
-        if(targetLocation != null && rc.getLocation().distanceSquaredTo(targetLocation) >= rc.getPaint() + 10) return; //conserve paint
-
-        paintSRP(rc.senseMapInfo(rc.getLocation()));
-    }
-
-    /** Attacks enemy towers */
-    public static void attack() throws GameActionException {
-        for (RobotInfo robot : rc.senseNearbyRobots(UnitType.SOLDIER.actionRadiusSquared, opponentTeam)) {
-            // tbh not attacking enemy defense towers just makes us sitting ducks, even if they aren't part of the meta
-            if (robot.getType().isTowerType() && rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-            }
-        }
-    }
-
-
     /************************************************************************\
     |*                                Tesselate                             *|
     \************************************************************************/
@@ -310,7 +265,7 @@ public class Soldier extends Unit {
         return pattern[loc.x % 4][loc.y % 4] == 1;
     }
 
-    /** W */
+    /** Will paint the correct SRP paint type on the given tile */
     public static boolean paintSRP(MapInfo tile) throws GameActionException {
         MapLocation loc = tile.getMapLocation();
         boolean isSecondary = shouldBeSecondary(loc);
@@ -335,13 +290,62 @@ public class Soldier extends Unit {
         return true;        
     }
 
-    /** Paint SRP patterns */
-    public static void tessellate() throws GameActionException {
-        if(rc.getChips() >= 800 && rc.getChips() <= 3000 && rc.getPaint() < 150) return; //time to build towers
-          
-        for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
-            if (paintSRP(tile)) return;
+    /** Paints square below unit as SRP pattern*/
+    public static void paintSRPBelow() throws GameActionException {
+        if(rc.getPaint() < 15) return; //conserve paint
+        if(targetLocation != null && rc.getLocation().distanceSquaredTo(targetLocation) >= rc.getPaint() + 10) return; //conserve paint
+
+        paintSRP(rc.senseMapInfo(rc.getLocation()));
+    }
+
+    /** Paints one tile of every adjacent ruin */
+    public static void markOneRuinTile() throws GameActionException {
+        MapLocation locationToMark = null;
+        MapLocation[] ruins = rc.senseNearbyRuins(-1);
+
+        for (MapLocation ruinLocation : ruins) {
+            MapInfo[] squaresToMark = rc.senseNearbyMapInfos(ruinLocation, 8);
+            for (MapInfo info : squaresToMark) {
+                PaintType paint = info.getPaint();
+                if (paint.isAlly()) {
+                    locationToMark = null;
+                    break;
+                }
+
+                if (paint.equals(PaintType.EMPTY) && rc.canAttack(info.getMapLocation())) {
+                    locationToMark = info.getMapLocation();
+                    break;
+                }
+            }
+
+            if (locationToMark != null)
+                break;
         }
+
+        if (locationToMark != null) {
+            rc.setIndicatorDot(locationToMark, 255, 0, 0);
+            rc.attack(locationToMark);
+        }
+    }
+
+    /**
+     * Handles all the ways we paint SRP patterns. In order of priority:
+     *      1. Marks one ruin tile with an SRP pattern
+     *      2. Paints the SRP pattern below the robot
+     *      3. Paints arbitrary tiles with SRP
+     * Will additionally call completeSRPPatterns() to complete SRPs if valid
+     */
+    public static void tessellate() throws GameActionException {
+        markOneRuinTile();
+        paintSRPBelow();
+
+        if((rc.getChips() < 800 || rc.getChips() > 3000) && rc.getPaint() >= 150) {
+            for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
+                if (paintSRP(tile)) return;
+            }
+        }
+
+        completeSRPPatterns();
     }
 
     /************************************************************************\
@@ -350,7 +354,7 @@ public class Soldier extends Unit {
 
     /** Prints all debug info */
     public static void debug() {
-        if (!in_debug) return;
+        if (DEBUG == 0) return;
 
         indicator += mode + ": Move Target: " + targetLocation + "\n";
 

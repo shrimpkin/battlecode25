@@ -242,7 +242,7 @@ public class Unit extends Globals {
         return ret;
     }
 
-    public static void canCompletePattern() throws GameActionException {
+    public static void completeSRPPatterns() throws GameActionException {
         if(rc.getNumberTowers() <= 4 || rc.getChips() <= 1200) return;
 
 

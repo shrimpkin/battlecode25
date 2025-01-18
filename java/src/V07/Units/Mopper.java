@@ -25,7 +25,7 @@ public class Mopper extends Unit {
         move();
 
         if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
-            canCompletePattern();
+            completeSRPPatterns();
 
         _refill();
 
