@@ -9,9 +9,6 @@ public class Soldier extends Unit {
     static FastIntSet symmetryLocations = new FastIntSet();
     static MapLocation targetLocation = null;
     static int lastRefillEnd;
-    // RUSH
-    static boolean addedPaintTowerSymmetryLocs = false;
-    static boolean addedMoneyTowerSymmetryLocs = false;
 
     // BOOM
     static MapLocation ruinTarget;
@@ -24,56 +21,33 @@ public class Soldier extends Unit {
         roundNum = rc.getRoundNum();
 
         updateMode();
-        if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
         updateTowerLocations();
+
+        if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
         if (mode == Modes.REFILL) {
             targetLocation = getClosestLocation(paintTowerLocations);
             move();
-            // TODO: betterize this
-            if (rc.getPaint() >= 15 && targetLocation != null && rc.getLocation().distanceSquaredTo(targetLocation) < rc.getPaint() + 10) {
-                paintBelow();
-            }
             requestPaint(targetLocation, 200);
         }
 
         if (mode == Modes.ATTACK) {
-            markOneRuinTile();
             targetLocation = getAttackMoveTarget();
             move();
-            paintBelow();
         }
 
         if (mode == Modes.BOOM) {
-            if (lastRuinTarget != null && !rc.canSenseLocation(lastRuinTarget)) {
-                targetLocation = lastRuinTarget;
-                rc.setIndicatorDot(lastRuinTarget, 255, 255, 0);
-            } else {
-                lastRuinTarget = null;
-                findValidTowerPosition(); // 1030 bytecode
-                markOneRuinTile();
-                targetLocation = getClosestUnpaintedTarget();
-            }
-            // NAV NOT CLOSE ENOUGH
-            if (targetLocation != null && rc.canMove(rc.getLocation().directionTo(targetLocation))) {
-                rc.move(rc.getLocation().directionTo(targetLocation));
-            }
+            findValidTowerPosition(); // 1030 bytecode
+            targetLocation = getClosestUnpaintedTarget();
             paintTowerPattern(); // 1614 bytecode
             move();
-            paintBelow();
         }
+
         updateSeen();
         attack();
-
-        if (rc.getChips() < 800 && mode != Modes.REFILL || rc.getPaint() > 150 ) { // not interfering with ruin construction
-            tessellate(); // 2600 bytecode
-
-        }
-
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200) {
-            canCompletePattern();
-        }
-
+        paintBelow();
+        tessellate(); // 2600 bytecode
+        
         debug();
     }
 
@@ -171,7 +145,7 @@ public class Soldier extends Unit {
     |*                                 BOOM                                 *|
     \************************************************************************/
 
-    /** Attempts to build clock tower on nearby empty ruins */
+    /** Attempts to build a tower on nearby empty ruins */
     public static void findValidTowerPosition() throws GameActionException {
         ruinTarget = null;
         MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
@@ -186,10 +160,12 @@ public class Soldier extends Unit {
             }
             if(numNearbySoliders > 2) continue;
 
+            boolean hasEnemyPaint = false;
             MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruin, 8);
             // Checks for nearby enemy paint that would prevent building a clock tower
             for (MapInfo loc : ruinSurroundings) {
                 if (loc.getPaint().isEnemy()) {
+                    hasEnemyPaint = true;
                     break;
                 }
             }
@@ -200,7 +176,7 @@ public class Soldier extends Unit {
             else 
                 isCloser = true;
 
-            if (isCloser) {
+            if (!hasEnemyPaint && isCloser) {
                 ruinTarget = ruin;
                 break;
             }
@@ -224,8 +200,8 @@ public class Soldier extends Unit {
             return ruinTarget;
         }
 
-        UnitType towerType = getTowerType();
-
+        UnitType towerType = getTowerMark();
+        if(towerType == null) return ruinTarget;
 
         MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruinTarget, 8);
         boolean[][] paintPattern = rc.getTowerPattern(towerType);
@@ -273,8 +249,44 @@ public class Soldier extends Unit {
         }
     }
 
+    //east corresponds to paint tower
+    //west corresponds to money tower
+    public static UnitType getTowerMark() throws GameActionException {
+        if(ruinTarget == null) return null;
+        
+        MapLocation east = ruinTarget.add(Direction.EAST);
+        MapLocation west = ruinTarget.add(Direction.WEST);
+
+        if(!rc.canSenseLocation(west)) return null;
+        if(!rc.canSenseLocation(east)) return null;
+
+        MapInfo eastInfo = rc.senseMapInfo(east);
+        MapInfo westInfo = rc.senseMapInfo(west);
+
+        if(eastInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_PAINT_TOWER;
+        if(westInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_MONEY_TOWER;
+
+        UnitType towerType = getTowerType();
+        if(isPaintTower(towerType)) {
+            if(rc.canMark(east)) {
+                rc.mark(east, false);
+                return UnitType.LEVEL_ONE_PAINT_TOWER;
+            }
+        } else {
+            if(rc.canMark(west)) {
+                rc.mark(west, false);
+                return UnitType.LEVEL_ONE_MONEY_TOWER;
+            }
+        }
+
+        return null;
+    }
+
     /** Paints square below unit */
     public static void paintBelow() throws GameActionException {
+        if(rc.getPaint() < 15) return; //conserve paint
+        if(targetLocation != null && rc.getLocation().distanceSquaredTo(targetLocation) >= rc.getPaint() + 10) return; //conserve paint
+
         paintSRP(rc.senseMapInfo(rc.getLocation()));
     }
 
@@ -325,8 +337,15 @@ public class Soldier extends Unit {
 
     /** Paint SRP patterns */
     public static void tessellate() throws GameActionException {
+        if(rc.getChips() >= 800 && rc.getChips() <= 3000) return; //time to build towers
+        if(mode == Modes.REFILL || rc.getPaint() < 150 ) return; //should conserve paint
+          
         for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
             if (paintSRP(tile)) return;
+        }
+
+        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200) {
+            canCompletePattern();
         }
     }
 
