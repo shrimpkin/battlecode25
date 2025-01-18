@@ -194,7 +194,6 @@ public class Soldier extends Unit {
                 return loc;
             }
         }
-
         return ruinTarget;
     }
 

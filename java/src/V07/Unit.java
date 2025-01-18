@@ -244,9 +244,7 @@ public class Unit extends Globals {
 
     public static void completeSRPPatterns() throws GameActionException {
         if(rc.getNumberTowers() <= 4 || rc.getChips() <= 1200) return;
-
-
-        for (MapInfo tile : rc.senseNearbyMapInfos()) {
+        for (MapInfo tile : rc.senseNearbyMapInfos(GameConstants.RESOURCE_PATTERN_RADIUS_SQUARED)) {
             MapLocation loc = tile.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2)
                 continue; // not a center location

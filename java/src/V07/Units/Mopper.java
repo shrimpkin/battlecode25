@@ -23,9 +23,7 @@ public class Mopper extends Unit {
         swingMop();
         removeEnemyPaint();
         move();
-
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200)
-            completeSRPPatterns();
+        completeSRPPatterns();
 
         _refill();
 
@@ -90,7 +88,7 @@ public class Mopper extends Unit {
 
     /** Unit tries to remove enemy paint in its attack-able radius */
     public static void removeEnemyPaint() throws GameActionException {
-        for (MapInfo loc : rc.senseNearbyMapInfos()) {
+        for (MapInfo loc : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
             if (loc.getPaint().isEnemy()) {
                 if (rc.canAttack(loc.getMapLocation())) {
                     rc.attack(loc.getMapLocation());
@@ -166,7 +164,8 @@ public class Mopper extends Unit {
     /** Returns cardinal direction with the most enemies, null otherwise */
     public static Direction getBestMopSwingDir() throws GameActionException {
         int[] numEnemies = {0, 0, 0, 0}; // N E S W
-        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1, opponentTeam);
+        // TODO: see verify mop swing area of effect
+        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(8, opponentTeam);
         MapLocation currLoc = rc.getLocation();
 
         if (nearbyRobots.length == 0)
