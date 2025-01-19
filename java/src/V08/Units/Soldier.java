@@ -202,7 +202,7 @@ public class Soldier extends Unit {
                 //if this is a new SRP location that is valid to complete we set it as target
                 //or if we have no other valid targets we will also set it
                 MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
-                if(isValidSRPPosition(loc) || (SRPTarget == null && infos.length != 25)) {
+                if(isValidSRPPosition(loc)) {
                     SRPTarget = loc;
                 }
             }
