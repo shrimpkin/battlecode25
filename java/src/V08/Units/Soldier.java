@@ -51,7 +51,6 @@ public class Soldier extends Unit {
             if(robot.getType().isTowerType()) requestPaint(robot.getLocation(), 200-rc.getPaint());
         }
 
-
         move();
         attack();
         tessellate(); 
@@ -188,7 +187,9 @@ public class Soldier extends Unit {
         for(MapInfo info : rc.senseNearbyMapInfos()) {
             MapLocation loc = info.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location
-            if(info.isResourcePatternCenter()) continue; //already a SRP center
+            if(info.isResourcePatternCenter()) {
+                continue; //already a SRP center
+            }
 
             //building to close to an unbuilt ruin
             MapLocation[] ruinLocation = rc.senseNearbyRuins(-1);
@@ -199,14 +200,15 @@ public class Soldier extends Unit {
             }
             if(toClose) continue;
 
-            if(info.getMark().equals(PaintType.ALLY_PRIMARY)) {
+            boolean isValid = isValidSRPPosition(loc);
+            if(info.getMark().equals(PaintType.ALLY_PRIMARY) && isValid) {
                 SRPTarget = loc;
             } else if(info.getMark().equals(PaintType.ALLY_SECONDARY) || !info.isPassable()) {
                 continue;
             } else {
                 //if this is a new SRP location that is valid to complete we set it as target
                 //or if we have no other valid targets we will also set it
-                if(isValidSRPPosition(loc)) {
+                if(isValid) {
                     SRPTarget = loc;
                 }
             }
@@ -526,7 +528,6 @@ public class Soldier extends Unit {
         } else {
             indicator += "No build target: " + bMode + " MT: " + moveTarget + "\n";
         }
-
 
         rc.setIndicatorString(indicator);
     }
