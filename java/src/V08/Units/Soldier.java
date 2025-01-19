@@ -376,7 +376,7 @@ public class Soldier extends Unit {
         if(buildTarget == null || bMode == BuildMode.NONE) return;
         //haven't decided on tower type yet
         if(bMode == BuildMode.BUILD_TOWER && buildType == null) return;
-
+        if (!rc.canSenseLocation(buildTarget)) return;
         
         if(bMode == BuildMode.BUILD_TOWER) {
             //a tower has been built or we can complete the tower
