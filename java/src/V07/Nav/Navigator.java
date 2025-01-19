@@ -6,10 +6,8 @@ import battlecode.common.MapLocation;
 
 
 public class Navigator extends Globals {
-    
     public static void moveTo(MapLocation target) throws GameActionException {
         BugPath path = new BugPath();
         path.moveTo(target);
     }
-    
 }

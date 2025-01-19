@@ -220,7 +220,7 @@ public class Unit extends Globals {
     /// /////////////////////////////////////////////
 
     // update seen locations in visited set
-    private static void updateSeen() throws GameActionException {
+    public static void updateSeen() throws GameActionException {
         for (MapInfo loc : rc.senseNearbyMapInfos()) {
             vis.mark(loc.getMapLocation());
         }
