@@ -174,7 +174,7 @@ public class Soldier extends Unit {
             && rc.canSenseLocation(SRPTarget)
             && rc.senseMapInfo(SRPTarget).getMark() == PaintType.ALLY_PRIMARY
             && !rc.senseMapInfo(SRPTarget).isResourcePatternCenter()
-            && canStillComplete(SRPTarget)) {
+            && isValidSRPPosition(SRPTarget)) {
                 return;
         }
 
@@ -184,7 +184,6 @@ public class Soldier extends Unit {
             MapLocation loc = info.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location
             if(info.isResourcePatternCenter()) continue; //already a SRP center
-            if(!canStillComplete(loc)) continue;
 
             //building to close to an unbuilt ruin
             MapLocation[] ruinLocation = rc.senseNearbyRuins(-1);
@@ -202,8 +201,10 @@ public class Soldier extends Unit {
             } else {
                 //if this is a new SRP location that is valid to complete we set it as target
                 //or if we have no other valid targets we will also set it
-                if(isValidSRPPosition(loc) || SRPTarget == null) 
+                MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
+                if(isValidSRPPosition(loc) || (SRPTarget == null && infos.length != 25)) {
                     SRPTarget = loc;
+                }
             }
         }
     }
@@ -218,6 +219,10 @@ public class Soldier extends Unit {
             //if there is a wall or ruin we can't paint it, hence don't paint there
             if(!info.isPassable()) {
                 if(rc.canMark(loc)) rc.mark(loc, true);
+                return false;
+            }
+
+            if(info.getPaint().isEnemy()) {
                 return false;
             }
         }
@@ -367,6 +372,10 @@ public class Soldier extends Unit {
             bMode = BuildMode.BUILD_SRP;
             rc.setIndicatorDot(buildTarget, 0, mapWidth, mapHeight);            
             return;
+        } else if(SRPTarget == null) {
+            //we no longer have a valid SRP
+            buildTarget = null;
+            bMode = BuildMode.NONE;
         }
     }
 
@@ -474,16 +483,6 @@ public class Soldier extends Unit {
             rc.setIndicatorDot(locationToMark, 255, 0, 0);
             rc.attack(locationToMark);
         }
-    }
-
-    /** Checks if the SRP at this location would be valid */
-    public static boolean updateSRPLocations(MapLocation loc) throws GameActionException {
-        if(loc == null) return false;
-
-        MapInfo info = rc.senseMapInfo(loc);
-        
-
-        return true;
     }
     /**
      * Handles all the ways we paint SRP patterns. In order of priority:
