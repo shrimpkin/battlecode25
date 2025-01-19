@@ -149,24 +149,28 @@ public class MopperMicro {
             if (dist <= 5) ++alliesDist10;
         }
 
-        void updateEnemy(RobotInfo unit) {
+        void updateEnemy(RobotInfo unit) throws GameActionException {
             int dist = unit.getLocation().distanceSquaredTo(location);
             var type = unit.getType();
-            // it's a sitting duck (err bunny)
-            if (unit.getPaintAmount() == 0 && type.isRobotType()) return;
-            if (dist < minDistanceToEnemy) minDistanceToEnemy = dist;
-            if (dist < 8) { // should be the extent of a mopper swing
-                ++enemiesInRange;
-                if (type == UnitType.MOPPER) ++moppersInRange;
+            if (type.isTowerType()) {
+                // whether its within range of tower (big ruh roh for moppers)
+                if (location.isWithinDistanceSquared(unit.location, type.actionRadiusSquared)) {
+                    inTowerRange++;
+                }
+            } else {
+                // it's a sitting duck (err bunny)
+                if (unit.getPaintAmount() == 0) return;
+                if (dist < minDistanceToEnemy) minDistanceToEnemy = dist;
+                if (dist < 8) { // should be the extent of a mopper swing
+                    ++enemiesInRange;
+                    if (type == UnitType.MOPPER) ++moppersInRange;
+                }
+                if (dist <= rangeExtended) {
+                    ++enemiesInMoveRange;
+                    if (type == UnitType.MOPPER) ++moppersInMoveRange;
+                }
             }
-            if (dist <= rangeExtended) {
-                ++enemiesInMoveRange;
-                if (type == UnitType.MOPPER) ++moppersInMoveRange;
-            }
-            // whether its within range of tower (big ruh roh for moppers)
-            if (type.isTowerType() && location.isWithinDistanceSquared(unit.location, type.actionRadiusSquared)) {
-                inTowerRange++;
-            }
+            rc.setIndicatorDot(unit.getLocation(), 200, 200, 100);
         }
 
         boolean isBetter(MicroInfo that) {

@@ -115,8 +115,17 @@ public class NewMopper extends Unit {
                 rc.attack(paintTile);
                 rc.setIndicatorDot(paintTile, 220, 250, 100);
                 indicator += "painted]";
-            } else {
-                indicator += "nothing " + paintTile + "]";
+            } else if (rc.getPaint() > 51){
+                // can't paint any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
+                var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+                var amount = rc.getPaint() - 51;
+                for (var robot : allies) {
+                    var loc = robot.getLocation();
+                    if (robot.getPaintAmount() < robot.getPaintAmount() / 2 && rc.canTransferPaint(loc, amount)) {
+                        rc.transferPaint(loc, amount);
+                    }
+                }
+                indicator += "transferred paint]";
             }
         }
     }
@@ -173,6 +182,17 @@ public class NewMopper extends Unit {
         }
     }
 
+    public static void refill() throws GameActionException {
+        var nearbyTowers = rc.senseNearbyRuins(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED);
+        for (var ruin : nearbyTowers) {
+            if (!rc.canSenseRobotAtLocation(ruin)) continue;
+            var robot = rc.senseRobotAtLocation(ruin);
+            if (robot.getTeam() == myTeam) {
+                requestPaint(robot.getLocation(), 100 - rc.getPaint());
+            }
+        }
+    }
+
     /**
      * Returns cardinal direction with the most enemies, null otherwise
      */
@@ -181,7 +201,8 @@ public class NewMopper extends Unit {
         // TODO: see verify mop swing area of effect
         FastLocSet enemies = new FastLocSet();
         for (var robot : rc.senseNearbyRobots(8, opponentTeam)) {
-            enemies.add(robot.getLocation());
+            if (robot.paintAmount > 0)
+                enemies.add(robot.getLocation());
         }
         MapLocation currLoc = rc.getLocation();
         if (enemies.size == 0) return -1; // no nearby enemy robots
@@ -214,6 +235,7 @@ public class NewMopper extends Unit {
             rc.setIndicatorDot(avgEnemy, 255, 0, 0);
             indicator += " [avgEnemy:" + avgEnemy + "]";
         }
+        indicator += "[paint balance: " + paintBalance + "]";
         if (avgEnemy != null && avgMe != null) {
             rc.setIndicatorDot(
                     new MapLocation((avgMe.x + avgEnemy.x) / 2, (avgMe.y + avgEnemy.y) / 2),
