@@ -1,22 +1,27 @@
 package V07.Units;
 
-import V07.FastIntSet;
 import V07.Nav.Navigator;
 import V07.Unit;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
-    static FastIntSet symmetryLocations = new FastIntSet();
-    static MapLocation targetLocation = null;
+    static MapLocation moveTarget = null;
     static int lastRefillEnd;
+
+    public enum BuildMode {BUILD_SRP, BUILD_TOWER, NONE}
+    static BuildMode bMode = BuildMode.NONE;
+    static MapLocation buildTarget = null;
+    static UnitType buildType = null;
 
     // BOOM
     static MapLocation ruinTarget;
+    static MapLocation SRPTarget;
     static MapLocation lastRuinTarget;
     static int roundNum;
     static int DEBUG = 1;
 
     public static void run() throws GameActionException {
+
         indicator = "";
         Modes prev = mode;
         roundNum = rc.getRoundNum();
@@ -27,18 +32,19 @@ public class Soldier extends Unit {
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
         if (mode == Modes.REFILL) {
-            targetLocation = getClosestLocation(paintTowerLocations);
-            requestPaint(targetLocation, 200);
+            moveTarget = getClosestLocation(paintTowerLocations);
+            requestPaint(moveTarget, 200);
         }
 
         if (mode == Modes.ATTACK) {
-            targetLocation = getAttackMoveTarget();
+            moveTarget = getAttackMoveTarget();
         }
 
         if (mode == Modes.BOOM) {
-            findValidTowerPosition(); // 1030 bytecode
-            targetLocation = getClosestUnpaintedTarget();
-            paintTowerPattern(); // 1614 bytecode
+            setBuildTarget();
+            moveTarget = rotateAroundBuiltTarget();
+            paintBuildTarget(); 
+            completeBuiltTarget();
         }
 
         move();
@@ -97,8 +103,8 @@ public class Soldier extends Unit {
     /** Moves to target location, if no target wanders */
     private static boolean wasWandering = false;
     public static void move() throws GameActionException {
-        if (targetLocation != null) {
-            Navigator.moveTo(targetLocation);
+        if (moveTarget != null) {
+            Navigator.moveTo(moveTarget);
             wasWandering = false;
         } else {
             wander(wasWandering);
@@ -117,7 +123,7 @@ public class Soldier extends Unit {
     }
     
     /************************************************************************\
-    |*                                 Tower                                *|
+    |*                                 Build                                *|
     \************************************************************************/
 
     /** Attempts to build a tower on nearby empty ruins */
@@ -158,105 +164,252 @@ public class Soldier extends Unit {
         }
     }
 
-    static boolean isSecondary;
-    public static MapLocation getClosestUnpaintedTarget() throws GameActionException {
-        if(ruinTarget == null) return null;
-        if(!rc.canSenseLocation(ruinTarget)) return ruinTarget;
-
-        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget)
-            || rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget)) {
-            return ruinTarget;
+    /** Checks if the enemey has painted in our build target */
+    public static boolean canStillComplete(MapLocation loc) throws GameActionException {
+        for(MapInfo info : rc.senseNearbyMapInfos(loc, 8)) {
+            if(info.getPaint().isEnemy()) return false;
         }
-
-        UnitType towerType = getTowerMark();
-        if(towerType == null) return ruinTarget;
-
-        MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruinTarget, 8);
-        boolean[][] paintPattern = rc.getTowerPattern(towerType);
-
-        for (MapInfo info : ruinSurroundings) {
-            MapLocation loc = info.getMapLocation();
-
-            if (info.hasRuin()) continue; // can't paint ruin
-
-            int x = ruinTarget.x - loc.x + 2;
-            int y = ruinTarget.y - loc.y + 2;
-
-            PaintType paint = info.getPaint();
-            if (info.getPaint().isEnemy())
-                continue; // can't paint enemy paint
-
-            if (paintPattern[x][y] && paint != PaintType.ALLY_SECONDARY) {
-                isSecondary = true;
-                return loc;
-            } else if (!paintPattern[x][y] && paint != PaintType.ALLY_PRIMARY) {
-                isSecondary = false;
-                return loc;
-            }
-        }
-        return ruinTarget;
+        
+        return true;
     }
 
-    /** Picks a tower to build and builds it */
-    public static void paintTowerPattern() throws GameActionException {
-        if(ruinTarget == null) return;
-
-        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget)) {
-            rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget);
+    /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP.
+     *  If it doesn't have any such valid locations then it will choose the closest unknown SRP location.
+     */
+    public static void updateSRPTarget() throws GameActionException {
+        //we have a valid SRP 
+        if(SRPTarget != null 
+            && rc.canSenseLocation(SRPTarget)
+            && rc.senseMapInfo(SRPTarget).getMark() == PaintType.ALLY_PRIMARY
+            && !rc.senseMapInfo(SRPTarget).isResourcePatternCenter()
+            && canStillComplete(SRPTarget)) {
+                return;
         }
 
-        if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget)) {
-            rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget);
+        SRPTarget = null;
+
+        for(MapInfo info : rc.senseNearbyMapInfos()) {
+            MapLocation loc = info.getMapLocation();
+            if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location
+            if(info.isResourcePatternCenter()) continue; //already a SRP center
+            if(!canStillComplete(loc)) continue;
+
+            //building to close to an unbuilt ruin
+            MapLocation[] ruinLocation = rc.senseNearbyRuins(-1);
+            boolean toClose = false;
+            for(MapLocation ruin : ruinLocation) {
+                RobotInfo robotInfo = rc.senseRobotAtLocation(ruin);
+                if(robotInfo == null) toClose = true;
+            }
+            if(toClose) continue;
+
+            if(info.getMark().equals(PaintType.ALLY_PRIMARY)) {
+                SRPTarget = loc;
+            } else if(info.getMark().equals(PaintType.ALLY_SECONDARY) || !info.isPassable()) {
+                continue;
+            } else {
+                //if this is a new SRP location that is valid to complete we set it as target
+                //or if we have no other valid targets we will also set it
+                if(isValidSRPPosition(loc) || SRPTarget == null) 
+                    SRPTarget = loc;
+            }
+        }
+    }
+
+    /** @return true if we can complete a SRP pattern at this location */
+    public static boolean isValidSRPPosition(MapLocation loc) throws GameActionException {
+        MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
+        if(infos.length != 25) return false; //can't sense all tiles around the SRP
+
+        for(MapInfo info : infos) {
+            //isPassable determines if there is a wall or ruin on this square
+            //if there is a wall or ruin we can't paint it, hence don't paint there
+            if(!info.isPassable()) {
+                if(rc.canMark(loc)) rc.mark(loc, true);
+                return false;
+            }
         }
 
-        if(targetLocation == null) return;
-        // apparently you can attack bare ruins for some ruin -- good stuff
-        if(rc.canAttack(targetLocation) && !rc.senseMapInfo(targetLocation).hasRuin()) {
-            rc.attack(targetLocation, isSecondary);
-        }
+        if(rc.canMark(loc)) rc.mark(loc, false);
+        return true;
     }
 
     //east corresponds to paint tower
     //west corresponds to money tower
+    //north corresponds to a clock tower
     public static UnitType getTowerMark() throws GameActionException {
         if(ruinTarget == null) return null;
         
         MapLocation east = ruinTarget.add(Direction.EAST);
         MapLocation west = ruinTarget.add(Direction.WEST);
+        MapLocation north = ruinTarget.add(Direction.NORTH);
 
         if(!rc.canSenseLocation(west)) return null;
         if(!rc.canSenseLocation(east)) return null;
+        if(!rc.canSenseLocation(north)) return null;
 
         MapInfo eastInfo = rc.senseMapInfo(east);
         MapInfo westInfo = rc.senseMapInfo(west);
+        MapInfo northInfo = rc.senseMapInfo(north);
 
         if(eastInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_PAINT_TOWER;
         if(westInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_MONEY_TOWER;
+        if(northInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_DEFENSE_TOWER;
 
         UnitType towerType;
-        if((rc.getNumberTowers() == 2 || nextDouble() < .66) && rc.getNumberTowers() < 12) {
+
+        boolean shouldDefend = false;
+        RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
+        
+        if(enemies.length > 5) shouldDefend = true;
+        for(RobotInfo enemy : enemies) {
+            if(isPaintTower(enemy.getType()) || isMoneyTower(enemy.getType())) {
+                shouldDefend = true;
+            }
+        }
+
+        if(shouldDefend) {
+            towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
+        } else if((rc.getNumberTowers() == 2 || nextDouble() < .66) && rc.getNumberTowers() < 12) {
             towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
         } else {
             towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
         }
+        
 
         if(isPaintTower(towerType)) {
             if(rc.canMark(east)) {
                 rc.mark(east, false);
                 return UnitType.LEVEL_ONE_PAINT_TOWER;
             }
-        } else {
+        } else if(isMoneyTower(towerType)) {
             if(rc.canMark(west)) {
                 rc.mark(west, false);
                 return UnitType.LEVEL_ONE_MONEY_TOWER;
+            }
+        } else {
+            if(rc.canMark(north)) {
+                rc.mark(north, false);
+                return UnitType.LEVEL_ONE_DEFENSE_TOWER;
             }
         }
 
         return null;
     }
 
+    /** @return MapLocations that rotate around the build target */
+    public static MapLocation rotateAroundBuiltTarget() throws GameActionException {
+        if(buildTarget == null) return null;
+
+        if(rc.getRoundNum() % 4 == 0) {
+            return buildTarget.add(Direction.NORTH);
+        } else if(rc.getRoundNum() % 4 == 1) {
+            return buildTarget.add(Direction.EAST);
+        } else if(rc.getRoundNum() % 4 == 2) {
+            return buildTarget.add(Direction.SOUTH);
+        } else {
+            return buildTarget.add(Direction.WEST);
+        }
+    }
+
+    /** Paints incorrectly painted tiles around our build target */
+    public static void paintBuildTarget() throws GameActionException {
+        //We have not decided on a build target so we can't paint it
+        if(buildTarget == null || bMode == BuildMode.NONE) return;
+
+        //Determines what paint pattern we need to paint based on bMode and tower type
+        boolean[][] paintPattern;
+        if(bMode == BuildMode.BUILD_SRP) {
+            paintPattern = rc.getResourcePattern();
+        } else {
+            //needs to choose what tower it wants to paint
+            buildType = getTowerMark();
+            if(buildType == null) return;
+            paintPattern = rc.getTowerPattern(buildType);
+        } 
+
+        //Iterates through locations, paints it if it had the incorrect paint
+        for(MapInfo info : rc.senseNearbyMapInfos(buildTarget, 8)) {
+            MapLocation loc = info.getMapLocation();
+            if(!rc.canAttack(loc)) continue;
+            if(!info.isPassable()) continue;
+
+            //converting the location in the offsets we need use paint pattern
+            int x = buildTarget.x - loc.x + 2;
+            int y = buildTarget.y - loc.y + 2;
+
+            if(info.getPaint().isEnemy()) {
+                //can't attack enemy paint with soldiers
+                continue;
+            } else if(info.getPaint().equals(PaintType.EMPTY) 
+                        || info.getPaint().isSecondary() != paintPattern[x][y]) {
+                //correcting paint, returning because we can only attack once a turn
+                rc.attack(loc, paintPattern[x][y]);
+                return;
+            }
+        }
+    }
+
+    /** Updates the buildTarget and bMode fields */
+    public static void setBuildTarget() throws GameActionException {
+        //we have a valid tower to build
+        if(bMode == BuildMode.BUILD_TOWER && canStillComplete(buildTarget)) {
+            return;
+        }
+
+        //first looks for nearby ruins to build towers on
+        findValidTowerPosition();
+        if(ruinTarget != null) {
+            buildTarget = ruinTarget;
+            bMode = BuildMode.BUILD_TOWER;
+            return;
+        }
+
+        updateSRPTarget();
+        if(SRPTarget != null) {
+            buildTarget = SRPTarget;
+            bMode = BuildMode.BUILD_SRP;
+            rc.setIndicatorDot(buildTarget, 0, mapWidth, mapHeight);            
+            return;
+        }
+    }
+
+    /** Will complete the SRP and tower pattern at build target if possible */
+    public static void completeBuiltTarget() throws GameActionException {
+        //no build target to complete
+        if(buildTarget == null || bMode == BuildMode.NONE) return;
+        //haven't decided on tower type yet
+        if(bMode == BuildMode.BUILD_TOWER && buildType == null) return;
+
+        
+        if(bMode == BuildMode.BUILD_TOWER) {
+            //a tower has been built or we can complete the tower
+            boolean robotIsNull = rc.senseRobotAtLocation(buildTarget) != null;
+            if(robotIsNull || rc.canCompleteTowerPattern(buildType, buildTarget)) {
+                if(!robotIsNull) {
+                    rc.completeTowerPattern(buildType, buildTarget);
+                }
+                
+                requestPaint(buildTarget, 200);
+                buildTarget = null;
+                buildType = null;
+                bMode = BuildMode.NONE;
+            }
+        } else if(bMode == BuildMode.BUILD_SRP) {
+            MapInfo buildInfo = rc.senseMapInfo(buildTarget);
+            //a resource pattern has been built or we can complete it
+            boolean isCenter = buildInfo.isResourcePatternCenter();
+            if(isCenter ||  (rc.canCompleteResourcePattern(buildTarget) && rc.getMoney() >= 200)) {
+                if(!isCenter) rc.completeResourcePattern(buildTarget);
+
+                buildTarget = null;
+                bMode = BuildMode.NONE;
+            }
+        }
+    }
+
     /************************************************************************\
-    |*                                Tesselate                             *|
+    |*                                SRP                                   *|
     \************************************************************************/
 
     /** Determines if tile should be secondary to complete SRP pattern */
@@ -292,7 +445,7 @@ public class Soldier extends Unit {
     /** Paints square below unit as SRP pattern*/
     public static void paintSRPBelow() throws GameActionException {
         if(rc.getPaint() < 15) return; //conserve paint
-        if(targetLocation != null && rc.getLocation().distanceSquaredTo(targetLocation) >= rc.getPaint() + 10) return; //conserve paint
+        if(moveTarget != null && rc.getLocation().distanceSquaredTo(moveTarget) >= rc.getPaint() + 10) return; //conserve paint
 
         paintSRP(rc.senseMapInfo(rc.getLocation()));
     }
@@ -327,6 +480,15 @@ public class Soldier extends Unit {
         }
     }
 
+    /** Checks if the SRP at this location would be valid */
+    public static boolean updateSRPLocations(MapLocation loc) throws GameActionException {
+        if(loc == null) return false;
+
+        MapInfo info = rc.senseMapInfo(loc);
+        
+
+        return true;
+    }
     /**
      * Handles all the ways we paint SRP patterns. In order of priority:
      *      1. Marks one ruin tile with an SRP pattern
@@ -338,13 +500,12 @@ public class Soldier extends Unit {
         markOneRuinTile();
         paintSRPBelow();
 
-        if((rc.getChips() < 800 || rc.getChips() > 3000) && rc.getPaint() >= 50) {
-            for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
-                if (paintSRP(tile)) return;
-            }
-        }
+        // if((rc.getChips() < 800 || rc.getChips() > 3000) && rc.getPaint() >= 50) {
+        //     for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
+        //         if (paintSRP(tile)) return;
+        //     }
+        // }
 
-        completeSRPPatterns();
     }
 
     /************************************************************************\
@@ -355,22 +516,12 @@ public class Soldier extends Unit {
     public static void debug() {
         if (DEBUG == 0) return;
 
-        indicator += mode + ": Move Target: " + targetLocation + "\n";
-
-        if (mode == Modes.RUSH) {
-            for (int i = 0; i < enemyTowerLocations.size; i++) {
-                indicator += unpack(enemyTowerLocations.keys.charAt(i)) + ", \n";
-            }
-
-            for (int i = 0; i < symmetryLocations.size; i++) {
-                indicator += unpack(symmetryLocations.keys.charAt(i)) + ", \n";
-            }
+        if(buildTarget != null) {
+            indicator += bMode + " at: " + buildTarget.toString() +  " MT: " + moveTarget + "\n";
+        } else {
+            indicator += "No build target: " + bMode + " MT: " + moveTarget + "\n";
         }
 
-        if (mode == Modes.BOOM) {
-            if (ruinTarget != null)
-                indicator += "ruin_target: " + ruinTarget;
-        }
 
         rc.setIndicatorString(indicator);
     }
