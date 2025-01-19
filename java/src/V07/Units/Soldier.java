@@ -141,15 +141,7 @@ public class Soldier extends Unit {
             }
             if(numNearbySoliders > 1) continue;
 
-            boolean hasEnemyPaint = false;
-            MapInfo[] ruinSurroundings = rc.senseNearbyMapInfos(ruin, 8);
-            // Checks for nearby enemy paint that would prevent building a clock tower
-            for (MapInfo loc : ruinSurroundings) {
-                if (loc.getPaint().isEnemy()) {
-                    hasEnemyPaint = true;
-                    break;
-                }
-            }
+            if(!canStillComplete(ruin)) continue;
 
             boolean isCloser;
             if(ruinTarget != null)
@@ -157,7 +149,7 @@ public class Soldier extends Unit {
             else 
                 isCloser = true;
 
-            if (!hasEnemyPaint && isCloser) {
+            if (isCloser) {
                 ruinTarget = ruin;
                 break;
             }
@@ -220,7 +212,7 @@ public class Soldier extends Unit {
     public static boolean isValidSRPPosition(MapLocation loc) throws GameActionException {
         MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
         if(infos.length != 25) return false; //can't sense all tiles around the SRP
-
+        
         for(MapInfo info : infos) {
             //isPassable determines if there is a wall or ruin on this square
             //if there is a wall or ruin we can't paint it, hence don't paint there
@@ -363,6 +355,10 @@ public class Soldier extends Unit {
             buildTarget = ruinTarget;
             bMode = BuildMode.BUILD_TOWER;
             return;
+        } else if(ruinTarget == null && bMode == BuildMode.BUILD_TOWER) {
+            //we have the lost the target to build on so we reset:
+            buildTarget = ruinTarget;
+            bMode = BuildMode.NONE;
         }
 
         updateSRPTarget();
