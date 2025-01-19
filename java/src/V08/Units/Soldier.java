@@ -201,7 +201,6 @@ public class Soldier extends Unit {
             } else {
                 //if this is a new SRP location that is valid to complete we set it as target
                 //or if we have no other valid targets we will also set it
-                MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
                 if(isValidSRPPosition(loc)) {
                     SRPTarget = loc;
                 }
@@ -214,6 +213,13 @@ public class Soldier extends Unit {
         MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
         if(infos.length != 25) return false; //can't sense all tiles around the SRP
         
+        //location is to close to the edge
+        if(loc.x <= 1 || loc.y <= 1
+            || loc.x >= mapWidth - 1 || loc.y >= mapHeight - 1) {
+                if(rc.canMark(loc)) rc.mark(loc, true);
+                return false;    
+        }
+
         for(MapInfo info : infos) {
             //isPassable determines if there is a wall or ruin on this square
             //if there is a wall or ruin we can't paint it, hence don't paint there
