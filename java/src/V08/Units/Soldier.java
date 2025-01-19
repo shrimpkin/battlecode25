@@ -47,6 +47,11 @@ public class Soldier extends Unit {
             completeBuiltTarget();
         }
 
+        for(RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
+            if(robot.getType().isTowerType()) requestPaint(robot.getLocation(), 200-rc.getPaint());
+        }
+
+
         move();
         attack();
         tessellate(); 
@@ -401,7 +406,6 @@ public class Soldier extends Unit {
                     rc.completeTowerPattern(buildType, buildTarget);
                 }
                 
-                requestPaint(buildTarget, 200);
                 buildTarget = null;
                 buildType = null;
                 bMode = BuildMode.NONE;
