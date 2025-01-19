@@ -328,14 +328,14 @@ public class Soldier extends Unit {
 
         if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget)) {
             rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget);
-            if (rc.getPaint() < 100 || rc.getChips() < 600) {
+            if (rc.getPaint() < 100 || rc.getChips() < 800) {
                 requestPaint(ruinTarget, rc.getType().paintCapacity - rc.getPaint());
             }
         }
 
         if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget)) {
             rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget);
-            if (rc.getPaint() < 100 || rc.getChips() < 600) {
+            if (rc.getPaint() < 100 || rc.getChips() < 800) {
                 requestPaint(ruinTarget, rc.getType().paintCapacity - rc.getPaint());
             }
         }
