@@ -33,10 +33,11 @@ public class NewMopper extends Unit {
 
     public static void move() throws GameActionException {
         if (!micro.doMicro()) {
+            // TODO: prevent non-micro movement from walking into tower range
             if (avgEnemy != null && paintBalance > 0) {
                 Navigator.moveTo(avgEnemy);
                 wasWandering = false;
-            } else if (avgMe != null && paintBalance < 0 ) {
+            } else if (avgMe != null && (paintBalance < 0 || !rc.senseMapInfo(rc.getLocation()).getPaint().isAlly())) {
                 Navigator.moveTo(avgMe);
                 wasWandering = false;
             } else {
@@ -44,6 +45,13 @@ public class NewMopper extends Unit {
                 wasWandering = true;
             }
         } else {
+            // TODO: add refill logic
+//            if (rc.getPaint() < 40) { // refill
+//                var closestPaint = getClosestLocation(paintTowerLocations);
+//                if (closestPaint != null && rc.isMovementReady()) {
+//                    Navigator.moveTo(closestPaint);
+//                }
+//            }
             indicator += "[did micro]";
             wasWandering = false;
         }
@@ -113,6 +121,7 @@ public class NewMopper extends Unit {
         }
     }
 
+    // update positions of nearby paint -- tracking the average position of allied/enemy paint
     public static void updateSurroundings() throws GameActionException {
         // update surrounding ruins and robots
         var nearbyRobots = rc.senseNearbyRobots(-1);

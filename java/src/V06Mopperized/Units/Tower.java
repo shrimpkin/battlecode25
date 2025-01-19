@@ -56,12 +56,16 @@ public class Tower extends Unit {
      * Determines what units to spawn based on current mode
      */
     public static void spawn() throws GameActionException {
+        if (rc.senseNearbyRobots(-1, rc.getTeam()).length > 8) return;
+
         if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
-            buildRobotType(UnitType.SOLDIER);
-            // TODO: maybe build early moppers to get rid of paint marks on ruins
-            // need to build moppers with the intent of
-            // - staying on ally territory
-            // - prioritizing removing enemy paint
+            if (rc.senseNearbyRobots(-1, rc.getTeam()).length < 2) {
+                buildRobotType(UnitType.SOLDIER);
+                // TODO: maybe build early moppers to get rid of paint marks on ruins
+                // need to build moppers with the intent of
+                // - staying on ally territory
+                // - prioritizing removing enemy paint
+            } else return;
         }
 
         switch (mode) {
@@ -87,7 +91,7 @@ public class Tower extends Unit {
                 break;
 
             case Modes.STABLE:
-                if (rng.nextDouble() <= rc.getHealth() / 1000) {
+                if (rng.nextDouble() <= rc.getHealth() / 1000.0) {
                     spawnOffense();
                 } else {
                     buildRobotType(UnitType.SOLDIER);
@@ -111,7 +115,7 @@ public class Tower extends Unit {
 
     public static void broadcastAndRead() throws GameActionException {
         var msgs = rc.readMessages(-1);
-        indicator += " recieved: " + msgs.length + " messages | ";
+        indicator += " received: " + msgs.length + " messages | ";
         int messagesSent = 0;
         for (var msg : msgs) {
             var code = msg.getBytes();
@@ -143,15 +147,13 @@ public class Tower extends Unit {
                         }
                     }
                 }
+                // TODO: reinforceFront messaging
                 default -> System.out.println("Tower should not be getting message with comm code: " + code);
             }
         }
 
-        if (rc.canBroadcastMessage()) {
-
-            rc.broadcastMessage(Comms.encodeMessage(rc.getType(), rc.getLocation()));
-        }
-
+        // inform other towers of current tower's type -- as well as of known paint tower locations
+        if (rc.canBroadcastMessage()) rc.broadcastMessage(Comms.encodeMessage(rc.getType(), rc.getLocation()));
         if (rc.getRoundNum() % 5 == 0) { // broadcast known paint towers occasionally
             for (var tower : knownPaintTowers.getKeys()) {
                 if (rc.canBroadcastMessage()) {
@@ -165,19 +167,11 @@ public class Tower extends Unit {
      * Upgrade tower at robot's location
      */
     public static void upgradeTower() throws GameActionException {
-        if (!isPaintTower(rc.getType()))
-            return; // only upgrade paint towers
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (rc.getMoney() <= 2000)
-            return; // BROKE
-
+        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
+            return; // prioritize paint tower upgrades
         rc.upgradeTower(rc.getLocation());
-    }
-
-    static int nearbyEnemyPaint = 0, nearbyAllyPaint = 0;
-    static void updateSurroundings() throws GameActionException {
-
     }
 
     /*************

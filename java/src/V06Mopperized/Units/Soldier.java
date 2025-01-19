@@ -18,7 +18,6 @@ public class Soldier extends Unit {
 
     public static void run() throws GameActionException {
         indicator = "";
-
         updateMode();
         updateTowerLocations();
         if (mode == Modes.REFILL) {
@@ -40,7 +39,6 @@ public class Soldier extends Unit {
         if (mode == Modes.BOOM) {
             findValidTowerPosition();
             markOneRuinTile();
-
             targetLocation = getClosestUnpaintedTarget();
             // NAV NOT CLOSE ENOUGH
             if (targetLocation != null && rc.canMove(rc.getLocation().directionTo(targetLocation))) {
@@ -89,8 +87,6 @@ public class Soldier extends Unit {
 
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
     public static void updateMode() throws GameActionException {
-        
-
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
             mode = Modes.ATTACK;
             return;
@@ -127,13 +123,9 @@ public class Soldier extends Unit {
         for (RobotInfo robot : robots) {
             boolean isPaintTower = isPaintTower(robot.getType());
             boolean isMoneyTower = isMoneyTower(robot.getType());
-
-            if (!(isPaintTower || isMoneyTower))
-                return;
-            if (isPaintTower && addedPaintTowerSymmetryLocs)
-                continue;
-            if (isMoneyTower && addedMoneyTowerSymmetryLocs)
-                continue;
+            if (!(isPaintTower || isMoneyTower)) return;
+            if (isPaintTower && addedPaintTowerSymmetryLocs) continue;
+            if (isMoneyTower && addedMoneyTowerSymmetryLocs) continue;
 
             int x = robot.getLocation().x;
             int y = robot.getLocation().y;
@@ -157,7 +149,6 @@ public class Soldier extends Unit {
     public static void updateSymmetryTargets() throws GameActionException {
         for (int i = 0; i < symmetryLocations.size; i++) {
             MapLocation tower = unpack(symmetryLocations.keys.charAt(i));
-
             if (!rc.canSenseLocation(tower))
                 continue;
             RobotInfo info = rc.senseRobotAtLocation(tower);
@@ -337,10 +328,16 @@ public class Soldier extends Unit {
 
         if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget)) {
             rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, ruinTarget);
+            if (rc.getPaint() < 100 || rc.getChips() < 600) {
+                requestPaint(ruinTarget, rc.getType().paintCapacity - rc.getPaint());
+            }
         }
 
         if(rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget)) {
             rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, ruinTarget);
+            if (rc.getPaint() < 100 || rc.getChips() < 600) {
+                requestPaint(ruinTarget, rc.getType().paintCapacity - rc.getPaint());
+            }
         }
 
         if(targetLocation == null) return;
