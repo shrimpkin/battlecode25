@@ -212,7 +212,7 @@ public class Soldier extends Unit {
     public static boolean isValidSRPPosition(MapLocation loc) throws GameActionException {
         MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
         if(infos.length != 25) return false; //can't sense all tiles around the SRP
-        
+
         for(MapInfo info : infos) {
             //isPassable determines if there is a wall or ruin on this square
             //if there is a wall or ruin we can't paint it, hence don't paint there
@@ -376,7 +376,8 @@ public class Soldier extends Unit {
         if(buildTarget == null || bMode == BuildMode.NONE) return;
         //haven't decided on tower type yet
         if(bMode == BuildMode.BUILD_TOWER && buildType == null) return;
-
+        if(!rc.canSenseLocation(buildTarget)) return;
+        
         
         if(bMode == BuildMode.BUILD_TOWER) {
             //a tower has been built or we can complete the tower
@@ -392,6 +393,8 @@ public class Soldier extends Unit {
                 bMode = BuildMode.NONE;
             }
         } else if(bMode == BuildMode.BUILD_SRP) {
+            
+
             MapInfo buildInfo = rc.senseMapInfo(buildTarget);
             //a resource pattern has been built or we can complete it
             boolean isCenter = buildInfo.isResourcePatternCenter();
