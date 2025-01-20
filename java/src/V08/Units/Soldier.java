@@ -42,7 +42,7 @@ public class Soldier extends Unit {
 
         if (mode == Modes.REFILL) {
             moveTarget = getClosestLocation(paintTowerLocations);
-            requestPaint(moveTarget, 200);
+            requestPaint(moveTarget, 200 - rc.getPaint());
         }
 
         if (mode == Modes.BOOM) {

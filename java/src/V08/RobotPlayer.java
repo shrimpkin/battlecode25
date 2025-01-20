@@ -15,6 +15,7 @@ public class RobotPlayer {
         while (true) {
             turnCount += 1;
             if (turnCount == 1) init(rc);
+//            if (rc.getRoundNum() >= 300) rc.resign();
             try {
                 switch (rc.getType()) {
                     case SOLDIER:  Soldier.run();  break;

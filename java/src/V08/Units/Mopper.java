@@ -7,13 +7,8 @@ import V08.Tools.FastLocSet;
 import battlecode.common.*;
 
 public class Mopper extends Unit {
-    static FastLocSet enemyTowers = new FastLocSet(), enemyRobots = new FastLocSet();
     static FastLocSet enemyPaint = new FastLocSet(), allyPaint = new FastLocSet();
-    static FastLocSet allies = new FastLocSet(), emptyRuins = new FastLocSet();
     static FastLocSet enemyMarks = new FastLocSet();
-    /// records allyPaint - enemyPaint
-    static int paintBalance;
-    static MapLocation avgMe, avgEnemy;
     static Message[] messages;
     static final Direction[] cardinal = Direction.cardinalDirections();
     private static boolean wasWandering = false;
@@ -29,7 +24,7 @@ public class Mopper extends Unit {
         move();
         doAction();
         refill();
-        debug();
+//        debug();
     }
 
     public static void move() throws GameActionException {
@@ -60,15 +55,15 @@ public class Mopper extends Unit {
             MapLocation paintTile = null;
             var nearbyRuins = rc.senseNearbyRuins(-1);
             int importance = 0;
+            // TODO: maybe reorder the importance of these
             for (var tile : rc.senseNearbyMapInfos(2)) {
                 if (!tile.getPaint().isEnemy() || !tile.isPassable()) continue;
                 // save ourselves from enemy penalty
                 var loc = tile.getMapLocation();
                 if (!rc.canAttack(loc)) continue;
                 rc.setIndicatorDot(loc, 0,0, 0);
-                if (loc == rc.getLocation()) {
+                if (loc == rc.getLocation()) { // prioritize putting ourselves out of harm's way
                     paintTile = loc;
-                    importance = 6;
                     break;
                 }
                 // put enemies moppers off safe ground
@@ -101,7 +96,6 @@ public class Mopper extends Unit {
             }
             if (paintTile != null && rc.canAttack(paintTile)) {
                 rc.attack(paintTile);
-                rc.setIndicatorDot(paintTile, 220, 250, 100);
                 indicator += "painted]";
             } else if (rc.getPaint() > 51){
                 // can't paint any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
@@ -113,7 +107,7 @@ public class Mopper extends Unit {
                         rc.transferPaint(loc, amount);
                     }
                 }
-                indicator += "transferred paint]";
+                indicator += "try paint transfer]";
             }
         }
     }
@@ -122,62 +116,25 @@ public class Mopper extends Unit {
     public static void updateSurroundings() throws GameActionException {
         enemyPaint.clear();
         allyPaint.clear();
-        // update surrounding ruins and robots
-        var nearbyRobots = rc.senseNearbyRobots(-1);
-        var nearbyRuins = rc.senseNearbyRuins(-1);
-        for (var ruin : nearbyRuins) emptyRuins.add(ruin);
-        for (var robot : nearbyRobots) {
-            var loc = robot.getLocation();
-            if (emptyRuins.contains(loc)) emptyRuins.remove(loc);
-            var type = robot.getType();
-            if (robot.getTeam() == myTeam) {
-                if (type.isRobotType()) allies.add(loc);
-            } else {
-                if (type.isRobotType()) enemyRobots.add(loc);
-                else enemyTowers.add(loc);
-            }
-        }
-        // update surrounding radius (for bytecode -- use 5x5 for now)
-        int myX = 0, myY = 0, enX = 0, enY = 0;
-        for (var tile : rc.senseNearbyMapInfos(12)) {
+        // update surrounding radius
+        for (var tile : rc.senseNearbyMapInfos(10)) {
             var loc = tile.getMapLocation();
             if (tile.getPaint().isAlly()) {
                 allyPaint.add(loc);
-                myX += loc.x;
-                myY += loc.y;
             } else if (tile.getPaint().isEnemy()) {
                 enemyPaint.add(loc);
-                enX += loc.x;
-                enY += loc.y;
-                rc.setIndicatorDot(loc, 255, 255, 255);
             }
             if (tile.getMark().isAlly()) enemyMarks.add(loc);
         }
-        int allyCnt = allyPaint.size, enemCnt = enemyPaint.size;
-        paintBalance = allyPaint.size - enemyPaint.size;
         // reset values if needed
-        var myLoc = rc.getLocation();
-        if (avgMe != null && myLoc.isWithinDistanceSquared(avgMe, 8)) {
-            avgMe = null;
-        }
-        if (avgEnemy != null && myLoc.isWithinDistanceSquared(avgEnemy, 8)) {
-            avgEnemy = null;
-        }
-        if (allyCnt > 0) {
-            avgMe = new MapLocation((int) Math.round((double) myX / allyCnt), (int) Math.round((double) myY / allyCnt));
-        }
-        if (enemCnt > 0) {
-            avgEnemy = new MapLocation((int) Math.round((double) enX / enemCnt), (int) Math.round((double) enY / enemCnt));
-        }
     }
 
     public static void refill() throws GameActionException {
-        var nearbyTowers = rc.senseNearbyRuins(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED);
-        for (var ruin : nearbyTowers) {
-            if (!rc.canSenseRobotAtLocation(ruin)) continue;
-            var robot = rc.senseRobotAtLocation(ruin);
+        if (Clock.getBytecodesLeft() < 400) return;
+        for (var robot : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
             if (robot.getTeam() == myTeam) {
                 requestPaint(robot.getLocation(), 100 - rc.getPaint());
+                break;
             }
         }
     }
@@ -216,21 +173,6 @@ public class Mopper extends Unit {
     }
 
     public static void debug() throws GameActionException {
-//        if (avgMe != null) {
-//            rc.setIndicatorDot(avgMe, 0, 255, 0);
-////            indicator += " [avgMe:" + avgMe + "]";
-//        }
-//        if (avgEnemy != null) {
-//            rc.setIndicatorDot(avgEnemy, 255, 0, 0);
-////            indicator += " [avgEnemy:" + avgEnemy + "]";
-//        }
-        indicator += "[paint balance: " + paintBalance + "]";
-        if (avgEnemy != null && avgMe != null) {
-            rc.setIndicatorDot(
-                    new MapLocation((avgMe.x + avgEnemy.x) / 2, (avgMe.y + avgEnemy.y) / 2),
-                    255, 255, 0
-            );
-        }
         rc.setIndicatorString(indicator);
     }
 }

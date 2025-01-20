@@ -261,7 +261,7 @@ public class Unit extends Globals {
     };
 
     public static void canCompletePattern() throws GameActionException {
-        for (MapInfo tile : rc.senseNearbyMapInfos()) {
+        for (MapInfo tile : rc.senseNearbyMapInfos(GameConstants.RESOURCE_PATTERN_RADIUS_SQUARED)) {
             MapLocation loc = tile.getMapLocation();
             if(loc.x % 4 != 2 || loc.y % 4 != 2) 
                 continue; // not a center location

@@ -50,7 +50,7 @@ public class MopperMicro {
             if (microInfo[i].isBetter(bestMicro)) bestMicro = microInfo[i];
         }
         if (bestMicro.dir == Direction.CENTER) return true;
-        rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(bestMicro.dir), 255, 255, 255);
+//        rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(bestMicro.dir), 255, 255, 255);
 
         if (rc.canMove(bestMicro.dir)) {
             rc.move(bestMicro.dir);
@@ -173,19 +173,28 @@ public class MopperMicro {
         }
 
         void updateSurrounding() {
-            for (var loc : enemyPaint) {
-                var dist = loc.distanceSquaredTo(location);
-                if (dist < minDistanceToEnemyPaint) {
-                    minDistanceToEnemyPaint = dist;
-                }
+            for (int i = enemyPaint.length-1; i --> 0;) {
+                minDistanceToEnemyPaint = Math.min(enemyPaint[i].distanceSquaredTo(location), minDistanceToEnemyPaint);
             }
-            for (var loc : allyPaint) {
-                var dist = loc.distanceSquaredTo(location);
-                if (dist < minDistanceToAllyPaint) {
-                    minDistanceToAllyPaint = dist;
-                }
+            for (int i = allyPaint.length-1; i --> 0;){
+                minDistanceToAllyPaint = Math.min(allyPaint[i].distanceSquaredTo(location), minDistanceToAllyPaint);
             }
         }
+
+//        void updateSurrounding() {
+//            for (int i = enemyPaint.length-1; i --> 0;) {
+//                var dist = enemyPaint[i].distanceSquaredTo(location);
+//                if (dist < minDistanceToEnemyPaint) {
+//                    minDistanceToEnemyPaint = dist;
+//                }
+//            }
+//            for (int i = allyPaint.length-1; i --> 0;) {
+//                var dist = allyPaint[i].distanceSquaredTo(location);
+//                if (dist < minDistanceToAllyPaint) {
+//                    minDistanceToAllyPaint = dist;
+//                }
+//            }
+//        }
 
         void updateAlly(RobotInfo unit) {
             int dist = unit.getLocation().distanceSquaredTo(location);
@@ -214,7 +223,7 @@ public class MopperMicro {
                     if (type == UnitType.MOPPER) ++moppersInMoveRange;
                 }
             }
-            rc.setIndicatorDot(unit.getLocation(), 200, 200, 100);
+//            rc.setIndicatorDot(unit.getLocation(), 200, 200, 100);
         }
 
         boolean isBetter(MicroInfo that) {
