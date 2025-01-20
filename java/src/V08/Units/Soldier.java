@@ -19,6 +19,7 @@ public class Soldier extends Unit {
     static MapLocation ruinTarget;
     static MapLocation SRPTarget;
     static MapLocation lastRuinTarget;
+    static MapLocation attackTarget;
     static int roundNum;
     static int DEBUG = 1;
 
@@ -28,9 +29,14 @@ public class Soldier extends Unit {
         Modes prev = mode;
         roundNum = rc.getRoundNum();
 
+        //computations ahead of choosing mode
+        setBuildTarget();
+        attackTarget = getAttackMove();
+
         read();
         updateMode();
         updateTowerLocations();
+        
 
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
@@ -40,19 +46,13 @@ public class Soldier extends Unit {
         }
 
         if (mode == Modes.BOOM) {
-            setBuildTarget();
-
-            if(buildTarget == null) {
-                mode = Modes.ATTACK;
-            } else {
-                moveTarget = rotateAroundBuiltTarget();
-                paintBuildTarget(); 
-                completeBuiltTarget();
-            } 
+            moveTarget = rotateAroundBuiltTarget();
+            paintBuildTarget(); 
+            completeBuiltTarget();
         }
 
         if (mode == Modes.ATTACK) {
-            moveTarget = getAttackMove();
+            moveTarget = attackTarget;
         }
 
         for(RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
@@ -84,6 +84,17 @@ public class Soldier extends Unit {
             return;
         }
 
+        if(bMode == BuildMode.BUILD_TOWER && buildTarget != null) {
+            mode = Modes.BOOM;
+            return;
+        }
+
+        //TODO: tune this constant 
+        if(attackTarget != null && attackTarget.distanceSquaredTo(rc.getLocation()) <= 16) {
+            mode = Modes.ATTACK;
+            return;
+        }
+
         if(rc.getPaint() <= 40 && roundNum - lastRefillEnd > 10) {
             mode = Modes.REFILL;
             if (ruinTarget != null) {
@@ -103,9 +114,16 @@ public class Soldier extends Unit {
     /** Returns location of a tower that has been seen otherwise null*/
     public static MapLocation getClosestEnemyTowerLocation() throws GameActionException {
         MapLocation bestLocation = null;
+        int bestDistance = Integer.MAX_VALUE;
 
         if (enemyTowerLocations.size > 0) {
-            return unpack(enemyTowerLocations.keys.charAt(0));
+            MapLocation tower =  unpack(enemyTowerLocations.keys.charAt(0));
+
+            int distance = rc.getLocation().distanceSquaredTo(tower);
+            if(distance < bestDistance) {
+                bestDistance = distance;
+                bestLocation = tower;
+            }
         }
 
         return bestLocation;
@@ -172,6 +190,8 @@ public class Soldier extends Unit {
         ruinTarget = null;
         MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
 
+        MapLocation bestLocation = null;
+        int distance = Integer.MAX_VALUE;
         for (MapLocation ruin : ruinLocations) {
             RobotInfo ruinRobot = rc.senseRobotAtLocation(ruin);    
             if (ruinRobot != null) continue;
@@ -180,21 +200,23 @@ public class Soldier extends Unit {
             for(RobotInfo robot : rc.senseNearbyRobots(ruin, 8, myTeam)) {
                 if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
             }
-            if(numNearbySoliders > 1) continue;
+            if(numNearbySoliders > 2) continue;
 
             if(!canStillComplete(ruin)) continue;
 
-            boolean isCloser;
-            if(ruinTarget != null)
-                isCloser = rc.getLocation().distanceSquaredTo(ruin) < rc.getLocation().distanceSquaredTo(ruinTarget);
-            else 
-                isCloser = true;
-
-            if (isCloser) {
-                ruinTarget = ruin;
-                break;
+            
+            if(ruin != null) {
+                if(bestLocation == null) {
+                    bestLocation = ruin;
+                    distance = rc.getLocation().distanceSquaredTo(ruin);
+                } else if(rc.getLocation().distanceSquaredTo(ruin) < distance){
+                    bestLocation = ruin;
+                    distance = rc.getLocation().distanceSquaredTo(ruin);
+                }
             }
         }
+
+        ruinTarget = bestLocation;
     }
 
     /** Checks if the enemey has painted in our build target */
