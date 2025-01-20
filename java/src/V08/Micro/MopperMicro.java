@@ -36,11 +36,9 @@ public class MopperMicro {
         if (!rc.isMovementReady()) return false;
         shouldPlaySafe = false;
         needPaint = lowPaint();
-        System.out.println(enemyPaint.length);
         if (!needPaint && rc.getActionCooldownTurns() < 20) {
             var enemiesShort = rc.senseNearbyRobots(rangeExtended, rc.getTeam().opponent());
             if (enemiesShort.length == 0 && enemyPaint.length == 0) {
-                System.out.println("no paint and no enemies");
                 return false;
             }
         }
