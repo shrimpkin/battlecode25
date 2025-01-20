@@ -63,16 +63,17 @@ public class Tower extends Unit {
         switch (mode) {
             case Modes.NEAR_DEATH -> {
                 if (rc.getHealth() <= 100 && rc.canBroadcastMessage()) {
+                    buildRobotType(UnitType.SOLDIER);
                     rc.broadcastMessage(Comms.encodeMessage(CommType.RequestSoldiers, rc.getLocation()));
                 }
             }
 
-            case Modes.UNDER_ATTACK -> {
-                buildRobotType(UnitType.SOLDIER);
+            case Modes.UNDER_ATTACK -> { 
+                // womp womp womp 
             }
 
             case Modes.NONE -> {
-                if (rng.nextDouble() >= rc.getHealth() / 1000 / 10) {
+                if (rng.nextDouble() >= rc.getHealth() / rc.getType().health / 10) {
                     buildRobotType(UnitType.SOLDIER);
                 } else {
                     spawnOffense();
@@ -80,11 +81,7 @@ public class Tower extends Unit {
             }
 
             case Modes.STABLE -> {
-                if (rng.nextDouble() <= rc.getHealth() / 1000.0) {
-                    spawnOffense();
-                } else {
-                    buildRobotType(UnitType.SOLDIER);
-                }
+                spawnOffense();
             }
         }
     }
@@ -181,8 +178,9 @@ public class Tower extends Unit {
     public static void upgradeTower() throws GameActionException {
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
+        if (!isPaintTower(rc.getType()) || rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
             return; // prioritize paint tower upgrades
+
         rc.upgradeTower(rc.getLocation());
     }
 
