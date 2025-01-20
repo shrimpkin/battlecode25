@@ -8,6 +8,7 @@ import battlecode.common.*;
 
 public class Mopper extends Unit {
     static FastLocSet enemyTowers = new FastLocSet(), enemyRobots = new FastLocSet();
+    static FastLocSet enemyPaint = new FastLocSet(), allyPaint = new FastLocSet();
     static FastLocSet allies = new FastLocSet(), emptyRuins = new FastLocSet();
     static FastLocSet enemyMarks = new FastLocSet();
     /// records allyPaint - enemyPaint
@@ -23,36 +24,24 @@ public class Mopper extends Unit {
         indicator = "";
         updateTowerLocations();
         updateSurroundings();
-        micro.computeMicroArray(true);
+        micro.computeMicroArray(true, paintTowerLocations, enemyPaint, allyPaint);
         messages = rc.readMessages(-1);
         move();
         doAction();
+        refill();
         debug();
     }
 
     public static void move() throws GameActionException {
-        if (!micro.doMicro()) {
-            // TODO: prevent non-micro movement from walking into tower range
-            if (avgEnemy != null && paintBalance > 0) {
-                Navigator.moveTo(avgEnemy);
-                wasWandering = false;
-            } else if (avgMe != null && (paintBalance < 0 || !rc.senseMapInfo(rc.getLocation()).getPaint().isAlly())) {
-                Navigator.moveTo(avgMe);
-                wasWandering = false;
-            } else {
-                wander( wasWandering);
-                wasWandering = true;
-            }
-        } else {
-            // TODO: add refill logic
-//            if (rc.getPaint() < 40) { // refill
-//                var closestPaint = getClosestLocation(paintTowerLocations);
-//                if (closestPaint != null && rc.isMovementReady()) {
-//                    Navigator.moveTo(closestPaint);
-//                }
-//            }
-            indicator += "[did micro]";
+        if (rc.getPaint() < 40 && paintTowerLocations.size > 0) {
+            Navigator.moveTo(getClosestLocation(paintTowerLocations));
             wasWandering = false;
+        } else if (micro.doMicro()) {
+            indicator += "{did micro}";
+            wasWandering = false;
+        } else if (rc.isMovementReady()) {
+            wander(wasWandering);
+            wasWandering = true;
         }
     }
 
@@ -120,7 +109,7 @@ public class Mopper extends Unit {
                 var amount = rc.getPaint() - 51;
                 for (var robot : allies) {
                     var loc = robot.getLocation();
-                    if (robot.getPaintAmount() < robot.getPaintAmount() / 2 && rc.canTransferPaint(loc, amount)) {
+                    if (robot.getPaintAmount() < robot.getPaintAmount() / 3 && rc.canTransferPaint(loc, amount)) {
                         rc.transferPaint(loc, amount);
                     }
                 }
@@ -131,6 +120,8 @@ public class Mopper extends Unit {
 
     // update positions of nearby paint -- tracking the average position of allied/enemy paint
     public static void updateSurroundings() throws GameActionException {
+        enemyPaint.clear();
+        allyPaint.clear();
         // update surrounding ruins and robots
         var nearbyRobots = rc.senseNearbyRobots(-1);
         var nearbyRuins = rc.senseNearbyRuins(-1);
@@ -148,22 +139,22 @@ public class Mopper extends Unit {
         }
         // update surrounding radius (for bytecode -- use 5x5 for now)
         int myX = 0, myY = 0, enX = 0, enY = 0;
-        int allyCnt = 0, enemCnt = 0;
-        for (var tile : rc.senseNearbyMapInfos(8)) {
+        for (var tile : rc.senseNearbyMapInfos(12)) {
             var loc = tile.getMapLocation();
             if (tile.getPaint().isAlly()) {
-                allyCnt++;
+                allyPaint.add(loc);
                 myX += loc.x;
                 myY += loc.y;
-                paintBalance++;
             } else if (tile.getPaint().isEnemy()) {
-                paintBalance--;
-                enemCnt++;
+                enemyPaint.add(loc);
                 enX += loc.x;
                 enY += loc.y;
+                rc.setIndicatorDot(loc, 255, 255, 255);
             }
             if (tile.getMark().isAlly()) enemyMarks.add(loc);
         }
+        int allyCnt = allyPaint.size, enemCnt = enemyPaint.size;
+        paintBalance = allyPaint.size - enemyPaint.size;
         // reset values if needed
         var myLoc = rc.getLocation();
         if (avgMe != null && myLoc.isWithinDistanceSquared(avgMe, 8)) {
@@ -172,7 +163,6 @@ public class Mopper extends Unit {
         if (avgEnemy != null && myLoc.isWithinDistanceSquared(avgEnemy, 8)) {
             avgEnemy = null;
         }
-
         if (allyCnt > 0) {
             avgMe = new MapLocation((int) Math.round((double) myX / allyCnt), (int) Math.round((double) myY / allyCnt));
         }
@@ -226,14 +216,14 @@ public class Mopper extends Unit {
     }
 
     public static void debug() throws GameActionException {
-        if (avgMe != null) {
-            rc.setIndicatorDot(avgMe, 0, 255, 0);
-            indicator += " [avgMe:" + avgMe + "]";
-        }
-        if (avgEnemy != null) {
-            rc.setIndicatorDot(avgEnemy, 255, 0, 0);
-            indicator += " [avgEnemy:" + avgEnemy + "]";
-        }
+//        if (avgMe != null) {
+//            rc.setIndicatorDot(avgMe, 0, 255, 0);
+////            indicator += " [avgMe:" + avgMe + "]";
+//        }
+//        if (avgEnemy != null) {
+//            rc.setIndicatorDot(avgEnemy, 255, 0, 0);
+////            indicator += " [avgEnemy:" + avgEnemy + "]";
+//        }
         indicator += "[paint balance: " + paintBalance + "]";
         if (avgEnemy != null && avgMe != null) {
             rc.setIndicatorDot(
