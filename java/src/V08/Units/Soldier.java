@@ -95,7 +95,7 @@ public class Soldier extends Unit {
             return;
         }
 
-        if(rc.getPaint() <= 40 && roundNum - lastRefillEnd > 10) {
+        if(rc.getPaint() <= 40 && roundNum - lastRefillEnd > 10 && paintTowerLocations.size != 0) {
             mode = Modes.REFILL;
             if (ruinTarget != null) {
                 lastRuinTarget = ruinTarget;
@@ -204,7 +204,6 @@ public class Soldier extends Unit {
 
             if(!canStillComplete(ruin)) continue;
 
-            
             if(ruin != null) {
                 if(bestLocation == null) {
                     bestLocation = ruin;
