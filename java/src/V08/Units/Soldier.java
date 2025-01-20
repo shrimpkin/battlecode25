@@ -36,15 +36,20 @@ public class Soldier extends Unit {
             requestPaint(moveTarget, 200);
         }
 
-        if (mode == Modes.ATTACK) {
-            moveTarget = getAttackMoveTarget();
-        }
-
         if (mode == Modes.BOOM) {
             setBuildTarget();
-            moveTarget = rotateAroundBuiltTarget();
-            paintBuildTarget(); 
-            completeBuiltTarget();
+
+            if(buildTarget == null) {
+                mode = Modes.ATTACK;
+            } else {
+                moveTarget = rotateAroundBuiltTarget();
+                paintBuildTarget(); 
+                completeBuiltTarget();
+            } 
+        }
+
+        if (mode == Modes.ATTACK) {
+            moveTarget = getAttackMoveTarget();
         }
 
         for(RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
@@ -65,24 +70,12 @@ public class Soldier extends Unit {
             return;
         }
 
-        // intermittent rushing in midgame
-        var span = Math.max(mapHeight, mapWidth);
-        if (roundNum > 200 && rc.getPaint() > 2*span && roundNum % 100 < span) {
-            mode = Modes.ATTACK;
-            return;
-        }
-
         if(rc.getPaint() <= 40 && roundNum - lastRefillEnd > 10) {
             mode = Modes.REFILL;
             if (ruinTarget != null) {
                 lastRuinTarget = ruinTarget;
                 indicator += "last ruin target: " + ruinTarget;
             }
-            return;
-        }
-
-        if(enemyTowerLocations.size > 0 && unusedRuinLocations.size == 0) {
-            mode = Modes.ATTACK;
             return;
         }
 
@@ -185,6 +178,7 @@ public class Soldier extends Unit {
         SRPTarget = null;
 
         for(MapInfo info : rc.senseNearbyMapInfos()) {
+
             MapLocation loc = info.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location
             if(info.isResourcePatternCenter()) {
@@ -199,6 +193,12 @@ public class Soldier extends Unit {
                 if(robotInfo == null) toClose = true;
             }
             if(toClose) continue;
+
+            int numNearbySoliders = 0;
+            for(RobotInfo robot : rc.senseNearbyRobots(loc, 8, myTeam)) {
+                if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
+            }
+            if(numNearbySoliders > 1) continue;
 
             boolean isValid = isValidSRPPosition(loc);
             if(info.getMark().equals(PaintType.ALLY_PRIMARY) && isValid) {
@@ -362,11 +362,6 @@ public class Soldier extends Unit {
 
     /** Updates the buildTarget and bMode fields */
     public static void setBuildTarget() throws GameActionException {
-        //we have a valid tower to build
-        if(bMode == BuildMode.BUILD_TOWER && canStillComplete(buildTarget)) {
-            return;
-        }
-
         //first looks for nearby ruins to build towers on
         findValidTowerPosition();
         if(ruinTarget != null) {
@@ -496,23 +491,15 @@ public class Soldier extends Unit {
             rc.attack(locationToMark);
         }
     }
+   
     /**
      * Handles all the ways we paint SRP patterns. In order of priority:
      *      1. Marks one ruin tile with an SRP pattern
      *      2. Paints the SRP pattern below the robot
-     *      3. Paints arbitrary tiles with SRP
-     * Will additionally call completeSRPPatterns() to complete SRPs if valid
      */
     public static void tessellate() throws GameActionException {
         markOneRuinTile();
         paintSRPBelow();
-
-        // if((rc.getChips() < 800 || rc.getChips() > 3000) && rc.getPaint() >= 50) {
-        //     for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
-        //         if (paintSRP(tile)) return;
-        //     }
-        // }
-
     }
 
     /************************************************************************\
