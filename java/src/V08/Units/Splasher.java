@@ -170,7 +170,9 @@ public class Splasher extends Unit {
             util += paintWeight;
             // get the bonus from ally/enemy standing on the converted paint
             if (rc.canSenseRobotAtLocation(loc)) {
+                // TODO: maybe remove this sense for bytecode -- 15 is pretty expensive to be calling this many times
                 var robot = rc.senseRobotAtLocation(loc);
+                if (info.hasRuin()) continue; // don't count towers
                 int unitMultiplier = robot.getType() == UnitType.MOPPER ? GameConstants.MOPPER_PAINT_PENALTY_MULTIPLIER : 1;
                 if (info.getPaint() == PaintType.EMPTY) {
                     util += unitMultiplier * GameConstants.PENALTY_NEUTRAL_TERRITORY;
