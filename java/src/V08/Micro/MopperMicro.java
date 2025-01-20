@@ -15,6 +15,7 @@ public class MopperMicro {
     Direction[] dirs = Direction.values();
     FastIntSet paintTowers;
     MapLocation[] enemyPaint, allyPaint;
+    int epaintCount = 0, apaintCount = 0;
     boolean shouldPlaySafe = false;
     boolean alwaysInRange = false;
     boolean needPaint = false;
@@ -24,7 +25,7 @@ public class MopperMicro {
 
     public MopperMicro() {
         this.rc = Globals.rc;
-        myRange = rc.getType().actionRadiusSquared;
+        myRange = 7; // extent of mopper swinging (everything in 5x5 except the corners)
         myVisionRange = GameConstants.VISION_RADIUS_SQUARED;
     }
 
@@ -58,12 +59,28 @@ public class MopperMicro {
         }
         return false;
     }
+    /// slim down the paint array by only taking a certain fraction of paint tiles outside a threshold r^2
+    private int slimArray(MapLocation[] locs, int thresholdSquared, int factor) {
+        if (locs.length < 12) return locs.length; // don't need slimming
+        int realIdx = 0;
+        for (int i = 0; i < locs.length; i++) {
+            var loc = locs[i];
+            if (loc.isWithinDistanceSquared(rc.getLocation(), thresholdSquared) || i % factor == 0) {
+                locs[realIdx++] = loc;
+            }
+        }
+        return realIdx;
+    }
 
     public void computeMicroArray(boolean allies, FastIntSet paintTowers, FastLocSet enemyPaint, FastLocSet allyPaint) throws GameActionException {
-        var units = rc.senseNearbyRobots(myVisionRange, rc.getTeam().opponent());
+        var units = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
         this.paintTowers = paintTowers;
         this.enemyPaint = enemyPaint.getKeys();
         this.allyPaint = allyPaint.getKeys();
+        // slim down both arrays -- maybe tune this later idk
+        epaintCount = slimArray(this.enemyPaint, 2, 3);
+        apaintCount = slimArray(this.allyPaint, 2, 3);
+
         canAttack = rc.isActionReady();
         microInfo = new MicroInfo[]{
                 new MicroInfo(dirs[0]),
@@ -142,59 +159,41 @@ public class MopperMicro {
                     if (rc.getPaint() > 50) {
                         paintPenalty = 0;
                     } else {
-                        paintPenalty = GameConstants.PENALTY_NEUTRAL_TERRITORY;
+                        paintPenalty = 1;
                     }
                 } else if (paint.isEnemy()) {
                     if (rc.getPaint() > 80) {
                         paintPenalty = 2;
                     } else {
-                        paintPenalty = GameConstants.PENALTY_ENEMY_TERRITORY * GameConstants.MOPPER_PAINT_PENALTY_MULTIPLIER;
+                        paintPenalty = 4;
                     }
                 }
             }
         }
 
         int safe() {
-            if (inTowerRange > 0)
-                return -2; // moppers are very squishy to towers
-            if (!canMove)
-                return -1; // can't move
-            if (alliesDist2 >= 4)
-                return 0; // too little / too many allies
-            if (moppersInRange > alliesDist10)
-                return 1; // outnumbered by enemy moppers
-            if (paintPenalty > 0)
-                return 2; // penalty for stepping on this tile
+            if (!canMove) return -INF; // can't move there
+            if (inTowerRange > 0) return -inTowerRange; // moppers are very squishy to towers
+            if (alliesDist2 >= 4) return 0; // too many allies
+            if (moppersInRange > alliesDist10) return 1; // outnumbered by enemy moppers
+            if (rc.getPaint() < 20 && paintPenalty > 0 && !rc.isActionReady()) return 2; // no paint and actively dying
             return 3; // no conditions
         }
 
         boolean inRange() {
-            return alwaysInRange || minDistanceToEnemy <= myRange;
+            return alwaysInRange || minDistanceToEnemy <= myRange || minDistanceToEnemyPaint <= 2;
         }
 
-        void updateSurrounding() {
-            for (int i = enemyPaint.length-1; i --> 0;) {
+        void updateSurrounding() throws GameActionException {
+            for (int i = epaintCount; --i >= 0;) {
                 minDistanceToEnemyPaint = Math.min(enemyPaint[i].distanceSquaredTo(location), minDistanceToEnemyPaint);
+                rc.setIndicatorDot(enemyPaint[i],255,0,0);
             }
-            for (int i = allyPaint.length-1; i --> 0;){
+            for (int i = apaintCount; --i >= 0;){
                 minDistanceToAllyPaint = Math.min(allyPaint[i].distanceSquaredTo(location), minDistanceToAllyPaint);
+                rc.setIndicatorDot(allyPaint[i],0,255,0);
             }
         }
-
-//        void updateSurrounding() {
-//            for (int i = enemyPaint.length-1; i --> 0;) {
-//                var dist = enemyPaint[i].distanceSquaredTo(location);
-//                if (dist < minDistanceToEnemyPaint) {
-//                    minDistanceToEnemyPaint = dist;
-//                }
-//            }
-//            for (int i = allyPaint.length-1; i --> 0;) {
-//                var dist = allyPaint[i].distanceSquaredTo(location);
-//                if (dist < minDistanceToAllyPaint) {
-//                    minDistanceToAllyPaint = dist;
-//                }
-//            }
-//        }
 
         void updateAlly(RobotInfo unit) {
             int dist = unit.getLocation().distanceSquaredTo(location);
@@ -202,7 +201,7 @@ public class MopperMicro {
             if (dist <= 5) ++alliesDist10;
         }
 
-        void updateEnemy(RobotInfo unit) throws GameActionException {
+        void updateEnemy(RobotInfo unit) {
             int dist = unit.getLocation().distanceSquaredTo(location);
             var type = unit.getType();
             if (type.isTowerType()) {
@@ -223,7 +222,6 @@ public class MopperMicro {
                     if (type == UnitType.MOPPER) ++moppersInMoveRange;
                 }
             }
-//            rc.setIndicatorDot(unit.getLocation(), 200, 200, 100);
         }
 
         boolean isBetter(MicroInfo that) {
@@ -231,18 +229,26 @@ public class MopperMicro {
             if (safe() < that.safe()) return false;
 
             if (inRange() && !that.inRange()) return true;
-            if (!inRange() && that.inRange()) return true;
+            if (!inRange() && that.inRange()) return false;
 
             if (!inRange()) {
                 if (minDistanceToEnemy < that.minDistanceToEnemy) return true;
                 if (minDistanceToEnemy > that.minDistanceToEnemy) return false;
+
+                // allow for counting sqrt(1) and sqrt(2) as the same
+                if (that.minDistanceToEnemyPaint - minDistanceToEnemyPaint > 1) return true;
+                if (minDistanceToEnemyPaint - that.minDistanceToEnemyPaint > 1) return false;
+
+                if (minDistanceToAllyPaint < that.minDistanceToAllyPaint) return true;
+                if (minDistanceToAllyPaint > that.minDistanceToAllyPaint) return false;
             }
 
             if (moppersInRange < that.moppersInRange) return true;
             if (moppersInRange > that.moppersInRange) return false;
 
-            if (minDistanceToEnemyPaint < that.minDistanceToEnemyPaint) return true;
-            if (minDistanceToEnemyPaint > that.minDistanceToEnemyPaint) return false;
+            // allow for counting sqrt(1) and sqrt(2) as the same
+            if (that.minDistanceToEnemyPaint - minDistanceToEnemyPaint > 1) return true;
+            if (minDistanceToEnemyPaint - that.minDistanceToEnemyPaint > 1) return false;
 
             if (minDistanceToAllyPaint < that.minDistanceToAllyPaint) return true;
             if (minDistanceToAllyPaint > that.minDistanceToAllyPaint) return false;

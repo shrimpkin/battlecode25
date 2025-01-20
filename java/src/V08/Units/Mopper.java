@@ -24,7 +24,7 @@ public class Mopper extends Unit {
         move();
         doAction();
         refill();
-//        debug();
+        debug();
     }
 
     public static void move() throws GameActionException {
@@ -44,11 +44,9 @@ public class Mopper extends Unit {
         if (!rc.isActionReady()) return;
         indicator += "[doing action: ";
         var swingDir = getBestMopSwingDir();
-        // decide between swinging mop and painting a tile -- could be more thorough with conditions here
+        // decide between swinging mop and painting a tile -- currently just always swing if it can hit a robot with paint
         if (swingDir != -1) {
-            var dir = cardinal[swingDir];
-            rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(dir), 100, 100, 100);
-            rc.mopSwing(dir);
+            rc.mopSwing(cardinal[swingDir]);
             indicator += "swung]";
         } else {
             // get best tile to paint
@@ -61,7 +59,6 @@ public class Mopper extends Unit {
                 // save ourselves from enemy penalty
                 var loc = tile.getMapLocation();
                 if (!rc.canAttack(loc)) continue;
-                rc.setIndicatorDot(loc, 0,0, 0);
                 if (loc == rc.getLocation()) { // prioritize putting ourselves out of harm's way
                     paintTile = loc;
                     break;
@@ -94,7 +91,9 @@ public class Mopper extends Unit {
                 if (importance < 1)
                     paintTile = loc;
             }
+
             if (paintTile != null && rc.canAttack(paintTile)) {
+                // try to paint on that tile
                 rc.attack(paintTile);
                 indicator += "painted]";
             } else if (rc.getPaint() > 51){
@@ -117,7 +116,7 @@ public class Mopper extends Unit {
         enemyPaint.clear();
         allyPaint.clear();
         // update surrounding radius
-        for (var tile : rc.senseNearbyMapInfos(10)) {
+        for (var tile : rc.senseNearbyMapInfos(12)) {
             var loc = tile.getMapLocation();
             if (tile.getPaint().isAlly()) {
                 allyPaint.add(loc);

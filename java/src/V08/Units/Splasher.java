@@ -8,7 +8,7 @@ import battlecode.common.*;
 public class Splasher extends Unit {
     private static final int PaintLimit = UnitType.SPLASHER.paintCapacity;
     // weights for coloring in squares -- and hitting enemy towers as a little bonus
-    private static final int AllyWeight = -3, EnemyWeight = 5, EmptyWeight = 1, EnemyTowerWeight = 20;
+    private static final int AllyWeight = -1, EnemyWeight = 5, EmptyWeight = 1, EnemyTowerWeight = 20;
     // bonus weight for splashing onto enemies
     private static final int EnemyStandingBonusModifier = 1;
     // minimum utility at which the splasher will splash -- maybe make vary with round # / current paint amt
@@ -38,6 +38,8 @@ public class Splasher extends Unit {
         for (var ally : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
             if (ally.getType().isTowerType()) {
                 requestPaint(ally.getLocation(), PaintLimit - rc.getPaint());
+                System.out.println("successfully refilled");
+                break;
             }
         }
     }
@@ -69,7 +71,7 @@ public class Splasher extends Unit {
         if (best != null) {
             if (mostUtil >= MinUtil || NumRoundsSinceSplash >= 10) {
                 rc.attack(best);
-                rc.setIndicatorDot(best, 123, 47, 123);
+//                rc.setIndicatorDot(best, 123, 47, 123);
                 NumRoundsSinceSplash = 0;
                 return best;
             }
@@ -145,7 +147,7 @@ public class Splasher extends Unit {
         final int MAX_EFFECT_RADIUS_SQUARED = 10;
         dp.clear();
         for (MapInfo info : rc.senseNearbyMapInfos(MAX_EFFECT_RADIUS_SQUARED)) {
-            rc.setIndicatorDot(info.getMapLocation(), 0, 0, 0);
+//            rc.setIndicatorDot(info.getMapLocation(), 0, 0, 0);
             int util = 0;
             var loc = info.getMapLocation();
             if (!info.isPassable()) continue;
@@ -170,20 +172,16 @@ public class Splasher extends Unit {
             util += paintWeight;
             // get the bonus from ally/enemy standing on the converted paint
             if (rc.canSenseRobotAtLocation(loc)) {
-                // TODO: maybe remove this sense for bytecode -- 15 is pretty expensive to be calling this many times
-                var robot = rc.senseRobotAtLocation(loc);
                 if (info.hasRuin()) continue; // don't count towers
-                int unitMultiplier = robot.getType() == UnitType.MOPPER ? GameConstants.MOPPER_PAINT_PENALTY_MULTIPLIER : 1;
                 if (info.getPaint() == PaintType.EMPTY) {
-                    util += unitMultiplier * GameConstants.PENALTY_NEUTRAL_TERRITORY;
+                    util += GameConstants.PENALTY_NEUTRAL_TERRITORY;
                 } else if (info.getPaint().isEnemy()){
-                    util += unitMultiplier * GameConstants.PENALTY_ENEMY_TERRITORY;
+                    util +=  GameConstants.PENALTY_ENEMY_TERRITORY;
                 }
             }
             dp.add(loc, util);
         }
     }
-
     /*
     TODO: this is a very expensive function, if it exceeds bytecode, then consider going through every possible
      affected tile, finding their individual utility, and have the splash score just be a sum of those tiles
