@@ -13,5 +13,9 @@ public enum CommType {
     NearbyPaintTower,
     /// robot->tower: ask for the closest paint tower this one knows of
     RequestPaintTower,
-    /// tower->tower: telling other towers
+    
+    /// tower->tower: request PAINT TOWERS for soldiers for rebuilding
+    RequestSoldiers,
+    /// tower->robot: provides a location to rebuild at
+    RebuildTower,
 }

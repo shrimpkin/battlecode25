@@ -33,9 +33,7 @@ public class Tower extends Unit {
         rc.setIndicatorString(indicator);
     }
 
-    /**
-     * Determines if the tower is under attack or not
-     */
+    /// Determines if the tower is under attack or not
     public static void updateMode() throws GameActionException {
         timeSinceBuilt++;
         timeSinceAttacked++;
@@ -50,57 +48,45 @@ public class Tower extends Unit {
         }
     }
 
-    /**
-     * Determines what units to spawn based on current mode
-     */
+    /// Determines what units to spawn based on current mode
     public static void spawn() throws GameActionException {
-        if (rc.senseNearbyRobots(-1, rc.getTeam()).length > 8) return;
+        if (rc.senseNearbyRobots(-1, rc.getTeam()).length > 8) 
+            return; // prevents crowding
 
-        if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) {
+        if (timeSinceBuilt <= (maxNEW - minNEW) * tileMultiplier) { // upon tower spawn
             if (rc.senseNearbyRobots(-1, rc.getTeam()).length < 2) {
                 buildRobotType(UnitType.SOLDIER);
-                // TODO: maybe build early moppers to get rid of paint marks on ruins
-                // need to build moppers with the intent of
-                // - staying on ally territory
-                // - prioritizing removing enemy paint
-            } else return;
+            }
+            return;
         }
 
         switch (mode) {
-            case Modes.NEAR_DEATH:
-                if (timeSinceAttacked < 5) {
-                    buildRobotType(UnitType.SOLDIER); // for rebuilding
-                } else {
-                    spawnDefense();
+            case Modes.NEAR_DEATH -> {
+                if (rc.getHealth() <= 100 && rc.canBroadcastMessage()) {
+                    buildRobotType(UnitType.SOLDIER);
+                    rc.broadcastMessage(Comms.encodeMessage(CommType.RequestSoldiers, rc.getLocation()));
                 }
-                break;
+            }
 
-            case Modes.UNDER_ATTACK:
-                buildRobotType(UnitType.SOLDIER);
-                spawnDefense();
-                break;
+            case Modes.UNDER_ATTACK -> { 
+                // womp womp womp 
+            }
 
-            case Modes.NONE:
-                if (rng.nextDouble() >= rc.getHealth() / 1000 / 10) {
+            case Modes.NONE -> {
+                if (rng.nextDouble() >= rc.getHealth() / rc.getType().health / 10) {
                     buildRobotType(UnitType.SOLDIER);
                 } else {
                     spawnOffense();
                 }
-                break;
+            }
 
-            case Modes.STABLE:
-                if (rng.nextDouble() <= rc.getHealth() / 1000.0) {
-                    spawnOffense();
-                } else {
-                    buildRobotType(UnitType.SOLDIER);
-                }
-                break;
+            case Modes.STABLE -> {
+                spawnOffense();
+            }
         }
     }
 
-    /**
-     * Attacks nearest robot and then performs aoe attack
-     */
+    /// Attacks nearest robot and then performs aoe attack
     public static void attack() throws GameActionException {
         for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
             if (rc.canAttack(robot.getLocation())) {
@@ -111,6 +97,7 @@ public class Tower extends Unit {
         rc.attack(null);
     }
 
+    /// 
     public static void broadcastAndRead() throws GameActionException {
         var msgs = rc.readMessages(-1);
         indicator += " received: " + msgs.length + " messages | ";
@@ -145,6 +132,32 @@ public class Tower extends Unit {
                         }
                     }
                 }
+                case RequestSoldiers -> {
+                    if (!isPaintTower(rc.getType()))
+                        continue; // only paint towers should spawn backup
+
+                    var towerLoc = Comms.getLocation(code);
+
+                    // request nearby soldiers
+                    int numSoldiersCalled = 0;
+                    for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
+                        if (robot.type == UnitType.SOLDIER) {
+                            if (rc.canSendMessage(robot.location)) {
+                                rc.sendMessage(robot.location, Comms.encodeMessage(CommType.RebuildTower, towerLoc));
+                                numSoldiersCalled++;
+
+                                if (numSoldiersCalled == 2)
+                                    return; // called enough
+                            }    
+                        }
+                    }
+
+                    // build new soldiers
+                    MapLocation buildLoc = buildRobotType(UnitType.SOLDIER);
+                    if (buildLoc != null && rc.canSendMessage(buildLoc)) {
+                        rc.sendMessage(buildLoc, Comms.encodeMessage(CommType.RebuildTower, towerLoc));
+                    }
+                }
                 // TODO: reinforceFront messaging
                 default -> System.out.println("Tower should not be getting message with comm code: " + code);
             }
@@ -161,14 +174,13 @@ public class Tower extends Unit {
         }
     }
 
-    /**
-     * Upgrade tower at robot's location
-     */
+    /// Upgrade tower at robot's location
     public static void upgradeTower() throws GameActionException {
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
+        if (!isPaintTower(rc.getType()) || rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
             return; // prioritize paint tower upgrades
+
         rc.upgradeTower(rc.getLocation());
     }
 
@@ -176,17 +188,13 @@ public class Tower extends Unit {
      ** HELPERS **
      *************/
 
-    /**
-     * Spawn or call units in reaction to surrounding enemies and paint
-     */
+    /// Spawn or call units in reaction to surrounding enemies and paint
     public static void spawnDefense() throws GameActionException {
         spawnDefenseMopper();
         spawnDefenseSplasher();
     }
 
-    /**
-     * Spawns moppers based on presence of enemy units
-     */
+    /// Spawns moppers based on presence of enemy units
     public static void spawnDefenseMopper() throws GameActionException {
         RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1);
         int numMoppers = 0, numEnemies = 0;
@@ -233,9 +241,7 @@ public class Tower extends Unit {
 
     }
 
-    /**
-     * Spawns splashers based on presence of enemy paint
-     */
+    /// Spawns splashers based on presence of enemy paint
     public static void spawnDefenseSplasher() throws GameActionException {
         int numEnemyPaint = 0;
         MapInfo[] nearbyTiles = rc.senseNearbyMapInfos(GameConstants.BUILD_ROBOT_RADIUS_SQUARED);
@@ -250,9 +256,7 @@ public class Tower extends Unit {
         }
     }
 
-    /**
-     * Alternate spawning moppers and splashers
-     */
+    /// Alternate spawning moppers and splashers
     public static void spawnOffense() throws GameActionException {
         if (spawnSplasherFirst) {
             if (buildRobotType(UnitType.MOPPER) != null) {
@@ -265,9 +269,7 @@ public class Tower extends Unit {
         }
     }
 
-    /**
-     * Checks if there are any enemy units nearby and resets attack timer
-     */
+    /// Checks if there are any enemy units nearby and resets attack timer
     public static boolean isUnderAttack() throws GameActionException {
         RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(-1, opponentTeam);
         if (nearbyEnemies.length > 0) {
@@ -282,9 +284,7 @@ public class Tower extends Unit {
         return false;
     }
 
-    /**
-     * Attempt to build robot of specified type on first available square
-     */
+    /// Attempt to build robot of specified type on first available square
     public static MapLocation buildRobotType(UnitType type) throws GameActionException {
         for (MapInfo neighborSquare : rc.senseNearbyMapInfos(GameConstants.BUILD_ROBOT_RADIUS_SQUARED)) {
             if (rc.canBuildRobot(type, neighborSquare.getMapLocation())) {

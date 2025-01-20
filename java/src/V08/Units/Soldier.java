@@ -1,11 +1,13 @@
 package V08.Units;
 
-import V08.Nav.Navigator;
+import V08.Comms;
 import V08.Unit;
+import V08.Nav.Navigator;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
     static MapLocation moveTarget = null;
+    static MapLocation commTarget = null;
     static int lastRefillEnd;
 
     public enum BuildMode {BUILD_SRP, BUILD_TOWER, NONE}
@@ -26,6 +28,7 @@ public class Soldier extends Unit {
         Modes prev = mode;
         roundNum = rc.getRoundNum();
 
+        read();
         updateMode();
         updateTowerLocations();
 
@@ -63,6 +66,15 @@ public class Soldier extends Unit {
         tessellate(); 
         updateSeen();
         debug();
+    }
+
+    public static void read() throws GameActionException {
+        Message[] msgs = rc.readMessages(-1);
+        if (msgs.length > 0) {
+            if (commTarget == null) {
+                commTarget = Comms.getLocation(msgs[0].getBytes());
+            }
+        }
     }
 
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
@@ -127,6 +139,14 @@ public class Soldier extends Unit {
         if (moveTarget != null) {
             Navigator.moveTo(moveTarget);
             wasWandering = false;
+
+        } else if (commTarget != null) {
+            Navigator.moveTo(commTarget);
+            if (rc.canSenseLocation(commTarget)) {
+                commTarget = null;
+            }
+            wasWandering = false;
+
         } else {
             wander(wasWandering);
             wasWandering = true;
