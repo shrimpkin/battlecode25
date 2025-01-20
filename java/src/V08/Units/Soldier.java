@@ -1,11 +1,13 @@
 package V08.Units;
 
-import V08.Nav.Navigator;
+import V08.Comms;
 import V08.Unit;
+import V08.Nav.Navigator;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
     static MapLocation moveTarget = null;
+    static MapLocation commTarget = null;
     static int lastRefillEnd;
 
     public enum BuildMode {BUILD_SRP, BUILD_TOWER, NONE}
@@ -26,6 +28,7 @@ public class Soldier extends Unit {
         Modes prev = mode;
         roundNum = rc.getRoundNum();
 
+        read();
         updateMode();
         updateTowerLocations();
 
@@ -36,39 +39,47 @@ public class Soldier extends Unit {
             requestPaint(moveTarget, 200);
         }
 
-        if (mode == Modes.ATTACK) {
-            moveTarget = getAttackMoveTarget();
-        }
-
         if (mode == Modes.BOOM) {
             setBuildTarget();
-            moveTarget = rotateAroundBuiltTarget();
-            paintBuildTarget(); 
-            completeBuiltTarget();
+
+            if(buildTarget == null) {
+                mode = Modes.ATTACK;
+            } else {
+                moveTarget = rotateAroundBuiltTarget();
+                paintBuildTarget(); 
+                completeBuiltTarget();
+            } 
+        }
+
+        if (mode == Modes.ATTACK) {
+            moveTarget = getAttackMove();
         }
 
         for(RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
             if(robot.getType().isTowerType()) requestPaint(robot.getLocation(), 200-rc.getPaint());
         }
 
-
+        attack();
         move();
         attack();
+        
         tessellate(); 
         updateSeen();
         debug();
     }
 
+    public static void read() throws GameActionException {
+        Message[] msgs = rc.readMessages(-1);
+        if (msgs.length > 0) {
+            if (commTarget == null) {
+                commTarget = Comms.getLocation(msgs[0].getBytes());
+            }
+        }
+    }
+
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
     public static void updateMode() throws GameActionException {
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
-            mode = Modes.ATTACK;
-            return;
-        }
-
-        // intermittent rushing in midgame
-        var span = Math.max(mapHeight, mapWidth);
-        if (roundNum > 200 && rc.getPaint() > 2*span && roundNum % 100 < span) {
             mode = Modes.ATTACK;
             return;
         }
@@ -82,11 +93,6 @@ public class Soldier extends Unit {
             return;
         }
 
-        if(enemyTowerLocations.size > 0 && unusedRuinLocations.size == 0) {
-            mode = Modes.ATTACK;
-            return;
-        }
-
         mode = Modes.BOOM;
     }
 
@@ -95,7 +101,7 @@ public class Soldier extends Unit {
     \************************************************************************/
 
     /** Returns location of a tower that has been seen otherwise null*/
-    public static MapLocation getAttackMoveTarget() throws GameActionException {
+    public static MapLocation getClosestEnemyTowerLocation() throws GameActionException {
         MapLocation bestLocation = null;
 
         if (enemyTowerLocations.size > 0) {
@@ -105,12 +111,42 @@ public class Soldier extends Unit {
         return bestLocation;
     }
 
+    
+    public static MapLocation getAttackMove() throws GameActionException {
+        MapLocation tower = getClosestEnemyTowerLocation();
+        if(tower == null) return null;
+
+        if(!rc.canSenseLocation(tower)) return tower;
+
+        
+        boolean isClose = rc.getLocation().isWithinDistanceSquared(tower, 9);
+        for(MapInfo loc : rc.senseNearbyMapInfos()) {
+            if(!loc.isPassable()) continue;
+            if(rc.senseRobotAtLocation(loc.getMapLocation()) != null) continue;
+
+            boolean isWithin = loc.getMapLocation().isWithinDistanceSquared(tower, 9);
+            
+            if(isClose && !isWithin) return loc.getMapLocation();
+            if(!isClose && isWithin) return loc.getMapLocation();
+        }
+
+        return tower;
+    }
+
     /** Moves to target location, if no target wanders */
     private static boolean wasWandering = false;
     public static void move() throws GameActionException {
         if (moveTarget != null) {
             Navigator.moveTo(moveTarget);
             wasWandering = false;
+
+        } else if (commTarget != null) {
+            Navigator.moveTo(commTarget);
+            if (rc.canSenseLocation(commTarget)) {
+                commTarget = null;
+            }
+            wasWandering = false;
+
         } else {
             wander(wasWandering);
             wasWandering = true;
@@ -186,9 +222,12 @@ public class Soldier extends Unit {
         SRPTarget = null;
 
         for(MapInfo info : rc.senseNearbyMapInfos()) {
+
             MapLocation loc = info.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location
-            if(info.isResourcePatternCenter()) continue; //already a SRP center
+            if(info.isResourcePatternCenter()) {
+                continue; //already a SRP center
+            }
 
             //building to close to an unbuilt ruin
             MapLocation[] ruinLocation = rc.senseNearbyRuins(-1);
@@ -199,14 +238,21 @@ public class Soldier extends Unit {
             }
             if(toClose) continue;
 
-            if(info.getMark().equals(PaintType.ALLY_PRIMARY)) {
+            int numNearbySoliders = 0;
+            for(RobotInfo robot : rc.senseNearbyRobots(loc, 8, myTeam)) {
+                if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
+            }
+            if(numNearbySoliders > 1) continue;
+
+            boolean isValid = isValidSRPPosition(loc);
+            if(info.getMark().equals(PaintType.ALLY_PRIMARY) && isValid) {
                 SRPTarget = loc;
             } else if(info.getMark().equals(PaintType.ALLY_SECONDARY) || !info.isPassable()) {
                 continue;
             } else {
                 //if this is a new SRP location that is valid to complete we set it as target
                 //or if we have no other valid targets we will also set it
-                if(isValidSRPPosition(loc)) {
+                if(isValid) {
                     SRPTarget = loc;
                 }
             }
@@ -360,11 +406,6 @@ public class Soldier extends Unit {
 
     /** Updates the buildTarget and bMode fields */
     public static void setBuildTarget() throws GameActionException {
-        //we have a valid tower to build
-        if(bMode == BuildMode.BUILD_TOWER && canStillComplete(buildTarget)) {
-            return;
-        }
-
         //first looks for nearby ruins to build towers on
         findValidTowerPosition();
         if(ruinTarget != null) {
@@ -494,23 +535,15 @@ public class Soldier extends Unit {
             rc.attack(locationToMark);
         }
     }
+   
     /**
      * Handles all the ways we paint SRP patterns. In order of priority:
      *      1. Marks one ruin tile with an SRP pattern
      *      2. Paints the SRP pattern below the robot
-     *      3. Paints arbitrary tiles with SRP
-     * Will additionally call completeSRPPatterns() to complete SRPs if valid
      */
     public static void tessellate() throws GameActionException {
         markOneRuinTile();
         paintSRPBelow();
-
-        // if((rc.getChips() < 800 || rc.getChips() > 3000) && rc.getPaint() >= 50) {
-        //     for (MapInfo tile : rc.senseNearbyMapInfos(rc.getType().actionRadiusSquared)) {
-        //         if (paintSRP(tile)) return;
-        //     }
-        // }
-
     }
 
     /************************************************************************\
@@ -526,7 +559,6 @@ public class Soldier extends Unit {
         } else {
             indicator += "No build target: " + bMode + " MT: " + moveTarget + "\n";
         }
-
 
         rc.setIndicatorString(indicator);
     }
