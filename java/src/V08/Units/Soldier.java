@@ -49,15 +49,17 @@ public class Soldier extends Unit {
         }
 
         if (mode == Modes.ATTACK) {
-            moveTarget = getAttackMoveTarget();
+            moveTarget = getAttackMove();
         }
 
         for(RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
             if(robot.getType().isTowerType()) requestPaint(robot.getLocation(), 200-rc.getPaint());
         }
 
+        attack();
         move();
         attack();
+        
         tessellate(); 
         updateSeen();
         debug();
@@ -87,7 +89,7 @@ public class Soldier extends Unit {
     \************************************************************************/
 
     /** Returns location of a tower that has been seen otherwise null*/
-    public static MapLocation getAttackMoveTarget() throws GameActionException {
+    public static MapLocation getClosestEnemyTowerLocation() throws GameActionException {
         MapLocation bestLocation = null;
 
         if (enemyTowerLocations.size > 0) {
@@ -95,6 +97,28 @@ public class Soldier extends Unit {
         }
 
         return bestLocation;
+    }
+
+    
+    public static MapLocation getAttackMove() throws GameActionException {
+        MapLocation tower = getClosestEnemyTowerLocation();
+        if(tower == null) return null;
+
+        if(!rc.canSenseLocation(tower)) return tower;
+
+        
+        boolean isClose = rc.getLocation().isWithinDistanceSquared(tower, 9);
+        for(MapInfo loc : rc.senseNearbyMapInfos()) {
+            if(!loc.isPassable()) continue;
+            if(rc.senseRobotAtLocation(loc.getMapLocation()) != null) continue;
+
+            boolean isWithin = loc.getMapLocation().isWithinDistanceSquared(tower, 9);
+            
+            if(isClose && !isWithin) return loc.getMapLocation();
+            if(!isClose && isWithin) return loc.getMapLocation();
+        }
+
+        return tower;
     }
 
     /** Moves to target location, if no target wanders */
