@@ -14,6 +14,7 @@ public class MopperMicro {
     final int INF = 1000000;
     Direction[] dirs = Direction.values();
     FastIntSet paintTowers;
+    FastLocSet epaint, apaint;
     MapLocation[] enemyPaint, allyPaint;
     int epaintCount = 0, apaintCount = 0;
     boolean shouldPlaySafe = false;
@@ -75,6 +76,8 @@ public class MopperMicro {
     public void computeMicroArray(boolean allies, FastIntSet paintTowers, FastLocSet enemyPaint, FastLocSet allyPaint) throws GameActionException {
         var units = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
         this.paintTowers = paintTowers;
+        epaint = enemyPaint;
+        apaint = allyPaint;
         this.enemyPaint = enemyPaint.getKeys();
         this.allyPaint = allyPaint.getKeys();
         // slim down both arrays -- maybe tune this later idk
@@ -184,14 +187,20 @@ public class MopperMicro {
             return alwaysInRange || minDistanceToEnemy <= myRange || minDistanceToEnemyPaint <= 2;
         }
 
-        void updateSurrounding() throws GameActionException {
-            for (int i = epaintCount; --i >= 0;) {
-                minDistanceToEnemyPaint = Math.min(enemyPaint[i].distanceSquaredTo(location), minDistanceToEnemyPaint);
-                rc.setIndicatorDot(enemyPaint[i],255,0,0);
+        void updateSurrounding() {
+            if (epaint.contains(location)) {
+                minDistanceToEnemyPaint = 0;
+            } else {
+                for (int i = epaintCount; --i >= 0; ) {
+                    minDistanceToEnemyPaint = Math.min(enemyPaint[i].distanceSquaredTo(location), minDistanceToEnemyPaint);
+                }
             }
-            for (int i = apaintCount; --i >= 0;){
-                minDistanceToAllyPaint = Math.min(allyPaint[i].distanceSquaredTo(location), minDistanceToAllyPaint);
-                rc.setIndicatorDot(allyPaint[i],0,255,0);
+            if (apaint.contains(location)) {
+                minDistanceToAllyPaint = 0;
+            } else {
+                for (int i = apaintCount; --i >= 0; ) {
+                    minDistanceToAllyPaint = Math.min(allyPaint[i].distanceSquaredTo(location), minDistanceToAllyPaint);
+                }
             }
         }
 
