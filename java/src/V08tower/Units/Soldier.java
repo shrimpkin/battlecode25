@@ -343,15 +343,16 @@ public class Soldier extends Unit {
             }
         }
 
-        if(shouldDefend) {
+        if(shouldDefend && rc.getChips() >= 3500) {
             towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
-        } else if((rc.getNumberTowers() == 2 || nextDouble() < .66) && rc.getNumberTowers() < 12) {
+
+        // Big ass conditional saying only build money towers if it's in COMMS range of a paint tower
+        } else if(rc.getNumberTowers() <= 4 || (nextDouble() < .5 && getClosestLocation(paintTowerLocations) != null && ruinTarget.distanceSquaredTo(getClosestLocation(paintTowerLocations)) < 80)) {
             towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
         } else {
             towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
         }
         
-
         if(isPaintTower(towerType)) {
             if(rc.canMark(east)) {
                 rc.mark(east, false);
