@@ -126,7 +126,7 @@ public class Mopper extends Unit {
             } else if (tile.getPaint().isEnemy()) {
                 enemyPaint.add(loc);
             }
-            if (tile.getMark().isAlly()) enemyMarks.add(loc);
+            if (tile.getMark().isEnemy()) enemyMarks.add(loc);
         }
         // reset values if needed
     }
