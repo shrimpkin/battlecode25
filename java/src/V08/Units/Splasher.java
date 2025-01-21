@@ -1,24 +1,25 @@
 package V08.Units;
 
-import V08.Tools.FastLocIntMap;
 import V08.Unit;
 import V08.Nav.Navigator;
 import battlecode.common.*;
 
 public class Splasher extends Unit {
     private static final int PaintLimit = UnitType.SPLASHER.paintCapacity;
-    // weights for coloring in squares -- and hitting enemy towers as a little bonus
-    private static final int AllyWeight = -1, EnemyWeight = 5, EmptyWeight = 1, EnemyTowerWeight = 20;
-    // bonus weight for splashing onto enemies
-    private static final int EnemyStandingBonusModifier = 1;
+    // weights for coloring in squares
+    private static final int AllyWeight = -1, EnemyWeight = 5, EmptyWeight = 1;
+    // also reward disrupting enemy SRPs and enemy towers
+    private static final int EnemyTowerWeight = 20, EnemySRPWeight = 50;
+    // arbitrary, but large enough int that tile_util + CHAR_POSITIVE_OFFSET >= 0, so avoid bad int->char->int conv.
+    private static final int CHAR_POSITIVE_OFFSET = 90;
     // minimum utility at which the splasher will splash -- maybe make vary with round # / current paint amt
-    private static final int MinUtil = 8;
+    private static final int MinUtil = 20;
     // thresholds for refilling (currently 300/6 = 50, 300/4 = 75), susceptible to change)
     private static final int RefillStart = PaintLimit / 6, RefillEnd = PaintLimit / 4;
     private static MapLocation TargetLoc;
     private static int NumRoundsSinceSplash = 0;
     private static MapLocation[] nearbyRuins;
-    private static FastLocIntMap dp = new FastLocIntMap();
+    private static char[] scores = "\0".repeat(4096).toCharArray();
     // whether the splasher is in refilling mode
 
     public static void run() throws GameActionException {
@@ -38,7 +39,6 @@ public class Splasher extends Unit {
         for (var ally : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
             if (ally.getType().isTowerType()) {
                 requestPaint(ally.getLocation(), PaintLimit - rc.getPaint());
-                System.out.println("successfully refilled");
                 break;
             }
         }
@@ -69,9 +69,8 @@ public class Splasher extends Unit {
 
         // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
         if (best != null) {
-            if (mostUtil >= MinUtil || NumRoundsSinceSplash >= 10) {
+            if (mostUtil >= Math.max(5, MinUtil - NumRoundsSinceSplash)) {// || NumRoundsSinceSplash >= 10) {
                 rc.attack(best);
-//                rc.setIndicatorDot(best, 123, 47, 123);
                 NumRoundsSinceSplash = 0;
                 return best;
             }
@@ -145,9 +144,8 @@ public class Splasher extends Unit {
     /// precomputes the splash scores for individual tiles -- if they were to be in range -- for bytecode reduction
     private static void precomputeSplashTileScores() throws GameActionException {
         final int MAX_EFFECT_RADIUS_SQUARED = 10;
-        dp.clear();
+        scores = "\0".repeat(4096).toCharArray();
         for (MapInfo info : rc.senseNearbyMapInfos(MAX_EFFECT_RADIUS_SQUARED)) {
-//            rc.setIndicatorDot(info.getMapLocation(), 0, 0, 0);
             int util = 0;
             var loc = info.getMapLocation();
             if (!info.isPassable()) continue;
@@ -157,6 +155,10 @@ public class Splasher extends Unit {
                 case ENEMY_PRIMARY, ENEMY_SECONDARY -> EnemyWeight;
                 case ALLY_PRIMARY, ALLY_SECONDARY   -> AllyWeight;
             };
+            // limited check for whether we disrupt enemy SRPs
+            if (info.getPaint().isEnemy() && info.isResourcePatternCenter()) {
+                util += EnemySRPWeight;
+            }
             // calculate near ruin multiplier / enemy tower damage score
             boolean nearRuin = false;
             for (MapLocation ruin : nearbyRuins) {
@@ -179,22 +181,16 @@ public class Splasher extends Unit {
                     util +=  GameConstants.PENALTY_ENEMY_TERRITORY;
                 }
             }
-            dp.add(loc, util);
+            scores[pack(loc)] = (char)(util + CHAR_POSITIVE_OFFSET);
         }
     }
-    /*
-    TODO: this is a very expensive function, if it exceeds bytecode, then consider going through every possible
-     affected tile, finding their individual utility, and have the splash score just be a sum of those tiles
-     instead of recomputing each time
-     */
-    /**
-     * Calculates the value obtained from a splash
-     */
+
+    /// Calculates the value obtained from a splash
     public static int getSplashScore(MapLocation center) throws GameActionException {
         int util = 0;
         var locs = rc.senseNearbyMapInfos(center, GameConstants.SPLASHER_ATTACK_ENEMY_PAINT_RADIUS_SQUARED);
-        for (int  i = locs.length - 1; i --> 0;) {
-            util += dp.getVal(locs[i].getMapLocation());
+        for (int  i = locs.length; --i >= 0;) {
+            util += scores[pack(locs[i].getMapLocation())] - CHAR_POSITIVE_OFFSET;
         }
         return util;
     }
