@@ -53,7 +53,7 @@ public class Mopper extends Unit {
             MapLocation paintTile = null;
             var nearbyRuins = rc.senseNearbyRuins(-1);
             int importance = 0;
-            // TODO: maybe reorder the importance of these
+            // TODO: maybe reorder the importance of these -- and write them in a cleaner manner
             for (var tile : rc.senseNearbyMapInfos(2)) {
                 if (!tile.getPaint().isEnemy() || !tile.isPassable()) continue;
                 // save ourselves from enemy penalty
@@ -134,7 +134,7 @@ public class Mopper extends Unit {
     public static void refill() throws GameActionException {
         if (Clock.getBytecodesLeft() < 400) return;
         for (var robot : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
-            if (robot.getTeam() == myTeam) {
+            if (rc.getType().isTowerType()) {
                 requestPaint(robot.getLocation(), 100 - rc.getPaint());
                 break;
             }
