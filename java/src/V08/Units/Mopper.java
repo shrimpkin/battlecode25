@@ -63,30 +63,30 @@ public class Mopper extends Unit {
                     paintTile = loc;
                     break;
                 }
-                // put enemies moppers off safe ground
-                if (importance < 5 && rc.canSenseRobotAtLocation(loc) && rc.senseRobotAtLocation(loc).getType() == UnitType.MOPPER) {
-                    paintTile = loc;
-                    importance = 5;
-                }
-                // put enemies of other types off safe ground
-                if (importance < 4 && rc.canSenseRobotAtLocation(loc)) {
-                    paintTile = loc;
-                    importance = 4;
-                }
-                // if they marked it, it should be important
-                if (importance < 3 && tile.getMark().isEnemy()) {
-                    paintTile = loc;
-                    importance = 3;
-                }
-                // clear enemy paint around a ruin
-                if (importance < 2) {
+                // clear enemy paint around an unfinished ruin
+                if (importance < 5) {
                     for (var ruin : nearbyRuins) {
                         if (ruin.isWithinDistanceSquared(loc, 8) && !rc.canSenseRobotAtLocation(ruin)) {
                             paintTile = loc;
-                            importance = 2;
+                            importance = 5;
                             break;
                         }
                     }
+                }
+                // if they marked it, it should be important
+                if (importance < 4 && tile.getMark().isEnemy()) {
+                    paintTile = loc;
+                    importance = 4;
+                }
+                // put enemies moppers off safe ground
+                if (importance < 3 && rc.canSenseRobotAtLocation(loc) && rc.senseRobotAtLocation(loc).getType() == UnitType.MOPPER) {
+                    paintTile = loc;
+                    importance = 3;
+                }
+                // put enemies of other types off safe ground
+                if (importance < 2 && rc.canSenseRobotAtLocation(loc)) {
+                    paintTile = loc;
+                    importance = 2;
                 }
                 if (importance < 1)
                     paintTile = loc;
@@ -101,13 +101,16 @@ public class Mopper extends Unit {
                 var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
                 var amount = rc.getPaint() - 51;
                 for (var robot : allies) {
+                    if (!robot.getType().isRobotType()) continue;
                     var loc = robot.getLocation();
-                    if (robot.getPaintAmount() < robot.getPaintAmount() / 3 && rc.canTransferPaint(loc, amount)) {
+                    if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(loc, amount)) {
                         rc.transferPaint(loc, amount);
+                        break;
                     }
                 }
                 indicator += "try paint transfer]";
             }
+            // TODO: maybe do some nav movement if micro is deceived by far away paint
         }
     }
 
