@@ -30,12 +30,13 @@ public class Soldier extends Unit {
         roundNum = rc.getRoundNum();
 
         //computations ahead of choosing mode
+        updateTowerLocations();
         setBuildTarget();
         attackTarget = getAttackMove();
 
         read();
         updateMode();
-        updateTowerLocations();
+        
         
 
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
@@ -89,8 +90,8 @@ public class Soldier extends Unit {
             return;
         }
 
-        //TODO: tune this constant 
-        if(attackTarget != null && attackTarget.distanceSquaredTo(rc.getLocation()) <= 16) {
+        MapLocation nearTower = getClosestEnemyTowerLocation();
+        if(nearTower != null && attackTarget.distanceSquaredTo(nearTower) <= 25) {
             mode = Modes.ATTACK;
             return;
         }
@@ -118,7 +119,7 @@ public class Soldier extends Unit {
 
         if (enemyTowerLocations.size > 0) {
             MapLocation tower =  unpack(enemyTowerLocations.keys.charAt(0));
-
+            System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
             int distance = rc.getLocation().distanceSquaredTo(tower);
             if(distance < bestDistance) {
                 bestDistance = distance;
@@ -129,26 +130,26 @@ public class Soldier extends Unit {
         return bestLocation;
     }
 
-    
+
     public static MapLocation getAttackMove() throws GameActionException {
-        MapLocation tower = getClosestEnemyTowerLocation();
-        if(tower == null) return null;
-
-        if(!rc.canSenseLocation(tower)) return tower;
-
-        
-        boolean isClose = rc.getLocation().isWithinDistanceSquared(tower, 9);
-        for(MapInfo loc : rc.senseNearbyMapInfos()) {
-            if(!loc.isPassable()) continue;
-            if(rc.senseRobotAtLocation(loc.getMapLocation()) != null) continue;
-
-            boolean isWithin = loc.getMapLocation().isWithinDistanceSquared(tower, 9);
-            
-            if(isClose && !isWithin) return loc.getMapLocation();
-            if(!isClose && isWithin) return loc.getMapLocation();
+        MicroInfo[] microInfo = new MicroInfo[9];
+        for (int i = 0; i < 9; i++) {
+            microInfo[i] = new MicroInfo(Direction.values()[i]);
+            microInfo[i].updateEnemiesTargeting();
         }
 
-        return tower;
+        MicroInfo best = microInfo[8];
+        for (int i = 0; i < 8; i++) {
+            if (rc.getRoundNum() % 2 == 0 && microInfo[i].isBetterAttack(best)) {
+                best = microInfo[i];
+            }
+            
+            if (rc.getRoundNum() % 2 == 1 && microInfo[i].isBetterRetreat(best)) {
+                best = microInfo[i];
+            }
+        }
+
+        return best.location;
     }
 
     /** Moves to target location, if no target wanders */
@@ -533,6 +534,9 @@ public class Soldier extends Unit {
         MapLocation[] ruins = rc.senseNearbyRuins(-1);
 
         for (MapLocation ruinLocation : ruins) {
+            RobotInfo robot = rc.senseRobotAtLocation(ruinLocation);
+            if(robot != null) continue; 
+
             MapInfo[] squaresToMark = rc.senseNearbyMapInfos(ruinLocation, 8);
             for (MapInfo info : squaresToMark) {
                 PaintType paint = info.getPaint();
@@ -543,7 +547,6 @@ public class Soldier extends Unit {
 
                 if (paint.equals(PaintType.EMPTY) && rc.canAttack(info.getMapLocation())) {
                     locationToMark = info.getMapLocation();
-                    break;
                 }
             }
 
@@ -577,10 +580,115 @@ public class Soldier extends Unit {
 
         if(buildTarget != null) {
             indicator += bMode + " at: " + buildTarget.toString() +  " MT: " + moveTarget + "\n";
+        } else if(attackTarget != null) {
+            indicator += "Attack at: " + attackTarget.toString() +  " MT: " + moveTarget + "\n";
         } else {
             indicator += "No build target: " + bMode + " MT: " + moveTarget + "\n";
         }
 
         rc.setIndicatorString(indicator);
     }
+
+    public static class MicroInfo {
+        Direction direction;
+        MapLocation location;
+        int minDistanceToEnemy = Integer.MAX_VALUE;
+        double towersTargeting = 0;
+        double moppersTargeting = 0;
+        double towersOneMoveAway = 0;
+        boolean canMove = true;
+        int minHealth = Integer.MAX_VALUE;
+        boolean actionReady;
+        PaintType paint; 
+
+        public MicroInfo(Direction dir) throws GameActionException {
+            direction = dir;
+            location = rc.getLocation().add(dir);
+
+            if (!dir.equals(Direction.CENTER) && !rc.canMove(dir)) canMove = false;
+            if(rc.canSenseLocation(location)) paint = rc.senseMapInfo(location).getPaint();
+
+            actionReady = rc.isActionReady();
+        }
+
+        public void updateEnemiesTargeting() throws GameActionException {
+            RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
+            for(RobotInfo robot : robots) {
+                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 9)) {
+                    towersTargeting++;
+                }
+
+                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 16)) {
+                    towersOneMoveAway++;
+                }
+
+                if(robot.getType().equals(UnitType.MOPPER) && location.isWithinDistanceSquared(robot.getLocation(), 10)) {
+                    moppersTargeting++;
+                }
+            }
+        }
+
+        public boolean isBetterAttack(MicroInfo m) {
+            //if we can't move there ain't no point in the rest
+            if(canMove && !m.canMove) return true;
+            if(!canMove && m.canMove) return false;
+
+            //both squares are useless to us
+            if(!canMove && !m.canMove) return true;
+
+            //wants to be within range of exactly one tower
+            if(towersTargeting == 1 && m.towersTargeting != 1) return true;
+            if(towersTargeting != 1 && m.towersTargeting == 1) return false;
+
+            //avoids walking into two towers at the same time
+            if(towersTargeting < m.towersTargeting) return true;
+            if(towersTargeting > m.towersTargeting) return false;
+
+            //avoids moppers 
+            if(moppersTargeting < m.moppersTargeting) return true;
+            if(moppersTargeting > m.moppersTargeting) return false;
+
+            //steps into ally paint if possible
+            if(paint.isAlly() && !m.paint.isAlly()) return true;
+            if(!paint.isAlly() && m.paint.isAlly()) return false;
+
+            //now tries to step into empty paint
+            if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+
+            return true;
+        }
+
+        public boolean isBetterRetreat(MicroInfo m) {
+            //if we can't move there ain't no point in the rest
+            if(canMove && !m.canMove) return true;
+            if(!canMove && m.canMove) return false;
+
+            //both squares are useless to us
+            if(!canMove && !m.canMove) return true;
+
+            //wants to get out of range of any towers
+            if(towersTargeting < m.towersTargeting) return true;
+            if(towersTargeting > m.towersTargeting) return false;
+
+            //tries to maintain the ability to attack towers soon
+            if(towersOneMoveAway > m.towersOneMoveAway) return true;
+            if(towersOneMoveAway < m.towersOneMoveAway) return true;
+
+            //avoids moppers 
+            if(moppersTargeting < m.moppersTargeting) return true;
+            if(moppersTargeting > m.moppersTargeting) return false;
+            
+            //steps into ally paint if possible
+            if(paint.isAlly() && !m.paint.isAlly()) return true;
+            if(!paint.isAlly() && m.paint.isAlly()) return false;
+
+            //now tries to step into empty paint
+            if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+
+            return true;
+        }
+    }
+
 }
