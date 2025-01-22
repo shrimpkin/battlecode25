@@ -390,14 +390,23 @@ public class Soldier extends Unit {
             }
         }
 
-        if(shouldDefend) {
+        if(shouldDefend && rc.getChips() >= 3500) {
             towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
-        } else if((rc.getNumberTowers() == 2 || nextDouble() < .66) && rc.getNumberTowers() < 12) {
+        } else if (rc.getNumberTowers() == 2) {
             towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
         } else {
-            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+            if (rc.getNumberTowers() == 3 && ((double) mapHeight * mapWidth) < 0.2) {
+                towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+            } else if (rc.getNumberTowers() == 5) {
+                towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+            } else {
+                if ((rc.getNumberTowers() <= 4 || nextDouble() <= 0.8) && rc.getNumberTowers() <= 20) {
+                    towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
+                } else {
+                    towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+                }   
+            }
         }
-        
 
         if(isPaintTower(towerType)) {
             if(rc.canMark(east)) {
