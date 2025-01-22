@@ -247,7 +247,7 @@ public class Soldier extends Unit {
             for(RobotInfo robot : rc.senseNearbyRobots(ruin, 8, myTeam)) {
                 if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
             }
-            if(numNearbySoliders > 2) continue;
+            if(numNearbySoliders >= 2) continue;
 
             if(!canStillComplete(ruin)) continue;
 
@@ -270,7 +270,7 @@ public class Soldier extends Unit {
         for(MapInfo info : rc.senseNearbyMapInfos(loc, 8)) {
             if(info.getPaint().isEnemy()) return false;
         }
-        
+
         return true;
     }
 
@@ -278,7 +278,7 @@ public class Soldier extends Unit {
      *  If it doesn't have any such valid locations then it will choose the closest unknown SRP location.
      */
     public static void updateSRPTarget() throws GameActionException {
-        //we have a valid SRP 
+        //we have a valid SRP
         if(SRPTarget != null 
             && rc.canSenseLocation(SRPTarget)
             && rc.senseMapInfo(SRPTarget).getMark() == PaintType.ALLY_PRIMARY
@@ -290,12 +290,9 @@ public class Soldier extends Unit {
         SRPTarget = null;
 
         for(MapInfo info : rc.senseNearbyMapInfos()) {
-
             MapLocation loc = info.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location
-            if(info.isResourcePatternCenter()) {
-                continue; //already a SRP center
-            }
+            if(info.isResourcePatternCenter()) continue; //already an SRP center
 
             //building to close to an unbuilt ruin
             MapLocation[] ruinLocation = rc.senseNearbyRuins(-1);
@@ -332,11 +329,10 @@ public class Soldier extends Unit {
         MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
         if(infos.length != 25) return false; //can't sense all tiles around the SRP
         
-        //location is to close to the edge
-        if(loc.x <= 1 || loc.y <= 1
-            || loc.x >= mapWidth - 1 || loc.y >= mapHeight - 1) {
-                if(rc.canMark(loc)) rc.mark(loc, true);
-                return false;    
+        // location is to close to the edge
+        if(loc.x <= 1 || loc.y <= 1 || loc.x >= mapWidth - 2 || loc.y >= mapHeight - 2) {
+            if(rc.canMark(loc)) rc.mark(loc, true);
+            return false;
         }
 
         for(MapInfo info : infos) {
@@ -434,15 +430,21 @@ public class Soldier extends Unit {
     /** @return MapLocations that rotate around the build target */
     public static MapLocation rotateAroundBuiltTarget() throws GameActionException {
         if(buildTarget == null) return null;
-
-        if(rc.getRoundNum() % 4 == 0) {
-            return buildTarget.add(Direction.NORTH);
-        } else if(rc.getRoundNum() % 4 == 1) {
-            return buildTarget.add(Direction.EAST);
-        } else if(rc.getRoundNum() % 4 == 2) {
-            return buildTarget.add(Direction.SOUTH);
-        } else {
-            return buildTarget.add(Direction.WEST);
+        // rotate if adjacent to the build target
+        if (rc.getLocation().isWithinDistanceSquared(buildTarget, 1)){
+            var robots = rc.senseNearbyRobots(buildTarget, 1, opponentTeam);
+            if (robots.length > 0) {
+                var robot = robots[0];
+                return buildTarget.add(buildTarget.directionTo(robot.getLocation()).opposite());
+            } else {
+                var pdir = buildTarget.directionTo(rc.getLocation());
+                return buildTarget.add(pdir.rotateRight().rotateRight());
+            }
+        } else if (rc.getLocation().isAdjacentTo(buildTarget)) {
+            return buildTarget.add(buildTarget.directionTo(rc.getLocation()).rotateRight());
+        } else{
+            // get roughly the closest slot to the robot
+            return buildTarget.add(buildTarget.directionTo(rc.getLocation()));
         }
     }
 
@@ -450,6 +452,7 @@ public class Soldier extends Unit {
     public static void paintBuildTarget() throws GameActionException {
         //We have not decided on a build target so we can't paint it
         if(buildTarget == null || bMode == BuildMode.NONE) return;
+        if (!rc.isActionReady()) return;
 
         //Determines what paint pattern we need to paint based on bMode and tower type
         boolean[][] paintPattern;
@@ -461,22 +464,24 @@ public class Soldier extends Unit {
             if(buildType == null) return;
             paintPattern = rc.getTowerPattern(buildType);
         } 
+        // paint move target when rotating around the tower to avoid empty tile penalty
+        if (moveTarget != null && moveTarget.isWithinDistanceSquared(buildTarget, 2)) {
+            indicator += "[painttarget]";
+            if (rc.senseMapInfo(moveTarget).getPaint() == PaintType.EMPTY && rc.canAttack(moveTarget)) {
+                rc.attack(moveTarget);
+                return;
+            }
+        }
 
         //Iterates through locations, paints it if it had the incorrect paint
         for(MapInfo info : rc.senseNearbyMapInfos(buildTarget, 8)) {
             MapLocation loc = info.getMapLocation();
             if(!rc.canAttack(loc)) continue;
             if(!info.isPassable()) continue;
-
             //converting the location in the offsets we need use paint pattern
             int x = buildTarget.x - loc.x + 2;
             int y = buildTarget.y - loc.y + 2;
-
-            if(info.getPaint().isEnemy()) {
-                //can't attack enemy paint with soldiers
-                continue;
-            } else if(info.getPaint().equals(PaintType.EMPTY) 
-                        || info.getPaint().isSecondary() != paintPattern[x][y]) {
+             if(info.getPaint().equals(PaintType.EMPTY) || info.getPaint().isSecondary() != paintPattern[x][y]) {
                 //correcting paint, returning because we can only attack once a turn
                 rc.attack(loc, paintPattern[x][y]);
                 return;
@@ -632,6 +637,8 @@ public class Soldier extends Unit {
     |*                                DEBUG                                 *|
     \************************************************************************/
 
+    record BuildInfo(int nearbySoldiers, MapLocation soldiers, MapInfo[] surroundings) {}
+
     /** Prints all debug info */
     public static void debug() {
         if (DEBUG == 0) return;
@@ -754,5 +761,4 @@ public class Soldier extends Unit {
             return true;
         }
     }
-
 }
