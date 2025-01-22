@@ -7,13 +7,13 @@ import V08.Tools.FastLocSet;
 import battlecode.common.*;
 
 public class Mopper extends Unit {
+    static final Direction[] cardinal = Direction.cardinalDirections();
     static FastLocSet enemyPaint = new FastLocSet(), allyPaint = new FastLocSet();
     static FastLocSet enemyMarks = new FastLocSet();
+    static RobotInfo refillingTower = null;
     static Message[] messages;
-    static final Direction[] cardinal = Direction.cardinalDirections();
-    private static boolean wasWandering = false;
-
     static MopperMicro micro = new MopperMicro();
+    private static boolean wasWandering = false;
 
     public static void run() throws GameActionException {
         indicator = "";
@@ -22,14 +22,36 @@ public class Mopper extends Unit {
         micro.computeMicroArray(true, paintTowerLocations, enemyPaint, allyPaint);
         messages = rc.readMessages(-1);
         move();
+        fallbackMove();
         doAction();
         refill();
         debug();
     }
 
     public static void move() throws GameActionException {
-        if (rc.getPaint() < 40 && paintTowerLocations.size > 0) {
-            Navigator.moveTo(getClosestLocation(paintTowerLocations));
+        if (rc.getPaint() < 40 && paintTowerLocations.size > 0 && refillingTower == null) {
+            var target = getClosestLocation(paintTowerLocations);
+            MapLocation best = target;
+            int bestDistance = Integer.MAX_VALUE;
+            boolean hasAllyPaint = false;
+            for (var dir : cardinal) {
+                var neighbor = target.add(dir.rotateLeft());
+                var dist = rc.getLocation().distanceSquaredTo(neighbor);
+                boolean neighborHasAllyPaint = rc.canSenseLocation(neighbor) && rc.senseMapInfo(neighbor).getPaint().isAlly();
+                if (!hasAllyPaint) {
+                    if (neighborHasAllyPaint || dist < bestDistance) {
+                        best = neighbor;
+                        bestDistance = dist;
+                        hasAllyPaint = neighborHasAllyPaint;
+                    }
+                } else {
+                    if (neighborHasAllyPaint && dist < bestDistance) {
+                        best = neighbor;
+                        bestDistance = dist;
+                    }
+                }
+            }
+            Navigator.moveTo(best);
             wasWandering = false;
         } else if (micro.doMicro()) {
             indicator += "{did micro}";
@@ -40,8 +62,19 @@ public class Mopper extends Unit {
         }
     }
 
+    // TODO: look at how these movements pan out, and whether just staying still would be better
+    ///  fall back implementation of move that tries going towards enemy paint if there arent any enemy units nearby
+    ///  -- deals with micro getting stuck and needing to pathfind to far away enemy paint. if there isn't any tile with
+    /// enemy paint, it doesn't do anything
+    public static void fallbackMove() throws GameActionException {
+        if (!rc.isMovementReady()) {return;}
+        if (enemyPaint.size > 0 && rc.senseNearbyRobots(5, opponentTeam).length == 0) {
+            Navigator.moveTo(enemyPaint.pop());
+        }
+    }
+
     public static void doAction() throws GameActionException {
-        if (!rc.isActionReady()) return;
+        if (!rc.isActionReady() || rc.getPaint() < 40 && refillingTower != null) return;
         indicator += "[doing action: ";
         var swingDir = getBestMopSwingDir();
         // decide between swinging mop and painting a tile -- currently just always swing if it can hit a robot with paint
@@ -96,7 +129,7 @@ public class Mopper extends Unit {
                 // try to paint on that tile
                 rc.attack(paintTile);
                 indicator += "painted]";
-            } else if (rc.getPaint() > 51){
+            } else if (rc.getPaint() > 51) {
                 // can't paint any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
                 var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
                 var amount = rc.getPaint() - 51;
@@ -116,6 +149,7 @@ public class Mopper extends Unit {
 
     // update positions of nearby paint -- tracking the average position of allied/enemy paint
     public static void updateSurroundings() throws GameActionException {
+        refillingTower = null;
         enemyPaint.clear();
         allyPaint.clear();
         // update surrounding radius
@@ -128,17 +162,19 @@ public class Mopper extends Unit {
             }
             if (tile.getMark().isEnemy()) enemyMarks.add(loc);
         }
-        // reset values if needed
-    }
-
-    public static void refill() throws GameActionException {
-        if (Clock.getBytecodesLeft() < 400) return;
-        for (var robot : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
-            if (rc.getType().isTowerType()) {
-                requestPaint(robot.getLocation(), 100 - rc.getPaint());
+        // check for valid towers to refill up to full
+        for (var tower : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
+            if (tower.getType().isTowerType() && (tower.getPaintAmount() >= 100 - rc.getPaint() || rc.getPaint() <= 10)) {
+                refillingTower = tower;
                 break;
             }
         }
+    }
+
+    /// refill at nearby paint towers -- but
+    public static void refill() throws GameActionException {
+        if (!rc.isActionReady() || refillingTower == null) return;
+        requestPaint(refillingTower.getLocation(), 100 - rc.getPaint());
     }
 
     /**
