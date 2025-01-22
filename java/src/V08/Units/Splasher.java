@@ -13,7 +13,7 @@ public class Splasher extends Unit {
     // arbitrary, but large enough int that tile_util + CHAR_POSITIVE_OFFSET >= 0, so avoid bad int->char->int conv.
     private static final int CHAR_POSITIVE_OFFSET = 90;
     // minimum utility at which the splasher will splash -- maybe make vary with round # / current paint amt
-    private static final int MinUtil = 20;
+    private static final int MinUtil = 8;
     // thresholds for refilling (currently 300/6 = 50, 300/4 = 75), susceptible to change)
     private static final int RefillStart = PaintLimit / 6, RefillEnd = PaintLimit / 4;
     private static MapLocation TargetLoc;
@@ -69,7 +69,7 @@ public class Splasher extends Unit {
 
         // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
         if (best != null) {
-            if (mostUtil >= Math.max(5, MinUtil - NumRoundsSinceSplash)) {// || NumRoundsSinceSplash >= 10) {
+            if (mostUtil >= Math.max(2, MinUtil - NumRoundsSinceSplash/3)) {
                 rc.attack(best);
                 NumRoundsSinceSplash = 0;
                 return best;
