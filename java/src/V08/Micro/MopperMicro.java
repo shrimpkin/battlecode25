@@ -177,9 +177,8 @@ public class MopperMicro {
         int safe() {
             if (!canMove) return -INF; // can't move there
             if (inTowerRange > 0) return -inTowerRange; // moppers are very squishy to towers
-            if (alliesDist2 >= 4) return 0; // too many allies
             if (moppersInRange > alliesDist10) return 1; // outnumbered by enemy moppers
-            if (rc.getPaint() < 20 && paintPenalty > 0 && !rc.isActionReady()) return 2; // no paint and actively dying
+            if (rc.getPaint() < 20 && (paintPenalty + alliesDist2 > 0) && !rc.isActionReady()) return 2; // no paint and actively dying
             return 3; // no conditions
         }
 
@@ -262,8 +261,8 @@ public class MopperMicro {
             if (minDistanceToAllyPaint < that.minDistanceToAllyPaint) return true;
             if (minDistanceToAllyPaint > that.minDistanceToAllyPaint) return false;
 
-            if (paintPenalty < that.paintPenalty) return true;
-            if (paintPenalty > that.paintPenalty) return false;
+            if (paintPenalty + alliesDist2 < that.paintPenalty + that.alliesDist2) return true;
+            if (paintPenalty + alliesDist2 > that.paintPenalty + that.alliesDist2) return false;
 
             if (moppersInMoveRange < that.moppersInMoveRange) return true;
             if (moppersInMoveRange > that.moppersInMoveRange) return false;
