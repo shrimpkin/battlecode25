@@ -1,5 +1,6 @@
 package V08.Units;
 
+import V08.Comms;
 import V08.Unit;
 import V08.Nav.Navigator;
 import battlecode.common.*;
@@ -25,6 +26,7 @@ public class Splasher extends Unit {
     public static void run() throws GameActionException {
         updateTowerLocations();
         nearbyRuins = rc.senseNearbyRuins(-1);
+        read();
 
         MapLocation bestLoc = splash();
         if (bestLoc != null && TargetLoc == null) {
@@ -47,6 +49,20 @@ public class Splasher extends Unit {
     /********************
      ** CORE FUNCTIONS **
      ********************/
+
+    /// reads msgs to target enemy
+    public static void read() throws GameActionException {
+        // Message[] msgs = rc.readMessages(rc.getRoundNum());
+        // if (msgs.length > 0) {
+        //     MapLocation enemyLoc = Comms.getLocation(msgs[0].getBytes());
+        //     TargetLoc = enemyLoc;
+        //     System.out.println("read! "  + enemyLoc.x + " " + enemyLoc.y);
+        //     rc.setIndicatorDot(enemyLoc, 200, 100, 200);
+        //     if (rc.canAttack(enemyLoc)) {
+        //         rc.attack(enemyLoc);
+        //     }
+        // }
+    }
 
     /**
      * Splashes highest value location, if it's above min score value

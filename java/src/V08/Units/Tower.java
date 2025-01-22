@@ -26,7 +26,7 @@ public class Tower extends Unit {
         rc.setIndicatorString(indicator);
     }
 
-    /// 
+    /// Propagates and processes incoming messages
     public static void broadcastAndRead() throws GameActionException {
         var msgs = rc.readMessages(-1);
         indicator += " received: " + msgs.length + " messages | ";
@@ -137,47 +137,46 @@ public class Tower extends Unit {
     /// Core logic sequence for paint towers
     public static void spawnPaintTower() throws GameActionException {
         RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
-        // spawn splasher/mopper if it sees enemies
-        if (enemies.length > 0) {
-            if (rc.senseNearbyRobots(-1, myTeam).length == 0 && rc.senseNearbyRobots(rc.getType().actionRadiusSquared, opponentTeam).length > 0) {
-                buildRobotType(UnitType.SPLASHER);
-            } else if (rc.senseNearbyRobots(-1, myTeam).length == 0) {
-                buildRobotType(UnitType.MOPPER);
-            }
+        if (rc.getHealth() <= 100 && enemies.length > 0) {
+            callNearDeathUnits(enemies);
+        }
 
-            for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
-                if (robot.getType() == UnitType.MOPPER && rc.canSendMessage(robot.getLocation())) {
-                    rc.sendMessage(robot.getLocation(), Comms.encodeMessage(CommType.TargetEnemy, enemies[0].getLocation()));
-                }
+        // spawn splasher/mopper if it sees enemies
+        RobotInfo[] allies = rc.senseNearbyRobots(-1, myTeam);
+        if (enemies.length > 0 && allies.length == 0) {
+            if (rc.senseNearbyRobots(rc.getType().actionRadiusSquared, opponentTeam).length > 0) {
+                spawnAndTell(UnitType.SPLASHER, Comms.encodeMessage(CommType.TargetEnemy, enemies[0].location));
+            } else {
+                spawnAndTell(UnitType.MOPPER, Comms.encodeMessage(CommType.TargetEnemy, enemies[0].location));
             }
         }
 
-        // intro
+        // will always spawn the soldier at the earliest convenience
         if (numSoldiersSpawned <= 3) {
-            buildRobotType(UnitType.SOLDIER); // will always spawn the soldier at the earliest convenience
+            buildRobotType(UnitType.SOLDIER);
             return;
         }
 
-        // intro
-        if (numSoldiersSpawned == 4 && numMoppersSpawned == 0) {
+        // spawn super early mopper
+        if (numSoldiersSpawned == 4 & numMoppersSpawned == 0) {
             buildRobotType(UnitType.MOPPER);
             return;
         }
-
+        
         // consistently spawn soldiers for a few rounds
-        if (rc.getNumberTowers() <= 4 || numSoldiersSpawned <= (8 * (mapHeight * mapWidth / 3600.0))) {
+        if (rc.getNumberTowers() <= 4 || numSoldiersSpawned <= (8 * mapHeight * mapWidth / 3600.)) {
             buildRobotType(UnitType.SOLDIER);
             return;
-        } 
+        }
 
-        // end game - spam splashers?
-        if (rc.getRoundNum() > 1500) {
+        // end game -- spam splashers
+        if (rc.getRoundNum() > 1300) {
             buildRobotType(UnitType.SPLASHER);
             return;
         }
 
-        // mid game - alternate between splasher/mopper, and 1/10th soldiers
-        if (rc.getChips() > 1000 && rc.senseNearbyRobots(-1, myTeam).length < 8) {
+        // mid game -- alternate between splasher/mopper, and 1/10th soldiers
+        if (rc.getChips() > 1000 && allies.length < 8) {
             if (nextDouble() < 0.9) {
                 spawnOffense();
             } else {
@@ -186,9 +185,13 @@ public class Tower extends Unit {
         }
     }
 
-    // TODO: this needs to be looked over
     /// Core logic sequence for money towers
     public static void spawnMoneyTower() throws GameActionException {
+        RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
+        if (rc.getHealth() <= 100 && enemies.length > 0) {
+            callNearDeathUnits(enemies);
+        }
+
         int defenseUnits = 0;
         for (RobotInfo ally : rc.senseNearbyRobots(-1, myTeam)) {
             if (ally.getType() == UnitType.SPLASHER || ally.getType() == UnitType.MOPPER) {
@@ -196,19 +199,56 @@ public class Tower extends Unit {
             }
         }
 
-        RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
-
         if (defenseUnits == 0 && enemies.length > 0) { // spawn defensive units
             spawnAndTell(UnitType.SPLASHER, Comms.encodeMessage(CommType.TargetEnemy, enemies[0].location));
             spawnAndTell(UnitType.MOPPER, Comms.encodeMessage(CommType.TargetEnemy, enemies[0].location));
-        } 
-
+        }
+    }
+    
+    /// Core logic sequence for defense towers (NOT USED OFTEN)
+    public static void spawnDefenseTower() throws GameActionException {
+        RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
         if (rc.getHealth() <= 100 && enemies.length > 0) {
             callNearDeathUnits(enemies);
+        } else if (enemies.length >= 5) {
+            buildRobotType(UnitType.SPLASHER);
         }
     }
 
-    /// called when health is >= 100
+    /// Attacks nearest robot and then performs aoe attack
+    public static void attack() throws GameActionException {
+        for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
+            if (rc.canAttack(robot.getLocation())) {
+                rc.attack(robot.getLocation());
+                break;
+            }
+        }
+        rc.attack(null);
+    }
+
+    /// Upgrade tower at robot's location
+    public static void upgradeTower() throws GameActionException {
+        // immediately upgrade defense towers
+        if (rc.getType() == UnitType.LEVEL_ONE_DEFENSE_TOWER) {
+            if (rc.canUpgradeTower(rc.getLocation())) {
+                rc.upgradeTower(rc.getLocation());
+            }
+            return;
+        }
+
+        if (!rc.canUpgradeTower(rc.getLocation()))
+            return; // can't upgrade
+        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
+            return; // prioritize paint tower upgrades
+
+        rc.upgradeTower(rc.getLocation());
+    }
+
+    /*************
+     ** HELPERS **
+     *************/
+
+    /// Signal and spawn units when tower health is >= 100
     public static void callNearDeathUnits(RobotInfo[] enemies) throws GameActionException {
         // check nearby territory covered
         int territoryCovered = 0;
@@ -269,53 +309,8 @@ public class Tower extends Unit {
             rc.broadcastMessage(Comms.encodeMessage(CommType.RequestSoldiers, rc.getLocation()));
         }
     }
-    
-    /// Core logic sequence for defense towers (NOT USED OFTEN)
-    public static void spawnDefenseTower() throws GameActionException {
-        RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
-        if (enemies.length >= 5) {
-            buildRobotType(UnitType.SPLASHER);
-        }
 
-        if (rc.getHealth() <= 100 && enemies.length > 0) {
-            callNearDeathUnits(enemies);
-        }
-    }
-
-    /// Attacks nearest robot and then performs aoe attack
-    public static void attack() throws GameActionException {
-        for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
-            if (rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-                break;
-            }
-        }
-        rc.attack(null);
-    }
-
-    /// Upgrade tower at robot's location
-    public static void upgradeTower() throws GameActionException {
-        // immediately upgrade defense towers
-        if (rc.getType() == UnitType.LEVEL_ONE_DEFENSE_TOWER) {
-            if (rc.canUpgradeTower(rc.getLocation())) {
-                rc.upgradeTower(rc.getLocation());
-            }
-            return;
-        }
-
-        if (!rc.canUpgradeTower(rc.getLocation()))
-            return; // can't upgrade
-        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
-            return; // prioritize paint tower upgrades
-
-        rc.upgradeTower(rc.getLocation());
-    }
-
-    /*************
-     ** HELPERS **
-     *************/
-
-    /// Alternate spawning moppers and splashers
+    /// Probabilistically spawn splashers and moppers
     public static void spawnOffense() throws GameActionException {
         if (nextDouble() < 0.7) {
             buildRobotType(UnitType.SPLASHER);
