@@ -22,7 +22,6 @@ public class Mopper extends Unit {
         micro.computeMicroArray(true, paintTowerLocations, enemyPaint, allyPaint);
         messages = rc.readMessages(-1);
         move();
-        fallbackMove();
         doAction();
         refill();
         debug();
@@ -59,17 +58,6 @@ public class Mopper extends Unit {
         } else if (rc.isMovementReady()) {
             wander(wasWandering);
             wasWandering = true;
-        }
-    }
-
-    // TODO: look at how these movements pan out, and whether just staying still would be better
-    ///  fall back implementation of move that tries going towards enemy paint if there arent any enemy units nearby
-    ///  -- deals with micro getting stuck and needing to pathfind to far away enemy paint. if there isn't any tile with
-    /// enemy paint, it doesn't do anything
-    public static void fallbackMove() throws GameActionException {
-        if (!rc.isMovementReady()) {return;}
-        if (enemyPaint.size > 0 && rc.senseNearbyRobots(5, opponentTeam).length == 0) {
-            Navigator.moveTo(enemyPaint.pop());
         }
     }
 
@@ -212,5 +200,6 @@ public class Mopper extends Unit {
 
     public static void debug() throws GameActionException {
         rc.setIndicatorString(indicator);
+//        if (rc.getRoundNum() > 180) rc.resign();
     }
 }
