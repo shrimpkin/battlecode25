@@ -270,7 +270,6 @@ public class Soldier extends Unit {
         for(MapInfo info : rc.senseNearbyMapInfos(loc, 8)) {
             if(info.getPaint().isEnemy()) return false;
         }
-
         return true;
     }
 
@@ -429,10 +428,11 @@ public class Soldier extends Unit {
         if(buildTarget == null) return null;
         // rotate if adjacent to the build target
         if (rc.getLocation().isWithinDistanceSquared(buildTarget, 1)){
-            var robots = rc.senseNearbyRobots(buildTarget, 1, opponentTeam);
+            var robots = rc.senseNearbyRobots(buildTarget, 1, myTeam);
             if (robots.length > 0) {
                 var robot = robots[0];
-                return buildTarget.add(buildTarget.directionTo(robot.getLocation()).opposite());
+                var tdir = buildTarget.directionTo(robot.getLocation()).opposite();
+                return buildTarget.add(tdir);
             } else {
                 var pdir = buildTarget.directionTo(rc.getLocation());
                 return buildTarget.add(pdir.rotateRight().rotateRight());
@@ -633,8 +633,6 @@ public class Soldier extends Unit {
     /************************************************************************\
     |*                                DEBUG                                 *|
     \************************************************************************/
-
-    record BuildInfo(int nearbySoldiers, MapLocation soldiers, MapInfo[] surroundings) {}
 
     /** Prints all debug info */
     public static void debug() {
