@@ -149,6 +149,20 @@ public class Tower extends Unit {
             } else {
                 spawnAndTell(UnitType.MOPPER, Comms.encodeMessage(CommType.TargetEnemy, enemies[0].location));
             }
+        } else if (enemies.length > 0 && allies.length > 0) {
+            int called = 0;
+            for (RobotInfo ally : allies) {
+                if (ally.type == UnitType.MOPPER) {
+                    if (rc.canSendMessage(ally.location, Comms.encodeMessage(CommType.TargetEnemy, enemies[0].location))) {
+                        rc.sendMessage(ally.location, Comms.encodeMessage(CommType.TargetEnemy, enemies[0].location));
+                        called++;
+
+                        if (called >= 2) {
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         // will always spawn the soldier at the earliest convenience
@@ -170,8 +184,12 @@ public class Tower extends Unit {
         }
 
         // end game -- spam splashers
-        if (rc.getRoundNum() > 1300) {
-            buildRobotType(UnitType.SPLASHER);
+        if (rc.getChips() > 100000) {
+            if (nextDouble() < 0.95) {
+                spawnOffense();
+            } else {
+                buildRobotType(UnitType.SOLDIER);
+            }
             return;
         }
 
@@ -284,7 +302,7 @@ public class Tower extends Unit {
                 }
                 case UnitType.MOPPER -> {
                     if (callMopper && rc.canSendMessage(ally.getLocation())) {
-                        rc.sendMessage(ally.getLocation(), targetMsg);
+                        rc.sendMessage(ally.getLocation(), rebuildMsg);
                         callMopper = false;
                     }
                 }

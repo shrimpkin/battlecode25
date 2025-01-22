@@ -3,6 +3,7 @@ package V08.Units;
 import V08.Comms;
 import V08.Unit;
 import V08.Nav.Navigator;
+import V08.Tools.CommType;
 import battlecode.common.*;
 
 public class Splasher extends Unit {
@@ -26,7 +27,7 @@ public class Splasher extends Unit {
     public static void run() throws GameActionException {
         updateTowerLocations();
         nearbyRuins = rc.senseNearbyRuins(-1);
-        read();
+        // read();
 
         MapLocation bestLoc = splash();
         if (bestLoc != null && TargetLoc == null) {
@@ -51,22 +52,22 @@ public class Splasher extends Unit {
      ********************/
 
     /// reads msgs to target enemy
-    public static void read() throws GameActionException {
-        // Message[] msgs = rc.readMessages(rc.getRoundNum());
-        // if (msgs.length > 0) {
-        //     MapLocation enemyLoc = Comms.getLocation(msgs[0].getBytes());
-        //     TargetLoc = enemyLoc;
-        //     System.out.println("read! "  + enemyLoc.x + " " + enemyLoc.y);
-        //     rc.setIndicatorDot(enemyLoc, 200, 100, 200);
-        //     if (rc.canAttack(enemyLoc)) {
-        //         rc.attack(enemyLoc);
-        //     }
-        // }
-    }
+    // public static void read() throws GameActionException {
+    //     Message[] msgs = rc.readMessages(rc.getRoundNum());
+    //     for (Message msg : msgs) {
+    //         if (Comms.getType(msg.getBytes()) == CommType.TargetEnemy) {
+    //             MapLocation enemyLoc = Comms.getLocation(msg.getBytes());
+    //             rc.setIndicatorDot(enemyLoc, 200, 100, 200);
+    //             if (rc.getLocation().distanceSquaredTo(enemyLoc) <= rc.getType().actionRadiusSquared && rc.canAttack(enemyLoc)) {
+    //                 if (getSplashScore(enemyLoc) >= MinUtil) {
+    //                     rc.attack(enemyLoc);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
-    /**
-     * Splashes highest value location, if it's above min score value
-     */
+    /// Splashes highest value location, if it's above min score value
     public static MapLocation splash() throws GameActionException {
         if (!rc.isActionReady()) return null;
         MapLocation best = null;
@@ -115,47 +116,6 @@ public class Splasher extends Unit {
     /*************
      ** HELPERS **
      *************/
-
-    /** Sets target location to be the direction with the most enemy paint */
-    // public static void findPaintTrail() throws GameActionException {
-    //     if (TargetLoc != null)
-    //         return; // already have somewhere to go
-
-    //     int[] weights = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-    //     Direction[] dirs = Direction.allDirections();
-    //     MapLocation currLoc = rc.getLocation();
-
-    //     for (MapInfo tile : rc.senseNearbyMapInfos(UnitType.SPLASHER.actionRadiusSquared)) {
-    //         if (tile.getPaint().isEnemy()) {
-    //             for (int i = 0; i < dirs.length; i++) {
-    //                 if (currLoc.directionTo(tile.getMapLocation()) == dirs[i]) {
-    //                     weights[i]++;
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     boolean found = false;
-    //     for (int weight : weights) {
-    //         if (weight > 0) {
-    //             found = true;
-    //             break;
-    //         }
-    //     }
-
-    //     if (!found)
-    //         return; // didn't spot enemy paint nearby; no trail to follow
-
-    //     int maxPaintNum = -1;
-    //     for (int i = 0; i < dirs.length; i++) {
-    //         if (weights[i] > maxPaintNum) {
-    //             maxPaintNum = weights[i];
-    //             TargetLoc = currLoc.add(dirs[i]);
-    //         }
-    //     }
-    // }
-
 
     /// precomputes the splash scores for individual tiles -- if they were to be in range -- for bytecode reduction
     private static void precomputeSplashTileScores() throws GameActionException {

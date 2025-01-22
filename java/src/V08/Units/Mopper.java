@@ -1,8 +1,10 @@
 package V08.Units;
 
+import V08.Comms;
 import V08.Unit;
 import V08.Micro.MopperMicro;
 import V08.Nav.Navigator;
+import V08.Tools.CommType;
 import V08.Tools.FastLocSet;
 import battlecode.common.*;
 
@@ -11,7 +13,6 @@ public class Mopper extends Unit {
     static FastLocSet enemyPaint = new FastLocSet(), allyPaint = new FastLocSet();
     static FastLocSet enemyMarks = new FastLocSet();
     static RobotInfo refillingTower = null;
-    static Message[] messages;
     static MopperMicro micro = new MopperMicro();
     private static boolean wasWandering = false;
 
@@ -20,11 +21,28 @@ public class Mopper extends Unit {
         updateTowerLocations();
         updateSurroundings();
         micro.computeMicroArray(true, paintTowerLocations, enemyPaint, allyPaint);
-        messages = rc.readMessages(-1);
+        read();
         move();
         doAction();
         refill();
         debug();
+    }
+
+    /// reads msgs to target enemy
+    public static void read() throws GameActionException {
+        Message[] msgs = rc.readMessages(rc.getRoundNum());
+        for (Message msg : msgs) {
+            if (Comms.getType(msg.getBytes()) == CommType.TargetEnemy) {
+                MapLocation enemyLoc = Comms.getLocation(msg.getBytes());
+                rc.setIndicatorDot(enemyLoc, 200, 100, 200);
+                if (rc.getLocation().distanceSquaredTo(enemyLoc) <= rc.getType().actionRadiusSquared && rc.canMopSwing(rc.getLocation().directionTo(enemyLoc))) {
+                    // System.out.println("MOPPER attacking based off msg");
+                    rc.mopSwing(rc.getLocation().directionTo(enemyLoc));
+                }
+            } else if (Comms.getType(msg.getBytes()) == CommType.RebuildTower) {
+                // TODO: focus on mopping up paint
+            }
+        }
     }
 
     public static void move() throws GameActionException {
