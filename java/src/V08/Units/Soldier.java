@@ -3,6 +3,7 @@ package V08.Units;
 import V08.Comms;
 import V08.Unit;
 import V08.Nav.Navigator;
+import V08.Tools.FastIntSet;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -23,11 +24,20 @@ public class Soldier extends Unit {
     static int roundNum;
     static int DEBUG = 1;
 
+    static FastIntSet possibleSRPLocations = new FastIntSet();
+    static boolean hasGeneratedSRPLocations = false;
+
     public static void run() throws GameActionException {
 
         indicator = "";
         Modes prev = mode;
         roundNum = rc.getRoundNum();
+
+        // if(!hasGeneratedSRPLocations) {
+        //     generateSRPLocations();
+        //     hasGeneratedSRPLocations = true;
+        // }
+        // updateSRPLocations();
 
         //computations ahead of choosing mode
         updateTowerLocations();
@@ -37,8 +47,6 @@ public class Soldier extends Unit {
         read();
         updateMode();
         
-        
-
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
         if (mode == Modes.REFILL) {
@@ -67,6 +75,31 @@ public class Soldier extends Unit {
         tessellate(); 
         updateSeen();
         debug();
+    }
+
+
+    //generates all the squares we might want to place at SRP on
+    //and holds them in possibleSRPLocations
+    public static void generateSRPLocations() throws GameActionException {
+        for(int i = 2; i < mapWidth; i += 4) {
+            for(int j = 2; j < mapWidth; j += 4) {
+                int x = pack(new MapLocation(i, j));
+                possibleSRPLocations.add(x);
+            }  
+        }
+    }
+
+    //removes SRP locations from possibleSRPLocations if we can sense them
+    public static void updateSRPLocations() throws GameActionException {
+        for(MapInfo info : rc.senseNearbyMapInfos()) {
+            MapLocation loc = info.getMapLocation();
+            if(loc.x % 4 != 2) continue;
+            if(loc.y % 4 != 2) continue;
+
+            if(rc.canSenseLocation(loc)) {
+                possibleSRPLocations.remove(pack(loc));
+            }
+        }
     }
 
     public static void read() throws GameActionException {
@@ -119,7 +152,7 @@ public class Soldier extends Unit {
 
         if (enemyTowerLocations.size > 0) {
             MapLocation tower =  unpack(enemyTowerLocations.keys.charAt(0));
-            System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
+            //System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
             int distance = rc.getLocation().distanceSquaredTo(tower);
             if(distance < bestDistance) {
                 bestDistance = distance;
@@ -132,6 +165,12 @@ public class Soldier extends Unit {
 
 
     public static MapLocation getAttackMove() throws GameActionException {
+        if(getClosestEnemyTowerLocation() == null) return null;
+
+        if(getClosestEnemyTowerLocation().distanceSquaredTo(rc.getLocation()) >= 25) {
+            return getClosestEnemyTowerLocation();
+        }
+
         MicroInfo[] microInfo = new MicroInfo[9];
         for (int i = 0; i < 9; i++) {
             microInfo[i] = new MicroInfo(Direction.values()[i]);
@@ -166,6 +205,13 @@ public class Soldier extends Unit {
             }
             wasWandering = false;
 
+        } else if(possibleSRPLocations.size != 0) {
+            System.out.println("Using SRP locations.");
+            MapLocation loc = unpack(possibleSRPLocations.keys.charAt(0));
+            rc.setIndicatorDot(loc, 50, mapWidth, mapHeight);
+
+            Navigator.moveTo(loc);
+            wasWandering = false;
         } else {
             wander(wasWandering);
             wasWandering = true;
@@ -600,6 +646,7 @@ public class Soldier extends Unit {
         int minHealth = Integer.MAX_VALUE;
         boolean actionReady;
         PaintType paint; 
+        int towerHealth = Integer.MAX_VALUE;
 
         public MicroInfo(Direction dir) throws GameActionException {
             direction = dir;
@@ -616,6 +663,7 @@ public class Soldier extends Unit {
             for(RobotInfo robot : robots) {
                 if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 9)) {
                     towersTargeting++;
+                    towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
                 }
 
                 if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 16)) {
@@ -643,6 +691,10 @@ public class Soldier extends Unit {
             //avoids walking into two towers at the same time
             if(towersTargeting < m.towersTargeting) return true;
             if(towersTargeting > m.towersTargeting) return false;
+
+            //go for lower health towers, prevents targetting switching
+            if(towerHealth < m.towerHealth) return true;
+            if(towerHealth > m.towerHealth) return false;
 
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;

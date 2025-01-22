@@ -11,6 +11,8 @@ public class Unit extends Globals {
     public static FastIntSet paintTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     public static FastIntSet unusedRuinLocations = new FastIntSet();
+    static FastIntSet possibleSRPLocations = new FastIntSet();
+
     public static String indicator;
     public static LocMap vis = new LocMap(rc);
     static int spawnRound = rc.getRoundNum();
