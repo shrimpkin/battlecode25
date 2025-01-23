@@ -46,7 +46,7 @@ public class Mopper extends Unit {
     }
 
     public static void move() throws GameActionException {
-        if (rc.getPaint() < 40 && paintTowerLocations.size > 0 && refillingTower == null) {
+        if (rc.getPaint() < 20 && paintTowerLocations.size > 0 && refillingTower == null) {
             var target = getClosestLocation(paintTowerLocations);
             MapLocation best = target;
             int bestDistance = Integer.MAX_VALUE;
@@ -68,7 +68,7 @@ public class Mopper extends Unit {
                     }
                 }
             }
-            Navigator.moveTo(best);
+            Navigator.moveTo(best, rc.getPaint() < 15);
             wasWandering = false;
         } else if (micro.doMicro()) {
             indicator += "{did micro}";
@@ -142,7 +142,7 @@ public class Mopper extends Unit {
             for (var robot : allies) {
                 if (!robot.getType().isRobotType()) continue;
                 var loc = robot.getLocation();
-                if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(loc, amount)) {
+                if (robot.getPaintAmount() < 20 && rc.canTransferPaint(loc, amount)) {
                     rc.transferPaint(loc, amount);
                     indicator += "transferred paint]";
                     break;
@@ -178,7 +178,11 @@ public class Mopper extends Unit {
     /// refill at nearby paint towers -- but
     public static void refill() throws GameActionException {
         if (!rc.isActionReady() || refillingTower == null) return;
-        requestPaint(refillingTower.getLocation(), 50 - rc.getPaint());
+        if (refillingTower.getPaintAmount() > 250) { // no need to be conservative when theres plenty`
+            requestPaint(refillingTower.getLocation(), 100 - rc.getPaint());
+        } else {
+            requestPaint(refillingTower.getLocation(), 50 - rc.getPaint());
+        }
     }
 
     /// Returns cardinal direction with the most enemies, null otherwise

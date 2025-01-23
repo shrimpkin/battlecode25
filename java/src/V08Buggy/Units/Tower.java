@@ -191,7 +191,7 @@ public class Tower extends Unit {
         }
 
         // mid game -- alternate between splasher/mopper, and 1/10th soldiers
-        if (rc.getChips() > 1000 && allies.length < 8) {
+        if (rc.getChips() > 1200 && allies.length < 8) {
             if (nextDouble() < 0.9) {
                 spawnOffense();
             } else {

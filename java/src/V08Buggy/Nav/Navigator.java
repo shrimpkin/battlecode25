@@ -7,7 +7,11 @@ import battlecode.common.MapLocation;
 
 public class Navigator extends Globals {
     public static void moveTo(MapLocation target) throws GameActionException {
-        BugNavigator.moveTo(target);
+        moveTo(target, false);
+    }
+
+    public static void moveTo(MapLocation target, boolean avoidEnemy) throws GameActionException {
+        BugNavigator.moveTo(target, avoidEnemy);
     }
 }
 

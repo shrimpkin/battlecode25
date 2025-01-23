@@ -52,7 +52,7 @@ public class Soldier extends Unit {
                 var nearby = rc.senseNearbyRobots(buildTarget, 1, myTeam);
                 if (nearby.length > 0) {
                     var robot = nearby[0];
-                    if (robot.getPaintAmount() < rc.getPaint()) {
+                    if (robot.getType() == UnitType.SOLDIER && robot.getPaintAmount() < rc.getPaint()) {
                         // let that other robot wait for the target to be built
                         ignore.add(buildTarget);
                         buildTarget = null;
@@ -150,6 +150,7 @@ public class Soldier extends Unit {
     /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP */
     public static void updateSRPTarget() throws GameActionException {
         //we have a valid SRP
+        if (rc.getNumberTowers() < 5) return;
         if(SRPTarget != null 
             && rc.canSenseLocation(SRPTarget)
             && rc.senseMapInfo(SRPTarget).getMark() == PaintType.ALLY_PRIMARY
@@ -433,6 +434,7 @@ public class Soldier extends Unit {
     
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
     public static void updateMode() throws GameActionException {
+        indicator += "[paint towers: " + paintTowerLocations.size + "]";
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
             mode = Modes.ATTACK;
             return;
@@ -444,7 +446,7 @@ public class Soldier extends Unit {
             return;
         }
 
-        if(rc.getPaint() <= 20 && roundNum - lastRefillEnd > 10 && paintTowerLocations.size != 0) {
+        if(rc.getPaint() <= 20 && paintTowerLocations.size != 0) {
             mode = Modes.REFILL;
             if (buildTarget != null) {
                 lastRuinTarget = buildTarget;

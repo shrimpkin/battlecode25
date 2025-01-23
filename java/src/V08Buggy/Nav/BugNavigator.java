@@ -24,14 +24,20 @@ public class BugNavigator extends Globals {
             Direction.NORTHWEST
     };
 
-    public static void moveTo(MapLocation target) throws GameActionException {
+    private static boolean canMoveWithRestrictions(Direction dir, boolean avoidEnemy) throws GameActionException {
+        if (!rc.canMove(dir)) return false;
+        if (avoidEnemy && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isEnemy()) return false;
+        return true;
+    }
+
+    public static void moveTo(MapLocation target, boolean avoidEnemy) throws GameActionException {
         if (currentTarget == null || !currentTarget.equals(target)) {
             reset();
         }
 
         boolean hasOptions = false;
         for (int i = adjacentDirections.length; --i >= 0; ) {
-            if (rc.canMove(adjacentDirections[i])) {
+            if (canMoveWithRestrictions(adjacentDirections[i], avoidEnemy)) {
                 hasOptions = true;
                 break;
             }
@@ -59,7 +65,7 @@ public class BugNavigator extends Globals {
 
         if (currentObstacle == null) {
             Direction forward = myLocation.directionTo(target);
-            if (rc.canMove(forward)) {
+            if (canMoveWithRestrictions(forward, avoidEnemy)) {
                 rc.move(forward);
                 return;
             }
@@ -67,7 +73,7 @@ public class BugNavigator extends Globals {
             setInitialDirection();
         }
 
-        followWall(true);
+        followWall(true, avoidEnemy);
     }
 
     public static void reset() {
@@ -123,12 +129,12 @@ public class BugNavigator extends Globals {
         }
     }
 
-    private static void followWall(boolean canRotate) throws GameActionException {
+    private static void followWall(boolean canRotate, boolean avoidEnemy) throws GameActionException {
         Direction direction = rc.getLocation().directionTo(currentObstacle);
 
         for (int i = 8; --i >= 0; ) {
             direction = obstacleOnRight ? direction.rotateLeft() : direction.rotateRight();
-            if (rc.canMove(direction)) {
+            if (canMoveWithRestrictions(direction, avoidEnemy)) {
                 rc.move(direction);
                 return;
             }
@@ -136,7 +142,7 @@ public class BugNavigator extends Globals {
             MapLocation location = rc.adjacentLocation(direction);
             if (canRotate && !rc.onTheMap(location)) {
                 obstacleOnRight = !obstacleOnRight;
-                followWall(false);
+                followWall(false, avoidEnemy);
                 return;
             }
 

@@ -38,12 +38,12 @@ public class MopperMicro {
         if (!rc.isMovementReady()) return false;
         shouldPlaySafe = false;
         needPaint = lowPaint();
-        if (!needPaint && rc.getActionCooldownTurns() < 20) {
-            var enemiesShort = rc.senseNearbyRobots(rangeExtended, rc.getTeam().opponent());
-            if (enemiesShort.length == 0 && enemyPaint.length == 0) {
-                return false;
-            }
+//        if (!needPaint && rc.getActionCooldownTurns() < 20) {
+        var enemiesShort = rc.senseNearbyRobots(rangeExtended, rc.getTeam().opponent());
+        if (enemiesShort.length == 0 && enemyPaint.length == 0) {
+            return false;
         }
+//        }
         // when low on paint/ can't act, treat all enemies as dangerous
         alwaysInRange = !rc.isActionReady() || lowPaint();
 
@@ -263,7 +263,7 @@ public class MopperMicro {
             if (that.minDistanceToEnemyPaint - minDistanceToEnemyPaint > 1) return true;
             if (minDistanceToEnemyPaint - that.minDistanceToEnemyPaint > 1) return false;
 
-            // to run away from enely mopper swarms
+            // to run away from enemy mopper swarms
             if (moppersInMoveRange < that.moppersInMoveRange) return true;
             if (moppersInMoveRange > that.moppersInMoveRange) return false;
 

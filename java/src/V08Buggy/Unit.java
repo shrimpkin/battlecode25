@@ -47,34 +47,7 @@ public class Unit extends Globals {
             lastWanderTargetTime = rc.getRoundNum();
         }
         // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
-        Navigator.moveTo(wanderTarget);
-
-        if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
-            updateSeen();
-            lastSeenUpdateTime = rc.getRoundNum();
-        }
-    }
-
-    /**
-     * Overloaded version: set paintless to true if you want to avoid stepping off paint
-     */
-    public static void wander(boolean wasWandering, boolean paintless) throws GameActionException {
-        if (!rc.isMovementReady())
-            return; // cannot move yet
-
-        // pick a new place to go if we don't have one -- or tried to go somewhere for too long
-        if (!wasWandering
-                || wanderTarget != null && wanderTarget.isWithinDistanceSquared(rc.getLocation(), 9)
-                || (rc.getRoundNum() - lastWanderTargetTime > 20)
-        ) {
-            wanderTarget = null;
-        }
-        if (wanderTarget == null) {
-            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
-            lastWanderTargetTime = rc.getRoundNum();
-        }
-        // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
-        Navigator.moveTo(wanderTarget);
+        Navigator.moveTo(wanderTarget, rc.getPaint() < 15);
 
         if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
             updateSeen();
@@ -103,8 +76,10 @@ public class Unit extends Globals {
                     enemyTowerLocations.add(packedLocation);
                 }
             } else {
-                if (isPaintTower(type)) {
+                if (isPaintTower(type) || robot.getPaintAmount() > 100) {
                     paintTowerLocations.add(packedLocation);
+                } else {
+                    paintTowerLocations.remove(packedLocation);
                 }
             }
         }
