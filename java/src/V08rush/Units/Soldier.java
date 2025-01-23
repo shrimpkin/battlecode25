@@ -1,8 +1,8 @@
-package V08.Units;
+package V08rush.Units;
 
-import V08.Comms;
-import V08.Unit;
-import V08.Nav.Navigator;
+import V08rush.Comms;
+import V08rush.Unit;
+import V08rush.Nav.Navigator;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
