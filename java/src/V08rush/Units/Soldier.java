@@ -31,7 +31,6 @@ public class Soldier extends Unit {
     static boolean isRusher = false;
 
     public static void run() throws GameActionException {
-        if(rc.getRoundNum() >= 32) rc.resign();
         indicator = "";
         Modes prev = mode;
         roundNum = rc.getRoundNum();
@@ -336,17 +335,21 @@ public class Soldier extends Unit {
             }
         }
 
-        if(shouldDefend && rc.getChips() >= 3500) {
-            towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
-        } else if (rc.getNumberTowers() <= 3) {
-            towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
-        } else if (rc.getNumberTowers() == 4) {
-            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
-        } else if (nextDouble() <= 0.8 && rc.getNumberTowers() <= 20) {
-            towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
-        } else {
-            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
-        }   
+        if(rc.getNumberTowers() == 2) towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
+        else 
+        towerType = paintTowerLocations.size > moneyTowerLocations.size ? UnitType.LEVEL_ONE_PAINT_TOWER : UnitType.LEVEL_ONE_MONEY_TOWER;
+
+        // if(shouldDefend && rc.getChips() >= 3500) {
+        //     towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
+        // } else if (rc.getNumberTowers() <= 3) {
+        //     towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
+        // } else if (rc.getNumberTowers() == 4) {
+        //     towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+        // } else if (nextDouble() <= 0.8 && rc.getNumberTowers() <= 20) {
+        //     towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
+        // } else {
+        //     towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+        // }   
 
         if(isPaintTower(towerType)) {
             if(rc.canMark(east)) {
@@ -504,34 +507,34 @@ public class Soldier extends Unit {
     public static void updateMode() throws GameActionException {
         MapLocation nearTower = getClosestEnemyTowerLocation();
 
-        if(rc.getRoundNum() < 5 || mode == Modes.RUSH) {
-            //System.out.println("Checking nearby towers.");
-            //now close enough to tower to fight
-            if(nearTower != null && rc.getLocation().distanceSquaredTo(nearTower) <= 9) {
-                mode = Modes.ATTACK;
-                //System.out.println("Switching from rush to attack.");
-                return;
-            }
+        // if(rc.getRoundNum() < 5 || mode == Modes.RUSH) {
+        //     //System.out.println("Checking nearby towers.");
+        //     //now close enough to tower to fight
+        //     if(nearTower != null && rc.getLocation().distanceSquaredTo(nearTower) <= 9) {
+        //         mode = Modes.ATTACK;
+        //         //System.out.println("Switching from rush to attack.");
+        //         return;
+        //     }
 
-            //already have set the mode to be rush
-            if(mode == Modes.RUSH) {
-                //System.out.println("Maintaining rush.");
-                return;
-            }
+        //     //already have set the mode to be rush
+        //     if(mode == Modes.RUSH) {
+        //         //System.out.println("Maintaining rush.");
+        //         return;
+        //     }
 
-            //should we rush
-            MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
-            for(MapLocation loc : ruinLocations) {
-                RobotInfo robot = rc.senseRobotAtLocation(loc);
-                if(robot == null) continue;
-                //early game paint towers go for rushing enemy paint towers
-                if(isPaintTower(robot.getType())) {
-                    //System.out.println("Found paint tower will now rush.");
-                    mode = Modes.RUSH;
-                    return;
-                }
-            }
-        }
+        //     //should we rush
+        //     MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
+        //     for(MapLocation loc : ruinLocations) {
+        //         RobotInfo robot = rc.senseRobotAtLocation(loc);
+        //         if(robot == null) continue;
+        //         //early game paint towers go for rushing enemy paint towers
+        //         if(isPaintTower(robot.getType())) {
+        //             //System.out.println("Found paint tower will now rush.");
+        //             mode = Modes.RUSH;
+        //             return;
+        //         }
+        //     }
+        // }
 
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
             mode = Modes.ATTACK;
@@ -583,20 +586,20 @@ public class Soldier extends Unit {
     }
 
     public static void updateAttackTarget() throws GameActionException {
-        System.out.println("MicroInfo for robot at: " + rc.getLocation());
+        //System.out.println("MicroInfo for robot at: " + rc.getLocation());
         MicroInfo[] microInfo = new MicroInfo[9];
         for (int i = 0; i < 9; i++) {
             microInfo[i] = new MicroInfo(Direction.values()[i]);
             microInfo[i].updateEnemiesTargeting();
-            System.out.println(microInfo[i].toString());
+            //System.out.println(microInfo[i].toString());
         }
-        System.out.println();
+        //System.out.println();
 
         MicroInfo best = microInfo[8];  
         boolean shouldAttack = (rc.getRoundNum() % 2 == 0) && (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT);
         for (int i = 0; i < 8; i++) {
-            if(microInfo[i].location != null)
-                rc.setIndicatorDot(microInfo[i].location, i, i, i);
+            //if(microInfo[i].location != null)
+            //    rc.setIndicatorDot(microInfo[i].location, i, i, i);
 
             if (shouldAttack && microInfo[i].isBetterAttack(best)) {
                 best = microInfo[i];
@@ -780,6 +783,7 @@ public class Soldier extends Unit {
         boolean actionReady;
         PaintType paint; 
         int towerHealth = Integer.MAX_VALUE;
+        int friendlies = 0;
 
         public MicroInfo(Direction dir) throws GameActionException {
             direction = dir;
@@ -795,13 +799,20 @@ public class Soldier extends Unit {
             RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
             for(RobotInfo robot : robots) {
                 boolean isTower = robot.getType().isTowerType();
-                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), robot.getType().actionRadiusSquared)) {
-                    towersTargeting++;
-                    towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
-                }
+                if(isTower) {
+                    if(location.isWithinDistanceSquared(robot.getLocation(), 16)) {
+                        towersOneMoveAway++;
+                    }
+                    if(location.isWithinDistanceSquared(robot.getLocation(), robot.getType().actionRadiusSquared)) {
+                        towersTargeting++;
+                        towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
+                        friendlies += rc.senseNearbyRobots(robot.getLocation(), 16, myTeam).length;
+                    }
+                    //
 
-                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 16)) {
-                    towersOneMoveAway++;
+                    // for(RobotInfo r : rc.senseNearbyRobots(robot.getLocation(), 16, myTeam)) {
+                    //     System.out.println("Friendly at: " + r.getLocation().toString() + " with tower at " + robot.getLocation().toString());
+                    // }
                 }
 
                 if(robot.getType().equals(UnitType.MOPPER) && location.isWithinDistanceSquared(robot.getLocation(), 10)) {
@@ -829,6 +840,9 @@ public class Soldier extends Unit {
             //go for lower health towers, prevents targetting switching
             if(towerHealth < m.towerHealth) return true;
             if(towerHealth > m.towerHealth) return false;
+
+            if(friendlies > m.friendlies) return true;
+            if(friendlies < m.friendlies) return false;
 
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
@@ -880,7 +894,8 @@ public class Soldier extends Unit {
             String rslt = "";
             rslt += location.toString() + ": ";
             rslt += canMove + ", " + towersTargeting + ", ";
-            rslt += towersOneMoveAway + ", " + towerHealth + ".";
+            rslt += towersOneMoveAway + ", " + towerHealth + ", ";
+            rslt += friendlies + ".";
             return rslt;
         }
     }

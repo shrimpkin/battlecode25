@@ -615,14 +615,15 @@ public class Soldier extends Unit {
         Direction direction;
         MapLocation location;
         int minDistanceToEnemy = Integer.MAX_VALUE;
-        double towersTargeting = 0;
-        double moppersTargeting = 0;
-        double towersOneMoveAway = 0;
+        int towersTargeting = 0;
+        int moppersTargeting = 0;
+        int towersOneMoveAway = 0;
         boolean canMove = true;
         int minHealth = Integer.MAX_VALUE;
         boolean actionReady;
         PaintType paint; 
         int towerHealth = Integer.MAX_VALUE;
+        int friendlies = 0;
 
         public MicroInfo(Direction dir) throws GameActionException {
             direction = dir;
@@ -637,13 +638,21 @@ public class Soldier extends Unit {
         public void updateEnemiesTargeting() throws GameActionException {
             RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
             for(RobotInfo robot : robots) {
-                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 9)) {
-                    towersTargeting++;
-                    towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
-                }
+                boolean isTower = robot.getType().isTowerType();
+                if(isTower) {
+                    if(location.isWithinDistanceSquared(robot.getLocation(), 16)) {
+                        towersOneMoveAway++;
+                    }
+                    if(location.isWithinDistanceSquared(robot.getLocation(), robot.getType().actionRadiusSquared)) {
+                        towersTargeting++;
+                        towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
+                        friendlies += rc.senseNearbyRobots(robot.getLocation(), 16, myTeam).length;
+                    }
+                    //
 
-                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 16)) {
-                    towersOneMoveAway++;
+                    // for(RobotInfo r : rc.senseNearbyRobots(robot.getLocation(), 16, myTeam)) {
+                    //     System.out.println("Friendly at: " + r.getLocation().toString() + " with tower at " + robot.getLocation().toString());
+                    // }
                 }
 
                 if(robot.getType().equals(UnitType.MOPPER) && location.isWithinDistanceSquared(robot.getLocation(), 10)) {
@@ -672,6 +681,9 @@ public class Soldier extends Unit {
             if(towerHealth < m.towerHealth) return true;
             if(towerHealth > m.towerHealth) return false;
 
+            if(friendlies > m.friendlies) return true;
+            if(friendlies < m.friendlies) return false;
+
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
             if(moppersTargeting > m.moppersTargeting) return false;
@@ -682,7 +694,7 @@ public class Soldier extends Unit {
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
 
             return true;
         }
@@ -713,9 +725,18 @@ public class Soldier extends Unit {
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
 
             return true;
+        }
+
+        public String toString() {
+            String rslt = "";
+            rslt += location.toString() + ": ";
+            rslt += canMove + ", " + towersTargeting + ", ";
+            rslt += towersOneMoveAway + ", " + towerHealth + ", ";
+            rslt += friendlies + ".";
+            return rslt;
         }
     }
 }

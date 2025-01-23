@@ -9,6 +9,7 @@ public class Unit extends Globals {
     public static Modes mode = Modes.NONE;
     public static MapLocation wanderTarget; // TODO: emily
     public static FastIntSet paintTowerLocations = new FastIntSet();
+    public static FastIntSet moneyTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     public static FastIntSet unusedRuinLocations = new FastIntSet();
     public static String indicator;
@@ -92,6 +93,7 @@ public class Unit extends Globals {
                 unusedRuinLocations.add(packedLocation);
                 enemyTowerLocations.remove(packedLocation);
                 paintTowerLocations.remove(packedLocation);
+                moneyTowerLocations.remove(packedLocation);
                 continue;
             }
 
@@ -103,6 +105,9 @@ public class Unit extends Globals {
             } else {
                 if (isPaintTower(type)) {
                     paintTowerLocations.add(packedLocation);
+                }
+                if(isMoneyTower(type)) {
+                    moneyTowerLocations.add(packedLocation);
                 }
             }
         }
