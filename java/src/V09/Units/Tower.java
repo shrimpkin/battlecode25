@@ -122,9 +122,20 @@ public class Tower extends Unit {
             return;
         }
 
+        int nearbyMoppers = 0;
+        for(RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
+            if(robot.getType().equals(UnitType.MOPPER)) nearbyMoppers++;
+        }
+
+        
+
         //TODO: Evaluate
         if(rc.getMoney() < 1200) {
             return;
+        }
+
+        if(rc.senseNearbyRobots(-1, opponentTeam).length > 0 && nearbyMoppers <= 1 && rc.getHealth() >= 500) {
+            buildRobotType(UnitType.MOPPER);
         }
 
         UnitType type = null;
@@ -143,7 +154,6 @@ public class Tower extends Unit {
                 type = UnitType.MOPPER;
             }
         }
-        
 
         if(buildRobotType(type) != null) numSpawned++;
     }

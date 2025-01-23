@@ -454,6 +454,17 @@ public class Soldier extends Unit {
     }
 
     public static void updateAttackTarget() throws GameActionException {
+        MapLocation loc = getClosestEnemyTowerLocation();
+        if(loc == null) {
+            indicator += "Attack Target: is null,";
+            attackTarget = null;
+            return;
+        } else if(loc.distanceSquaredTo(rc.getLocation()) > 16) {
+            attackTarget = loc;
+            indicator += "Attack Target:" + attackTarget.toString() + ", ";
+            return;
+        }
+
         //System.out.println("MicroInfo for robot at: " + rc.getLocation());
         MicroInfo[] microInfo = new MicroInfo[9];
         for (int i = 0; i < 9; i++) {
