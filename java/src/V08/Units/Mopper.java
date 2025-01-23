@@ -1,35 +1,74 @@
 package V08.Units;
 
+import V08.Comms;
 import V08.Unit;
 import V08.Micro.MopperMicro;
 import V08.Nav.Navigator;
+import V08.Tools.CommType;
 import V08.Tools.FastLocSet;
 import battlecode.common.*;
 
 public class Mopper extends Unit {
+    static final Direction[] cardinal = Direction.cardinalDirections();
     static FastLocSet enemyPaint = new FastLocSet(), allyPaint = new FastLocSet();
     static FastLocSet enemyMarks = new FastLocSet();
-    static Message[] messages;
-    static final Direction[] cardinal = Direction.cardinalDirections();
-    private static boolean wasWandering = false;
-
+    static RobotInfo refillingTower = null;
     static MopperMicro micro = new MopperMicro();
+    private static boolean wasWandering = false;
 
     public static void run() throws GameActionException {
         indicator = "";
         updateTowerLocations();
         updateSurroundings();
         micro.computeMicroArray(true, paintTowerLocations, enemyPaint, allyPaint);
-        messages = rc.readMessages(-1);
+        read();
         move();
         doAction();
         refill();
         debug();
     }
 
+    /// reads msgs to target enemy
+    public static void read() throws GameActionException {
+        Message[] msgs = rc.readMessages(rc.getRoundNum());
+        for (Message msg : msgs) {
+            if (Comms.getType(msg.getBytes()) == CommType.TargetEnemy) {
+                MapLocation enemyLoc = Comms.getLocation(msg.getBytes());
+                rc.setIndicatorDot(enemyLoc, 200, 100, 200);
+                if (rc.getLocation().distanceSquaredTo(enemyLoc) <= rc.getType().actionRadiusSquared && rc.canMopSwing(rc.getLocation().directionTo(enemyLoc))) {
+                    // System.out.println("MOPPER attacking based off msg");
+                    rc.mopSwing(rc.getLocation().directionTo(enemyLoc));
+                }
+            } else if (Comms.getType(msg.getBytes()) == CommType.RebuildTower) {
+                // TODO: focus on mopping up paint
+            }
+        }
+    }
+
     public static void move() throws GameActionException {
-        if (rc.getPaint() < 40 && paintTowerLocations.size > 0) {
-            Navigator.moveTo(getClosestLocation(paintTowerLocations));
+        if (rc.getPaint() < 40 && paintTowerLocations.size > 0 && refillingTower == null) {
+            var target = getClosestLocation(paintTowerLocations);
+            MapLocation best = target;
+            int bestDistance = Integer.MAX_VALUE;
+            boolean hasAllyPaint = false;
+            for (var dir : cardinal) {
+                var neighbor = target.add(dir.rotateLeft());
+                var dist = rc.getLocation().distanceSquaredTo(neighbor);
+                boolean neighborHasAllyPaint = rc.canSenseLocation(neighbor) && rc.senseMapInfo(neighbor).getPaint().isAlly();
+                if (!hasAllyPaint) {
+                    if (neighborHasAllyPaint || dist < bestDistance) {
+                        best = neighbor;
+                        bestDistance = dist;
+                        hasAllyPaint = neighborHasAllyPaint;
+                    }
+                } else {
+                    if (neighborHasAllyPaint && dist < bestDistance) {
+                        best = neighbor;
+                        bestDistance = dist;
+                    }
+                }
+            }
+            Navigator.moveTo(best);
             wasWandering = false;
         } else if (micro.doMicro()) {
             indicator += "{did micro}";
@@ -41,7 +80,7 @@ public class Mopper extends Unit {
     }
 
     public static void doAction() throws GameActionException {
-        if (!rc.isActionReady()) return;
+        if (!rc.isActionReady() || rc.getPaint() < 40 && refillingTower != null) return;
         indicator += "[doing action: ";
         var swingDir = getBestMopSwingDir();
         // decide between swinging mop and painting a tile -- currently just always swing if it can hit a robot with paint
@@ -96,7 +135,7 @@ public class Mopper extends Unit {
                 // try to paint on that tile
                 rc.attack(paintTile);
                 indicator += "painted]";
-            } else if (rc.getPaint() > 51){
+            } else if (rc.getPaint() > 51) {
                 // can't paint any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
                 var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
                 var amount = rc.getPaint() - 51;
@@ -116,6 +155,7 @@ public class Mopper extends Unit {
 
     // update positions of nearby paint -- tracking the average position of allied/enemy paint
     public static void updateSurroundings() throws GameActionException {
+        refillingTower = null;
         enemyPaint.clear();
         allyPaint.clear();
         // update surrounding radius
@@ -128,22 +168,22 @@ public class Mopper extends Unit {
             }
             if (tile.getMark().isEnemy()) enemyMarks.add(loc);
         }
-        // reset values if needed
-    }
-
-    public static void refill() throws GameActionException {
-        if (Clock.getBytecodesLeft() < 400) return;
-        for (var robot : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
-            if (rc.getType().isTowerType()) {
-                requestPaint(robot.getLocation(), 100 - rc.getPaint());
+        // check for valid towers to refill up to full
+        for (var tower : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
+            if (tower.getType().isTowerType() && (tower.getPaintAmount() >= 100 - rc.getPaint() || rc.getPaint() <= 10)) {
+                refillingTower = tower;
                 break;
             }
         }
     }
 
-    /**
-     * Returns cardinal direction with the most enemies, null otherwise
-     */
+    /// refill at nearby paint towers -- but
+    public static void refill() throws GameActionException {
+        if (!rc.isActionReady() || refillingTower == null) return;
+        requestPaint(refillingTower.getLocation(), 100 - rc.getPaint());
+    }
+
+    /// Returns cardinal direction with the most enemies, null otherwise
     public static int getBestMopSwingDir() throws GameActionException {
         int[] numEnemies = {0, 0, 0, 0}; // N E S W
         // TODO: see verify mop swing area of effect

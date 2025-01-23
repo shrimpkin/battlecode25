@@ -48,7 +48,7 @@ public class MopperMicro {
         alwaysInRange = !rc.isActionReady() || lowPaint();
 
         MicroInfo bestMicro = microInfo[8];
-        for (int i = 7; i-- > 0; ) {
+        for (int i = 8; --i >= 0;) {
             if (microInfo[i].isBetter(bestMicro)) bestMicro = microInfo[i];
         }
         if (bestMicro.dir == Direction.CENTER) return true;
@@ -177,9 +177,8 @@ public class MopperMicro {
         int safe() {
             if (!canMove) return -INF; // can't move there
             if (inTowerRange > 0) return -inTowerRange; // moppers are very squishy to towers
-            if (alliesDist2 >= 4) return 0; // too many allies
             if (moppersInRange > alliesDist10) return 1; // outnumbered by enemy moppers
-            if (rc.getPaint() < 20 && paintPenalty > 0 && !rc.isActionReady()) return 2; // no paint and actively dying
+            if (rc.getPaint() < 20 && (paintPenalty + alliesDist2 - 1 > 0) && !rc.isActionReady()) return 2; // no paint and actively dying
             return 3; // no conditions
         }
 
@@ -252,27 +251,33 @@ public class MopperMicro {
                 if (minDistanceToAllyPaint > that.minDistanceToAllyPaint) return false;
             }
 
+            // to get hit by less moppers
             if (moppersInRange < that.moppersInRange) return true;
             if (moppersInRange > that.moppersInRange) return false;
+
+            // to take less paint terrain penalties
+            if (paintPenalty + alliesDist2 < that.paintPenalty + that.alliesDist2) return true;
+            if (paintPenalty + alliesDist2 > that.paintPenalty + that.alliesDist2) return false;
 
             // allow for counting sqrt(1) and sqrt(2) as the same
             if (that.minDistanceToEnemyPaint - minDistanceToEnemyPaint > 1) return true;
             if (minDistanceToEnemyPaint - that.minDistanceToEnemyPaint > 1) return false;
 
-            if (minDistanceToAllyPaint < that.minDistanceToAllyPaint) return true;
-            if (minDistanceToAllyPaint > that.minDistanceToAllyPaint) return false;
-
-            if (paintPenalty < that.paintPenalty) return true;
-            if (paintPenalty > that.paintPenalty) return false;
-
+            // to run away from enely mopper swarms
             if (moppersInMoveRange < that.moppersInMoveRange) return true;
             if (moppersInMoveRange > that.moppersInMoveRange) return false;
 
+            // to get close to enemy soldiers/splashers
             if (minDistanceToEnemy < that.minDistanceToEnemy) return true;
             if (minDistanceToEnemy > that.minDistanceToEnemy) return false;
 
+            // to reduce overcrowding
             if (alliesDist2 < that.alliesDist2) return true;
             if (alliesDist2 > that.alliesDist2) return false;
+
+            // secondary distance heuristic as tiebreaker if all else is equal
+            if (minDistanceToAllyPaint < that.minDistanceToAllyPaint) return true;
+            if (minDistanceToAllyPaint > that.minDistanceToAllyPaint) return false;
 
             if (dir == Direction.CENTER) return true;
             if (that.dir == Direction.CENTER) return false;
