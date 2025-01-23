@@ -14,6 +14,7 @@ public class Tower extends Unit {
     static UnitType towerType = rc.getType();
     static int numSoldiersSpawned = 0;
     static int numMoppersSpawned = 0;
+    static int numSpawned = 0;
 
     public static void run() throws GameActionException {
         broadcastAndRead();
@@ -121,13 +122,30 @@ public class Tower extends Unit {
             return;
         }
 
-        if (isPaintTower(towerType)) {
-            spawnPaintTower();
-        } else if (isMoneyTower(towerType)) {
-            spawnMoneyTower();
-        } else {
-            spawnDefenseTower();
+        //TODO: Evaluate
+        if(rc.getMoney() < 1200) {
+            return;
         }
+
+        UnitType type = null;
+        if(rc.getRoundNum() > 100) {
+            if(numSpawned % 3 == 2) {
+                type = UnitType.SOLDIER;
+            } else if(numSpawned % 3 == 0) {
+                type = UnitType.MOPPER;
+            } else if(numSpawned % 3 == 1) {
+                type = UnitType.SPLASHER;
+            }
+        } else {
+            if(numSpawned % 2 == 0) {
+                type = UnitType.SOLDIER;
+            } else {
+                type = UnitType.MOPPER;
+            }
+        }
+        
+
+        if(buildRobotType(type) != null) numSpawned++;
     }
 
     /// Core logic sequence for paint towers

@@ -38,15 +38,19 @@ public class Unit extends Globals {
         // pick a new place to go if we don't have one -- or tried to go somewhere for too long
         if (!wasWandering
                 || wanderTarget != null && wanderTarget.isWithinDistanceSquared(rc.getLocation(), 9)
-                || (rc.getRoundNum() - lastWanderTargetTime > 20)
+                || ((rc.getRoundNum() - lastWanderTargetTime) > 20)
         ) {
+            //System.out.println("Reset wander target.");
             wanderTarget = null;
         }
         if (wanderTarget == null) {
+            //System.out.println("Update null wander target.");
             wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
-        // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
+
+        if(rc.onTheMap(wanderTarget)) rc.setIndicatorDot(wanderTarget, 255, 0, 255);
+        //System.out.println("Moving to wander target.");
         Navigator.moveTo(wanderTarget);
 
         if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {

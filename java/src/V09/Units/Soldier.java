@@ -28,7 +28,6 @@ public class Soldier extends Unit {
     static boolean hasGeneratedSRPLocations = false;
 
     public static void run() throws GameActionException {
-
         indicator = "";
         Modes prev = mode;
         roundNum = rc.getRoundNum();
@@ -41,15 +40,12 @@ public class Soldier extends Unit {
         updateMode();
         updateMoveTarget();
 
-
-        
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
         if (mode == Modes.BOOM) {
             paintBuildTarget(); 
             completeBuiltTarget();
         }
-        
         
         refill();
         attack();

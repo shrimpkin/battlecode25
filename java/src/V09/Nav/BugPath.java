@@ -29,7 +29,7 @@ public class BugPath extends Globals {
     int round;
 
     int turnsMovingToObstacle = 0;
-    final int MAX_TURNS_MOVING_TO_OBSTACLE = 2;
+    final int MAX_TURNS_MOVING_TO_OBSTACLE = 10;
     final int MIN_DIST_RESET = 3;
 
     void update(){
@@ -50,10 +50,10 @@ public class BugPath extends Globals {
     }
 
     public void moveTo(MapLocation target){
-
         //No target? ==> bye!
         if (!rc.isMovementReady()) return;
         if (target == null) target = rc.getLocation();
+        if(DEBUG_BUGPATH == 1) System.out.println("Target is: " + target.toString());
         //if (Constants.DEBUG == 1)
         //rc.setIndicatorLine(rc.getLocation(), target, 255, 0, 255);
 
@@ -88,6 +88,12 @@ public class BugPath extends Globals {
 
 
         //Update data
+        if(DEBUG_BUGPATH == 1 && prevTarget != null) {
+            System.out.println("Prev target is set to: " + target.toString());
+        } else if(DEBUG_BUGPATH == 1) {
+            System.out.println("Prev target is set to be null.");
+        }
+        
         prevTarget = target;
 
         checkState();
