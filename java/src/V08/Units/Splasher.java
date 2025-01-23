@@ -132,7 +132,7 @@ public class Splasher extends Unit {
         boolean nearRuin = false;
         for (MapLocation ruin : nearbyRuins) {
             if (ruin.isWithinDistanceSquared(loc, 8)) {
-                var hasRobot = rc.canSenseLocation(ruin);
+                var hasRobot = rc.canSenseRobotAtLocation(ruin);
                 if (hasRobot && ruin.isWithinDistanceSquared(loc, GameConstants.SPLASHER_ATTACK_ENEMY_PAINT_RADIUS_SQUARED)) {
                     var robot = rc.senseRobotAtLocation(ruin);
                     if (robot.getTeam() == opponentTeam) util += EnemyTowerWeight;
