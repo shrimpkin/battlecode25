@@ -458,24 +458,36 @@ public class Soldier extends Unit {
     }
 
     public static void updateAttackTarget() throws GameActionException {
+        //System.out.println("MicroInfo for robot at: " + rc.getLocation());
         MicroInfo[] microInfo = new MicroInfo[9];
         for (int i = 0; i < 9; i++) {
             microInfo[i] = new MicroInfo(Direction.values()[i]);
             microInfo[i].updateEnemiesTargeting();
+            //System.out.println(microInfo[i].toString());
         }
+        //System.out.println();
 
-        MicroInfo best = microInfo[8];
+        MicroInfo best = microInfo[8];  
+        boolean shouldRunaway = rc.getHealth() <= 30;
+        indicator += "Should run" + shouldRunaway + " ";
+        boolean shouldAttack = (rc.getRoundNum() % 2 == 0) && (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT);
         for (int i = 0; i < 8; i++) {
-            if (rc.getRoundNum() % 2 == 0 && microInfo[i].isBetterAttack(best)) {
+            //if(microInfo[i].location != null)
+            //    rc.setIndicatorDot(microInfo[i].location, i, i, i);
+            if(shouldRunaway && microInfo[i].isBetterRunaway(best)) {
                 best = microInfo[i];
-            }
-            
-            if (rc.getRoundNum() % 2 == 1 && microInfo[i].isBetterRetreat(best)) {
+            } else if (shouldAttack && microInfo[i].isBetterAttack(best)) {
+                best = microInfo[i];
+            } else if (!shouldAttack && microInfo[i].isBetterRetreat(best)) {
                 best = microInfo[i];
             }
         }
 
-        attackTarget =  best.location;
+        attackTarget = best.location;
+
+        if(attackTarget != null)
+            indicator += "Attack Target: " + attackTarget.toString() + ", " + shouldAttack + ", ";
+
     }
 
     /** Moves to target location, if no target wanders */
@@ -624,6 +636,7 @@ public class Soldier extends Unit {
         PaintType paint; 
         int towerHealth = Integer.MAX_VALUE;
         int friendlies = 0;
+        int distanceToTower = Integer.MAX_VALUE;
 
         public MicroInfo(Direction dir) throws GameActionException {
             direction = dir;
@@ -648,11 +661,8 @@ public class Soldier extends Unit {
                         towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
                         friendlies += rc.senseNearbyRobots(robot.getLocation(), 16, myTeam).length;
                     }
-                    //
-
-                    // for(RobotInfo r : rc.senseNearbyRobots(robot.getLocation(), 16, myTeam)) {
-                    //     System.out.println("Friendly at: " + r.getLocation().toString() + " with tower at " + robot.getLocation().toString());
-                    // }
+                    
+                    distanceToTower = Math.min(distanceToTower, location.distanceSquaredTo(robot.getLocation()));
                 }
 
                 if(robot.getType().equals(UnitType.MOPPER) && location.isWithinDistanceSquared(robot.getLocation(), 10)) {
@@ -714,6 +724,36 @@ public class Soldier extends Unit {
             //tries to maintain the ability to attack towers soon
             if(towersOneMoveAway > m.towersOneMoveAway) return true;
             if(towersOneMoveAway < m.towersOneMoveAway) return false;
+
+            //avoids moppers 
+            if(moppersTargeting < m.moppersTargeting) return true;
+            if(moppersTargeting > m.moppersTargeting) return false;
+            
+            //steps into ally paint if possible
+            if(paint.isAlly() && !m.paint.isAlly()) return true;
+            if(!paint.isAlly() && m.paint.isAlly()) return false;
+
+            //now tries to step into empty paint
+            if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+
+            return true;
+        }
+
+        public boolean isBetterRunaway(MicroInfo m) {
+            //if we can't move there ain't no point in the rest
+            if(canMove && !m.canMove) return true;
+            if(!canMove && m.canMove) return false;
+
+            //both squares are useless to us
+            if(!canMove && !m.canMove) return true;
+
+            //wants to get out of range of any towers
+            if(towersTargeting < m.towersTargeting) return true;
+            if(towersTargeting > m.towersTargeting) return false;
+
+            if(distanceToTower > m.distanceToTower) return true;
+            if(distanceToTower < m.distanceToTower) return false;
 
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
