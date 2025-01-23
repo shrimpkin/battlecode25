@@ -134,7 +134,7 @@ public class Tower extends Unit {
             return;
         }
 
-        if(rc.senseNearbyRobots(-1, opponentTeam).length > 0 && nearbyMoppers <= 1 && rc.getHealth() >= 500) {
+        if(rc.senseNearbyRobots(-1, opponentTeam).length > 0 && nearbyMoppers <= 1 && rc.getHealth() >= 3000) {
             buildRobotType(UnitType.MOPPER);
         }
 
