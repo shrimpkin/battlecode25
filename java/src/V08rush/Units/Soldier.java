@@ -21,14 +21,17 @@ public class Soldier extends Unit {
     static MapLocation SRPTarget;
     static MapLocation lastRuinTarget;
     static MapLocation attackTarget;
+    static MapLocation rushTarget;
     static int roundNum;
     static int DEBUG = 1;
 
-    static FastIntSet possibleSRPLocations = new FastIntSet();
+    static FastIntSet symmetryLocations = new FastIntSet();
     static boolean hasGeneratedSRPLocations = false;
+    
+    static boolean isRusher = false;
 
     public static void run() throws GameActionException {
-
+        if(rc.getRoundNum() >= 32) rc.resign();
         indicator = "";
         Modes prev = mode;
         roundNum = rc.getRoundNum();
@@ -38,10 +41,10 @@ public class Soldier extends Unit {
         updateBuildTarget();
         updateAttackTarget();
         updateCommTarget();
+        updateRushTarget();
         updateMode();
+        updateSymmetryTargets();
         updateMoveTarget();
-
-
         
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
@@ -49,7 +52,6 @@ public class Soldier extends Unit {
             paintBuildTarget(); 
             completeBuiltTarget();
         }
-        
         
         refill();
         attack();
@@ -59,6 +61,97 @@ public class Soldier extends Unit {
         tessellate(); 
         updateSeen();
         debug();
+    }
+
+
+    static boolean addedPaintTowerSymmetryLocations = false;
+    /**
+     * Uses map symmetry and our tower positions to generate possible locations for enemy towers
+     */
+    public static void getRushTargetsBySymmetry() throws GameActionException {
+        if(addedPaintTowerSymmetryLocations) return;
+
+        RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
+
+        for(RobotInfo robot : robots) {
+
+            boolean isPaintTower = isPaintTower(robot.getType());
+            
+            //System.out.println("Is it a paint tower: " + isPaintTower);
+            if(!isPaintTower) continue;
+            //System.out.println("Adding rush target.");
+
+            int x = robot.getLocation().x;
+            int y = robot.getLocation().y;
+
+            MapLocation vert = new MapLocation(mapWidth - x - 1,y);
+            MapLocation hort = new MapLocation(x, mapHeight - y - 1);
+            MapLocation mirr = new MapLocation(mapWidth - x - 1, mapHeight - y - 1);
+
+            symmetryLocations.add(pack(vert));
+            symmetryLocations.add(pack(hort));
+            symmetryLocations.add(pack(mirr));
+
+            addedPaintTowerSymmetryLocations = true;
+        }        
+    }
+
+    /**
+     * Updates targets in symmetryLocations by removing them if we know they aren't towers
+     */
+    public static void updateSymmetryTargets() throws GameActionException {
+        if(mode != Modes.RUSH) return;
+
+        //System.out.println("Updating Symmetry Targets.");
+        getRushTargetsBySymmetry();
+
+        for (int i = 0; i < symmetryLocations.size; i++) {
+            MapLocation tower = unpack(symmetryLocations.keys.charAt(i));
+            
+            if(!rc.canSenseLocation(tower)) continue;
+            RobotInfo info = rc.senseRobotAtLocation(tower);
+
+            //there is no unit or the unit is not a paint or money tower
+            //hence the tower is not there and we should remove 
+            if(info == null || !(isPaintTower(info.getType()) || isMoneyTower(info.getType()))) {
+                symmetryLocations.remove(pack(tower));
+            }
+        }
+    }
+
+    /**
+     * @returns If possible a tower that have seen, otherwise the nearest possible location for a tower
+     */
+    public static void updateRushTarget() throws GameActionException {
+        int minDistance = Integer.MAX_VALUE;
+        MapLocation bestLocation = null;
+        
+        if(enemyTowerLocations.size > 0) {
+            //System.out.println("Using enemy tower locations.");
+            rushTarget = unpack(enemyTowerLocations.keys.charAt(0));
+            return;
+        }
+
+        //System.out.println("Using symmetry locations.");
+        for (int i = 0; i < symmetryLocations.size; i++) {
+            MapLocation tower = unpack(symmetryLocations.keys.charAt(i));
+            int distanceToTower = tower.distanceSquaredTo(rc.getLocation());
+
+            if(distanceToTower < minDistance) {
+                minDistance = distanceToTower;
+                bestLocation = tower;
+                //System.out.println("Updating bestLocation to: " + bestLocation.toString());
+            }
+        }
+
+
+        rushTarget = bestLocation;
+        if(rushTarget == null) {
+            //System.out.println("Rush target is null");
+        } else {
+            //System.out.println("Rush target is: " + rushTarget.toString());
+        }
+
     }
 
      /************************************************************************\
@@ -382,6 +475,8 @@ public class Soldier extends Unit {
                 break;
             case REFILL: moveTarget = getClosestLocation(paintTowerLocations);
                 break;
+            case RUSH: moveTarget = rushTarget;
+                break;
             default: moveTarget = null;
                 break;
         }
@@ -407,19 +502,49 @@ public class Soldier extends Unit {
     
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
     public static void updateMode() throws GameActionException {
+        MapLocation nearTower = getClosestEnemyTowerLocation();
+
+        if(rc.getRoundNum() < 5 || mode == Modes.RUSH) {
+            //System.out.println("Checking nearby towers.");
+            //now close enough to tower to fight
+            if(nearTower != null && rc.getLocation().distanceSquaredTo(nearTower) <= 9) {
+                mode = Modes.ATTACK;
+                //System.out.println("Switching from rush to attack.");
+                return;
+            }
+
+            //already have set the mode to be rush
+            if(mode == Modes.RUSH) {
+                //System.out.println("Maintaining rush.");
+                return;
+            }
+
+            //should we rush
+            MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
+            for(MapLocation loc : ruinLocations) {
+                RobotInfo robot = rc.senseRobotAtLocation(loc);
+                if(robot == null) continue;
+                //early game paint towers go for rushing enemy paint towers
+                if(isPaintTower(robot.getType())) {
+                    //System.out.println("Found paint tower will now rush.");
+                    mode = Modes.RUSH;
+                    return;
+                }
+            }
+        }
+
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
+            mode = Modes.ATTACK;
+            return;
+        }
+
+        if(nearTower != null && rc.getLocation().distanceSquaredTo(nearTower) <= 25) {
             mode = Modes.ATTACK;
             return;
         }
 
         if(bMode == BuildMode.BUILD_TOWER && buildTarget != null) {
             mode = Modes.BOOM;
-            return;
-        }
-
-        MapLocation nearTower = getClosestEnemyTowerLocation();
-        if(nearTower != null && attackTarget.distanceSquaredTo(nearTower) <= 25) {
-            mode = Modes.ATTACK;
             return;
         }
 
@@ -446,7 +571,7 @@ public class Soldier extends Unit {
 
         if (enemyTowerLocations.size > 0) {
             MapLocation tower =  unpack(enemyTowerLocations.keys.charAt(0));
-            System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
+            ////System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
             int distance = rc.getLocation().distanceSquaredTo(tower);
             if(distance < bestDistance) {
                 bestDistance = distance;
@@ -458,24 +583,35 @@ public class Soldier extends Unit {
     }
 
     public static void updateAttackTarget() throws GameActionException {
+        System.out.println("MicroInfo for robot at: " + rc.getLocation());
         MicroInfo[] microInfo = new MicroInfo[9];
         for (int i = 0; i < 9; i++) {
             microInfo[i] = new MicroInfo(Direction.values()[i]);
             microInfo[i].updateEnemiesTargeting();
+            System.out.println(microInfo[i].toString());
         }
+        System.out.println();
 
-        MicroInfo best = microInfo[8];
+        MicroInfo best = microInfo[8];  
+        boolean shouldAttack = (rc.getRoundNum() % 2 == 0) && (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT);
         for (int i = 0; i < 8; i++) {
-            if (rc.getRoundNum() % 2 == 0 && microInfo[i].isBetterAttack(best)) {
+            if(microInfo[i].location != null)
+                rc.setIndicatorDot(microInfo[i].location, i, i, i);
+
+            if (shouldAttack && microInfo[i].isBetterAttack(best)) {
                 best = microInfo[i];
             }
             
-            if (rc.getRoundNum() % 2 == 1 && microInfo[i].isBetterRetreat(best)) {
+            if (!shouldAttack && microInfo[i].isBetterRetreat(best)) {
                 best = microInfo[i];
             }
         }
 
-        attackTarget =  best.location;
+        attackTarget = best.location;
+
+        if(attackTarget != null)
+            indicator += "Attack Target: " + attackTarget.toString() + ", " + shouldAttack + ", ";
+
     }
 
     /** Moves to target location, if no target wanders */
@@ -589,7 +725,7 @@ public class Soldier extends Unit {
      */
     public static void tessellate() throws GameActionException {
         markOneRuinTile();
-        paintSRPBelow();
+        if(mode != Modes.RUSH) paintSRPBelow();
     }
 
     /************************************************************************\
@@ -600,12 +736,33 @@ public class Soldier extends Unit {
     public static void debug() {
         if (DEBUG == 0) return;
 
-        if(buildTarget != null) {
-            indicator += bMode + " at: " + buildTarget.toString() +  " MT: " + moveTarget + "\n";
+        switch(mode) {
+            case ATTACK: indicator += "Attack, ";
+                break;
+            case BOOM: indicator += "Boom, ";
+                break;
+            case DEFEND:
+                break;
+            case NONE:
+                break;
+            case REFILL:
+                break;
+            case RUSH: indicator += "Rush, ";
+                break;
+            case SIT:
+                break;
+            default:
+                break;
+        }
+        
+        if(mode == Modes.RUSH) {
+            indicator += "Rush at: " + rushTarget + "," + moveTarget + "\n";
+        } else if(buildTarget != null) {
+            indicator += " at: " + buildTarget.toString() +  " MT: " + moveTarget + "\n";
         } else if(attackTarget != null) {
-            indicator += "Attack at: " + attackTarget.toString() +  " MT: " + moveTarget + "\n";
+            indicator += " at: " + attackTarget.toString() +  " MT: " + moveTarget + "\n";
         } else {
-            indicator += "No build target: " + bMode + " MT: " + moveTarget + "\n";
+            indicator += ", MT: " + moveTarget + "\n";
         }
 
         rc.setIndicatorString(indicator);
@@ -615,9 +772,9 @@ public class Soldier extends Unit {
         Direction direction;
         MapLocation location;
         int minDistanceToEnemy = Integer.MAX_VALUE;
-        double towersTargeting = 0;
-        double moppersTargeting = 0;
-        double towersOneMoveAway = 0;
+        int towersTargeting = 0;
+        int moppersTargeting = 0;
+        int towersOneMoveAway = 0;
         boolean canMove = true;
         int minHealth = Integer.MAX_VALUE;
         boolean actionReady;
@@ -637,7 +794,8 @@ public class Soldier extends Unit {
         public void updateEnemiesTargeting() throws GameActionException {
             RobotInfo[] robots = rc.senseNearbyRobots(-1, opponentTeam);
             for(RobotInfo robot : robots) {
-                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 9)) {
+                boolean isTower = robot.getType().isTowerType();
+                if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), robot.getType().actionRadiusSquared)) {
                     towersTargeting++;
                     towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
                 }
@@ -701,7 +859,7 @@ public class Soldier extends Unit {
 
             //tries to maintain the ability to attack towers soon
             if(towersOneMoveAway > m.towersOneMoveAway) return true;
-            if(towersOneMoveAway < m.towersOneMoveAway) return true;
+            if(towersOneMoveAway < m.towersOneMoveAway) return false;
 
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
@@ -716,6 +874,14 @@ public class Soldier extends Unit {
             if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
 
             return true;
+        }
+
+        public String toString() {
+            String rslt = "";
+            rslt += location.toString() + ": ";
+            rslt += canMove + ", " + towersTargeting + ", ";
+            rslt += towersOneMoveAway + ", " + towerHealth + ".";
+            return rslt;
         }
     }
 }
