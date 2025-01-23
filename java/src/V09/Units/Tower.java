@@ -280,7 +280,7 @@ public class Tower extends Unit {
 
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 3000)
+        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
             return; // prioritize paint tower upgrades
 
         rc.upgradeTower(rc.getLocation());
