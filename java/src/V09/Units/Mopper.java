@@ -22,6 +22,21 @@ public class Mopper extends Unit {
         updateSurroundings();
         micro.computeMicroArray(true, paintTowerLocations, enemyPaint, allyPaint);
         read();
+
+        for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
+            if (robot.type == UnitType.SOLDIER || robot.type == UnitType.SPLASHER) {
+                if (rc.getPaint() > 51)
+                    break; // doesn't need to transfer paint yet
+
+                var amount = rc.getPaint() - 51;
+                if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(robot.location, -amount)) {
+                    rc.transferPaint(robot.location, -amount);
+                    indicator += "transferred paint]";
+                    break;
+                }
+            }
+        }
+
         move();
         doAction();
         refill();
@@ -38,6 +53,8 @@ public class Mopper extends Unit {
                 if (rc.getLocation().distanceSquaredTo(enemyLoc) <= rc.getType().actionRadiusSquared && rc.canMopSwing(rc.getLocation().directionTo(enemyLoc))) {
                     // System.out.println("MOPPER attacking based off msg");
                     rc.mopSwing(rc.getLocation().directionTo(enemyLoc));
+                } else {
+
                 }
             } else if (Comms.getType(msg.getBytes()) == CommType.RebuildTower) {
                 // TODO: focus on mopping up paint
@@ -46,7 +63,7 @@ public class Mopper extends Unit {
     }
 
     public static void move() throws GameActionException {
-        if (rc.getPaint() < 40 && paintTowerLocations.size > 0 && refillingTower == null) {
+        if (rc.getPaint() < 20 && paintTowerLocations.size > 0 && refillingTower == null) {
             var target = getClosestLocation(paintTowerLocations);
             MapLocation best = target;
             int bestDistance = Integer.MAX_VALUE;
