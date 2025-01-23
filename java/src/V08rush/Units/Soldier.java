@@ -3,6 +3,7 @@ package V08rush.Units;
 import V08rush.Comms;
 import V08rush.Unit;
 import V08rush.Nav.Navigator;
+import V08rush.Tools.FastIntSet;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -23,6 +24,9 @@ public class Soldier extends Unit {
     static int roundNum;
     static int DEBUG = 1;
 
+    static FastIntSet possibleSRPLocations = new FastIntSet();
+    static boolean hasGeneratedSRPLocations = false;
+
     public static void run() throws GameActionException {
 
         indicator = "";
@@ -38,6 +42,7 @@ public class Soldier extends Unit {
         updateMoveTarget();
 
 
+        
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
         if (mode == Modes.BOOM) {
@@ -102,7 +107,7 @@ public class Soldier extends Unit {
             for(RobotInfo robot : rc.senseNearbyRobots(ruin, 8, myTeam)) {
                 if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
             }
-            if(numNearbySoliders > 2) continue;
+            if(numNearbySoliders >= 2) continue;
 
             if(!canStillComplete(ruin)) continue;
 
@@ -125,13 +130,12 @@ public class Soldier extends Unit {
         for(MapInfo info : rc.senseNearbyMapInfos(loc, 8)) {
             if(info.getPaint().isEnemy()) return false;
         }
-        
         return true;
     }
 
     /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP */
     public static void updateSRPTarget() throws GameActionException {
-        //we have a valid SRP 
+        //we have a valid SRP
         if(SRPTarget != null 
             && rc.canSenseLocation(SRPTarget)
             && rc.senseMapInfo(SRPTarget).getMark() == PaintType.ALLY_PRIMARY
@@ -143,12 +147,9 @@ public class Soldier extends Unit {
         SRPTarget = null;
 
         for(MapInfo info : rc.senseNearbyMapInfos()) {
-
             MapLocation loc = info.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location
-            if(info.isResourcePatternCenter()) {
-                continue; //already a SRP center
-            }
+            if(info.isResourcePatternCenter()) continue; //already an SRP center
 
             //building to close to an unbuilt ruin
             MapLocation[] ruinLocation = rc.senseNearbyRuins(-1);
@@ -185,11 +186,10 @@ public class Soldier extends Unit {
         MapInfo[] infos = rc.senseNearbyMapInfos(loc, 8);
         if(infos.length != 25) return false; //can't sense all tiles around the SRP
         
-        //location is to close to the edge
-        if(loc.x <= 1 || loc.y <= 1
-            || loc.x >= mapWidth - 1 || loc.y >= mapHeight - 1) {
-                if(rc.canMark(loc)) rc.mark(loc, true);
-                return false;    
+        // location is to close to the edge
+        if(loc.x <= 1 || loc.y <= 1 || loc.x >= mapWidth - 2 || loc.y >= mapHeight - 2) {
+            if(rc.canMark(loc)) rc.mark(loc, true);
+            return false;
         }
 
         for(MapInfo info : infos) {
@@ -243,14 +243,17 @@ public class Soldier extends Unit {
             }
         }
 
-        if(shouldDefend) {
+        if(shouldDefend && rc.getChips() >= 3500) {
             towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
-        } else if((rc.getNumberTowers() == 2 || nextDouble() < .66) && rc.getNumberTowers() < 12) {
+        } else if (rc.getNumberTowers() <= 3) {
+            towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
+        } else if (rc.getNumberTowers() == 4) {
+            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
+        } else if (nextDouble() <= 0.8 && rc.getNumberTowers() <= 20) {
             towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
         } else {
             towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
-        }
-        
+        }   
 
         if(isPaintTower(towerType)) {
             if(rc.canMark(east)) {
@@ -275,15 +278,22 @@ public class Soldier extends Unit {
     /** @return MapLocations that rotate around the build target */
     public static MapLocation rotateAroundBuiltTarget() throws GameActionException {
         if(buildTarget == null) return null;
-
-        if(rc.getRoundNum() % 4 == 0) {
-            return buildTarget.add(Direction.NORTH);
-        } else if(rc.getRoundNum() % 4 == 1) {
-            return buildTarget.add(Direction.EAST);
-        } else if(rc.getRoundNum() % 4 == 2) {
-            return buildTarget.add(Direction.SOUTH);
-        } else {
-            return buildTarget.add(Direction.WEST);
+        // rotate if adjacent to the build target
+        if (rc.getLocation().isWithinDistanceSquared(buildTarget, 1)){
+            var robots = rc.senseNearbyRobots(buildTarget, 1, myTeam);
+            if (robots.length > 0) {
+                var robot = robots[0];
+                var tdir = buildTarget.directionTo(robot.getLocation()).opposite();
+                return buildTarget.add(tdir);
+            } else {
+                var pdir = buildTarget.directionTo(rc.getLocation());
+                return buildTarget.add(pdir.rotateRight().rotateRight());
+            }
+        } else if (rc.getLocation().isAdjacentTo(buildTarget)) {
+            return buildTarget.add(buildTarget.directionTo(rc.getLocation()).rotateRight());
+        } else{
+            // get roughly the closest slot to the robot
+            return buildTarget.add(buildTarget.directionTo(rc.getLocation()));
         }
     }
 
@@ -291,6 +301,7 @@ public class Soldier extends Unit {
     public static void paintBuildTarget() throws GameActionException {
         //We have not decided on a build target so we can't paint it
         if(buildTarget == null || bMode == BuildMode.NONE) return;
+        if (!rc.isActionReady()) return;
 
         //Determines what paint pattern we need to paint based on bMode and tower type
         boolean[][] paintPattern;
@@ -302,22 +313,24 @@ public class Soldier extends Unit {
             if(buildType == null) return;
             paintPattern = rc.getTowerPattern(buildType);
         } 
+        // paint move target when rotating around the tower to avoid empty tile penalty
+        if (moveTarget != null && moveTarget.isWithinDistanceSquared(buildTarget, 2)) {
+            indicator += "[painttarget]";
+            if (rc.senseMapInfo(moveTarget).getPaint() == PaintType.EMPTY && rc.canAttack(moveTarget)) {
+                rc.attack(moveTarget);
+                return;
+            }
+        }
 
         //Iterates through locations, paints it if it had the incorrect paint
         for(MapInfo info : rc.senseNearbyMapInfos(buildTarget, 8)) {
             MapLocation loc = info.getMapLocation();
             if(!rc.canAttack(loc)) continue;
             if(!info.isPassable()) continue;
-
             //converting the location in the offsets we need use paint pattern
             int x = buildTarget.x - loc.x + 2;
             int y = buildTarget.y - loc.y + 2;
-
-            if(info.getPaint().isEnemy()) {
-                //can't attack enemy paint with soldiers
-                continue;
-            } else if(info.getPaint().equals(PaintType.EMPTY) 
-                        || info.getPaint().isSecondary() != paintPattern[x][y]) {
+             if(info.getPaint().equals(PaintType.EMPTY) || info.getPaint().isSecondary() != paintPattern[x][y]) {
                 //correcting paint, returning because we can only attack once a turn
                 rc.attack(loc, paintPattern[x][y]);
                 return;
@@ -609,6 +622,7 @@ public class Soldier extends Unit {
         int minHealth = Integer.MAX_VALUE;
         boolean actionReady;
         PaintType paint; 
+        int towerHealth = Integer.MAX_VALUE;
 
         public MicroInfo(Direction dir) throws GameActionException {
             direction = dir;
@@ -625,6 +639,7 @@ public class Soldier extends Unit {
             for(RobotInfo robot : robots) {
                 if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 9)) {
                     towersTargeting++;
+                    towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
                 }
 
                 if(robot.getType().isTowerType() && location.isWithinDistanceSquared(robot.getLocation(), 16)) {
@@ -652,6 +667,10 @@ public class Soldier extends Unit {
             //avoids walking into two towers at the same time
             if(towersTargeting < m.towersTargeting) return true;
             if(towersTargeting > m.towersTargeting) return false;
+
+            //go for lower health towers, prevents targetting switching
+            if(towerHealth < m.towerHealth) return true;
+            if(towerHealth > m.towerHealth) return false;
 
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
@@ -699,5 +718,4 @@ public class Soldier extends Unit {
             return true;
         }
     }
-
 }
