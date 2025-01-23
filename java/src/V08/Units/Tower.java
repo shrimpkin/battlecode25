@@ -78,23 +78,19 @@ public class Tower extends Unit {
 
                     // request nearby soldiers
                     int numSoldiersCalled = 0;
+                    int numMoppersCalled = 0;
                     for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
-                        if (robot.type == UnitType.SOLDIER) {
-                            if (rc.canSendMessage(robot.location)) {
+                        if (rc.canSendMessage(robot.location)) {
+                            if (robot.type == UnitType.SOLDIER && numSoldiersCalled < 2) {
                                 rc.sendMessage(robot.location, Comms.encodeMessage(CommType.RebuildTower, towerLoc));
                                 numSoldiersCalled++;
-
-                                if (numSoldiersCalled == 2)
-                                    return; // called enough
+                            } else if (robot.type == UnitType.MOPPER && numMoppersCalled < 1) {
+                                rc.sendMessage(robot.location, Comms.encodeMessage(CommType.RebuildTower, towerLoc));
+                                numMoppersCalled++;
                             }    
                         }
                     }
-
-                    // build new soldiers
-                    MapLocation buildLoc = buildRobotType(UnitType.SOLDIER);
-                    if (buildLoc != null && rc.canSendMessage(buildLoc)) {
-                        rc.sendMessage(buildLoc, Comms.encodeMessage(CommType.RebuildTower, towerLoc));
-                    }
+                    spawnAndTell(UnitType.SOLDIER, Comms.encodeMessage(CommType.RebuildTower, towerLoc));
                 }
                 // TODO: reinforceFront messaging
                 default -> System.out.println("Tower should not be getting message with comm code: " + code);

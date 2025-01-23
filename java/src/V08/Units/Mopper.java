@@ -183,9 +183,7 @@ public class Mopper extends Unit {
         requestPaint(refillingTower.getLocation(), 100 - rc.getPaint());
     }
 
-    /**
-     * Returns cardinal direction with the most enemies, null otherwise
-     */
+    /// Returns cardinal direction with the most enemies, null otherwise
     public static int getBestMopSwingDir() throws GameActionException {
         int[] numEnemies = {0, 0, 0, 0}; // N E S W
         // TODO: see verify mop swing area of effect
@@ -218,6 +216,5 @@ public class Mopper extends Unit {
 
     public static void debug() throws GameActionException {
         rc.setIndicatorString(indicator);
-//        if (rc.getRoundNum() > 180) rc.resign();
     }
 }
