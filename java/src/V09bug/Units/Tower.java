@@ -1,9 +1,9 @@
-package V09.Units;
+package V09bug.Units;
 
-import V09.Comms;
-import V09.Unit;
-import V09.Tools.CommType;
-import V09.Tools.FastLocSet;
+import V09bug.Comms;
+import V09bug.Unit;
+import V09bug.Tools.CommType;
+import V09bug.Tools.FastLocSet;
 import battlecode.common.*;
 
 public class Tower extends Unit {
@@ -122,20 +122,9 @@ public class Tower extends Unit {
             return;
         }
 
-        int nearbyMoppers = 0;
-        for(RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
-            if(robot.getType().equals(UnitType.MOPPER)) nearbyMoppers++;
-        }
-
-        
-
         //TODO: Evaluate
         if(rc.getMoney() < 1200) {
             return;
-        }
-
-        if(rc.senseNearbyRobots(-1, opponentTeam).length > 0 && nearbyMoppers <= 1 && rc.getHealth() >= 500) {
-            buildRobotType(UnitType.MOPPER);
         }
 
         UnitType type = null;
@@ -154,6 +143,7 @@ public class Tower extends Unit {
                 type = UnitType.MOPPER;
             }
         }
+        
 
         if(buildRobotType(type) != null) numSpawned++;
     }
@@ -202,7 +192,7 @@ public class Tower extends Unit {
         }
         
         // consistently spawn soldiers for a few rounds
-        if (rc.getNumberTowers() <= 4 || numSoldiersSpawned <= (8 * mapHeight * mapWidth / 3600.)) {
+        if (rc.getNumberTowers() <= 4 || numSoldiersSpawned <= (8 * mapHeight * mapWidth / 3200.)) {
             buildRobotType(UnitType.SOLDIER);
             return;
         }
@@ -280,7 +270,7 @@ public class Tower extends Unit {
 
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 3000)
+        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 5000)
             return; // prioritize paint tower upgrades
 
         rc.upgradeTower(rc.getLocation());
