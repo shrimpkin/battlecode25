@@ -82,74 +82,72 @@ public class Mopper extends Unit {
     public static void doAction() throws GameActionException {
         if (!rc.isActionReady() || rc.getPaint() < 40 && refillingTower != null) return;
         indicator += "[doing action: ";
+        // get best direction to swing
         var swingDir = getBestMopSwingDir();
-        // decide between swinging mop and painting a tile -- currently just always swing if it can hit a robot with paint
-        if (swingDir != -1) {
-            rc.mopSwing(cardinal[swingDir]);
-            indicator += "swung]";
-        } else {
-            // get best tile to paint
-            MapLocation paintTile = null;
-            var nearbyRuins = rc.senseNearbyRuins(-1);
-            int importance = 0;
-            // TODO: maybe reorder the importance of these -- and write them in a cleaner manner
-            for (var tile : rc.senseNearbyMapInfos(2)) {
-                if (!tile.getPaint().isEnemy() || !tile.isPassable()) continue;
-                // save ourselves from enemy penalty
-                var loc = tile.getMapLocation();
-                if (!rc.canAttack(loc)) continue;
-                if (loc == rc.getLocation()) { // prioritize putting ourselves out of harm's way
+        // get best tile to paint
+        MapLocation paintTile = null;
+        var nearbyRuins = rc.senseNearbyRuins(-1);
+        int importance = 0;
+        // TODO: maybe reorder the importance of these -- and write them in a cleaner manner
+        for (var tile : rc.senseNearbyMapInfos(2)) {
+            if (!tile.getPaint().isEnemy() || !tile.isPassable()) continue;
+            var loc = tile.getMapLocation();
+            if (!rc.canAttack(loc)) continue;
+            // put enemies off safe ground -- and steal their paint in the process
+            var robot = rc.senseRobotAtLocation(loc);
+            if (robot != null) {
+                if (importance < 6 && robot.getTeam() == opponentTeam) {
                     paintTile = loc;
-                    break;
+                    importance = 6;
                 }
-                // clear enemy paint around an unfinished ruin
-                if (importance < 5) {
-                    for (var ruin : nearbyRuins) {
-                        if (ruin.isWithinDistanceSquared(loc, 8) && !rc.canSenseRobotAtLocation(ruin)) {
-                            paintTile = loc;
-                            importance = 5;
-                            break;
-                        }
-                    }
-                }
-                // if they marked it, it should be important
-                if (importance < 4 && tile.getMark().isEnemy()) {
+                // save ourselves and our team from enemy penalty
+                if (importance < 5 && (loc == rc.getLocation() || robot.getTeam() == myTeam)) {
                     paintTile = loc;
-                    importance = 4;
+                    importance = 5;
                 }
-                // put enemies moppers off safe ground
-                if (importance < 3 && rc.canSenseRobotAtLocation(loc) && rc.senseRobotAtLocation(loc).getType() == UnitType.MOPPER) {
-                    paintTile = loc;
-                    importance = 3;
-                }
-                // put enemies of other types off safe ground
-                if (importance < 2 && rc.canSenseRobotAtLocation(loc)) {
-                    paintTile = loc;
-                    importance = 2;
-                }
-                if (importance < 1)
-                    paintTile = loc;
             }
-
-            if (paintTile != null && rc.canAttack(paintTile)) {
-                // try to paint on that tile
-                rc.attack(paintTile);
-                indicator += "painted]";
-            } else if (rc.getPaint() > 51) {
-                // can't paint any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
-                var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
-                var amount = rc.getPaint() - 51;
-                for (var robot : allies) {
-                    if (!robot.getType().isRobotType()) continue;
-                    var loc = robot.getLocation();
-                    if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(loc, amount)) {
-                        rc.transferPaint(loc, amount);
+            // clear enemy paint around an unfinished ruin
+            if (importance < 4) {
+                for (var ruin : nearbyRuins) {
+                    if (ruin.isWithinDistanceSquared(loc, 8) && !rc.canSenseRobotAtLocation(ruin)) {
+                        paintTile = loc;
+                        importance = 4;
                         break;
                     }
                 }
-                indicator += "try paint transfer]";
             }
-            // TODO: maybe do some nav movement if micro is deceived by far away paint
+            // if they marked it, it should be important
+            if (importance < 3 && tile.getMark().isEnemy()) {
+                paintTile = loc;
+                importance = 3;
+            }
+            if (importance < 2) {
+                paintTile = loc;
+                importance = 2;
+            }
+        }
+        if (importance >= 5 && rc.canAttack(paintTile)) {
+            // mopping tile with enemy has highest priority
+            rc.attack(paintTile);
+        } else if (swingDir != -1) {
+            // otherwise swing has priority
+            rc.mopSwing(cardinal[swingDir]);
+        } else if (paintTile != null && rc.canAttack(paintTile)){
+            // all other forms of mopping
+            rc.attack(paintTile);
+        } else if (rc.getPaint() > 51) {
+            // can't mop any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
+            var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+            var amount = rc.getPaint() - 51;
+            for (var robot : allies) {
+                if (!robot.getType().isRobotType()) continue;
+                var loc = robot.getLocation();
+                if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(loc, amount)) {
+                    rc.transferPaint(loc, amount);
+                    indicator += "transferred paint]";
+                    break;
+                }
+            }
         }
     }
 
