@@ -446,7 +446,7 @@ public class Soldier extends Unit {
 
         if (enemyTowerLocations.size > 0) {
             MapLocation tower =  unpack(enemyTowerLocations.keys.charAt(0));
-//            System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
+            //System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
             int distance = rc.getLocation().distanceSquaredTo(tower);
             if(distance < bestDistance) {
                 bestDistance = distance;
