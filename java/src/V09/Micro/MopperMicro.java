@@ -24,6 +24,8 @@ public class MopperMicro {
     int rangeExtended = 10;
     MicroInfo[] microInfo;
 
+    int DEBUG = 1;
+
     public MopperMicro() {
         this.rc = Globals.rc;
         myRange = 7; // extent of mopper swinging (everything in 5x5 except the corners)
@@ -134,6 +136,13 @@ public class MopperMicro {
             microInfo[7].updateAlly(unit);
             microInfo[8].updateAlly(unit);
         }
+
+        if(DEBUG == 1) {
+            System.out.println("Printing micro info for robot at: " + rc.getLocation().toString());
+            for(int i = 0; i < 8; i++) {
+                System.out.println(microInfo[i].toString());
+            }
+        }
     }
 
     class MicroInfo {
@@ -182,8 +191,10 @@ public class MopperMicro {
             return 3; // no conditions
         }
 
-        boolean inRange() {
-            return alwaysInRange || minDistanceToEnemy <= myRange || minDistanceToEnemyPaint <= 2;
+        int inRange() {
+            if(minDistanceToEnemy <= myRange) return 2;
+            if(minDistanceToEnemyPaint <= 2) return 1;
+            return 0;
         }
 
         void updateSurrounding() {
@@ -236,10 +247,10 @@ public class MopperMicro {
             if (safe() > that.safe()) return true;
             if (safe() < that.safe()) return false;
 
-            if (inRange() && !that.inRange()) return true;
-            if (!inRange() && that.inRange()) return false;
+            if (inRange() > that.inRange()) return true;
+            if (inRange() < that.inRange()) return false;
 
-            if (!inRange()) {
+            if (inRange() == 0) {
                 if (minDistanceToEnemy < that.minDistanceToEnemy) return true;
                 if (minDistanceToEnemy > that.minDistanceToEnemy) return false;
 
@@ -284,5 +295,15 @@ public class MopperMicro {
 
             return true;
         }
+
+        public String toString() {
+            String rslt = location.toString() + ": ";
+            rslt += safe() + ", " + inRange() + ", ";
+            rslt += minDistanceToEnemy + ", " + minDistanceToEnemyPaint + ".";
+    
+            return rslt;
+        }
     }
+
+    
 }
