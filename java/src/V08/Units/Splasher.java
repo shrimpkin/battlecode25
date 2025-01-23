@@ -67,10 +67,11 @@ public class Splasher extends Unit {
     /// Splashes highest value location, if it's above min score value
     public static MapLocation splash() throws GameActionException {
         if (!rc.isActionReady()) return null;
-        MapLocation best = rc.getLocation();
-        int mostUtil = getSplashScore(rc.getLocation());
         // avoid expensive repeat computation
         precomputeSplashTileScores();
+        // find best tile in range to splash
+        MapLocation best = rc.getLocation();
+        int mostUtil = getSplashScore(rc.getLocation());
         for (var tile : rc.senseNearbyMapInfos(UnitType.SPLASHER.actionRadiusSquared)) {
             var loc = tile.getMapLocation();
             if (!rc.canAttack(loc)) continue;
@@ -169,7 +170,6 @@ public class Splasher extends Unit {
         for (int i = locs.length; --i >= 0;) {
             util += (int)scores[pack(locs[i].getMapLocation())] - CHAR_POSITIVE_OFFSET;
         }
-//        System.out.println("splash score at " + center + " = " + util);
         return util;
     }
 }
