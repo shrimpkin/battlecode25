@@ -38,7 +38,7 @@ public class Splasher extends Unit {
         for (var ally : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
             if (ally.getType().isTowerType()) {
                 requestPaint(ally.getLocation(), PaintLimit - rc.getPaint());
-                System.out.println("successfully refilled");
+//                System.out.println("successfully refilled");
                 break;
             }
         }
