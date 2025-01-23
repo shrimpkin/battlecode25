@@ -446,7 +446,7 @@ public class Soldier extends Unit {
 
         if (enemyTowerLocations.size > 0) {
             MapLocation tower =  unpack(enemyTowerLocations.keys.charAt(0));
-            System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
+//            System.out.println("Tower at: " + tower.toString() + " robot at: " + rc.getLocation().toString());
             int distance = rc.getLocation().distanceSquaredTo(tower);
             if(distance < bestDistance) {
                 bestDistance = distance;
@@ -682,7 +682,7 @@ public class Soldier extends Unit {
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
 
             return true;
         }
@@ -701,7 +701,7 @@ public class Soldier extends Unit {
 
             //tries to maintain the ability to attack towers soon
             if(towersOneMoveAway > m.towersOneMoveAway) return true;
-            if(towersOneMoveAway < m.towersOneMoveAway) return true;
+            if(towersOneMoveAway < m.towersOneMoveAway) return false;
 
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
@@ -713,7 +713,7 @@ public class Soldier extends Unit {
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
 
             return true;
         }
