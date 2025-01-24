@@ -44,6 +44,7 @@ public class Soldier extends Unit {
 
         if (mode == Modes.BOOM) {
             paintBuildTarget(); 
+            updateMarks();
             completeBuiltTarget();
         }
         
@@ -131,6 +132,9 @@ public class Soldier extends Unit {
 
     /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP */
     public static void updateSRPTarget() throws GameActionException {
+        //avoid build SRP patterns early game
+        //if(rc.getRoundNum() <= (mapHeight + mapWidth) / 2) return;
+
         //we have a valid SRP
         if(SRPTarget != null 
             && rc.canSenseLocation(SRPTarget)
@@ -208,7 +212,7 @@ public class Soldier extends Unit {
     //east corresponds to paint tower
     //west corresponds to money tower
     //north corresponds to a clock tower
-    public static UnitType getTowerMark() throws GameActionException {
+    public static UnitType markTower() throws GameActionException {
         if(ruinTarget == null) return null;
         
         MapLocation east = ruinTarget.add(Direction.EAST);
@@ -271,6 +275,74 @@ public class Soldier extends Unit {
         return null;
     }
 
+    /** Checks if at the given location the pattern for the given tower type is completed */
+    public static boolean isCompletePattern(UnitType towerType, MapLocation location) throws GameActionException {
+        MapInfo[] infos = rc.senseNearbyMapInfos(location, 8);
+        
+        boolean[][] paintPattern = rc.getTowerPattern(towerType);
+
+        //can't see all the tiles
+        if(infos.length < 25) {
+            //System.out.println("Can't see all tiles for tower at: " + buildTarget.toString() + " from " + rc.getLocation().toString());
+            return false;
+        }
+
+        for(MapInfo info : infos) {
+            MapLocation loc = info.getMapLocation();
+            if(loc.equals(location)) continue;
+
+            PaintType paintType = info.getPaint();
+            if(!paintType.isAlly()) {
+                //System.out.println("Paint is not ally.");
+                return false;
+            }
+
+            
+            int x = location.x - loc.x + 2;
+            int y = location.y - loc.y + 2;
+
+            if(paintPattern[x][y] && paintType.isSecondary()) continue;
+            if(!paintPattern[x][y] && !paintType.isSecondary()) continue;
+
+            //System.out.println("Paint at: " + loc.toString() + " is incorrect.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public static void updateMarks() throws GameActionException {
+        if(buildTarget == null) return;
+        if(buildType == null) return;
+
+        MapLocation south = buildTarget.add(Direction.SOUTH);
+        boolean canCompletePattern = isCompletePattern(buildType, buildTarget) && rc.senseRobotAtLocation(buildTarget) == null;
+
+        if(canCompletePattern && rc.canMark(south)) {
+            rc.mark(south, false);
+        } 
+
+        removeMarks();
+    }
+
+    public static void removeMarks() throws GameActionException {
+        System.out.println("Removing marks.");
+        for(MapLocation ruin : rc.senseNearbyRuins(-1)) {
+            if(rc.senseRobotAtLocation(ruin) == null) continue;
+
+            System.out.println("Robot is at mark at: " + ruin.toString());
+            MapLocation north = ruin.add(Direction.NORTH);
+            MapLocation east = ruin.add(Direction.EAST);
+            MapLocation west = ruin.add(Direction.WEST);
+            MapLocation south = ruin.add(Direction.SOUTH);
+
+            if(rc.canRemoveMark(north)) rc.removeMark(north);
+            if(rc.canRemoveMark(east)) rc.removeMark(east);
+            if(rc.canRemoveMark(west)) rc.removeMark(west);
+            if(rc.canRemoveMark(south)) rc.removeMark(south);
+        }
+    }
+
     /** @return MapLocations that rotate around the build target */
     public static MapLocation rotateAroundBuiltTarget() throws GameActionException {
         if(buildTarget == null) return null;
@@ -305,7 +377,7 @@ public class Soldier extends Unit {
             paintPattern = rc.getResourcePattern();
         } else {
             //needs to choose what tower it wants to paint
-            buildType = getTowerMark();
+            buildType = markTower();
             if(buildType == null) return;
             paintPattern = rc.getTowerPattern(buildType);
         } 
@@ -368,7 +440,6 @@ public class Soldier extends Unit {
     }
 
     /* End Build */
-
 
     public static void updateMoveTarget() throws GameActionException {
         switch(mode) {
@@ -456,12 +527,12 @@ public class Soldier extends Unit {
     public static void updateAttackTarget() throws GameActionException {
         MapLocation loc = getClosestEnemyTowerLocation();
         if(loc == null) {
-            indicator += "Attack Target: is null,";
+            //indicator += "Attack Target: is null,";
             attackTarget = null;
             return;
         } else if(loc.distanceSquaredTo(rc.getLocation()) > 16) {
             attackTarget = loc;
-            indicator += "Attack Target:" + attackTarget.toString() + ", ";
+            //indicator += "Attack Target:" + attackTarget.toString() + ", ";
             return;
         }
 
@@ -492,8 +563,8 @@ public class Soldier extends Unit {
 
         attackTarget = best.location;
 
-        if(attackTarget != null)
-            indicator += "Attack Target: " + attackTarget.toString() + ", " + shouldAttack + ", ";
+        // if(attackTarget != null)
+        //     indicator += "Attack Target: " + attackTarget.toString() + ", " + shouldAttack + ", ";
 
     }
 
@@ -519,7 +590,6 @@ public class Soldier extends Unit {
     /** Attacks enemy towers */
     public static void attack() throws GameActionException {
         for (RobotInfo robot : rc.senseNearbyRobots(UnitType.SOLDIER.actionRadiusSquared, opponentTeam)) {
-            // tbh not attacking enemy defense towers just makes us sitting ducks, even if they aren't part of the meta
             if (robot.getType().isTowerType() && rc.canAttack(robot.getLocation())) {
                 rc.attack(robot.getLocation());
             }
