@@ -13,10 +13,11 @@ import battlecode.common.UnitType;
 public class SplasherMicro extends Globals {
     Direction[] dirs = Direction.values();
     int DEBUG = 0;
+    MicroInfo[] microInfo;
 
     public void computeMicroArray(MapLocation splashTarget) throws GameActionException {
         
-        MicroInfo[] microInfo = new MicroInfo[]{
+         microInfo = new MicroInfo[]{
                 new MicroInfo(dirs[0]),
                 new MicroInfo(dirs[1]),
                 new MicroInfo(dirs[2]),
@@ -44,6 +45,22 @@ public class SplasherMicro extends Globals {
                 System.out.println(microInfo[i].toString());
             }
         }
+    }
+
+    public boolean doMicro() throws GameActionException {
+        if (!rc.isMovementReady()) return false;
+        
+        MicroInfo bestMicro = microInfo[0];
+        for (int i = 8; --i >= 0;) {
+            if (microInfo[i].isBetter(bestMicro)) bestMicro = microInfo[i];
+        }
+        if (bestMicro.direction == Direction.CENTER) return true;
+
+        if (rc.canMove(bestMicro.direction)) {
+            rc.move(bestMicro.direction);
+            return true;
+        }
+        return false;
     }
 
     public class MicroInfo {
@@ -89,7 +106,7 @@ public class SplasherMicro extends Globals {
             }
         }
 
-        public boolean compareMicro(MicroInfo m) throws GameActionException {
+        public boolean isBetter(MicroInfo m) throws GameActionException {
             if(!rc.isActionReady()) return betterRunaway(m);
             return betterPaintSplash(m);
         }
