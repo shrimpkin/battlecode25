@@ -1,5 +1,6 @@
 package V09;
 
+import V09.Tools.FastLocSet;
 import V09.Nav.Navigator;
 import V09.Tools.FastIntSet;
 import V09.Tools.LocMap;
@@ -127,6 +128,22 @@ public class Unit extends Globals {
             if (dist < best) {
                 best = dist;
                 closest = tower;
+            }
+        }
+        return closest;
+    }
+
+
+    public static MapLocation getClosestLocation(FastLocSet locType) throws GameActionException {
+        MapLocation closest = null;
+        MapLocation loc = rc.getLocation();
+        int best = Integer.MAX_VALUE;
+
+        for (var locale : locType.getKeys()) {
+            int dist = locale.distanceSquaredTo(loc);
+            if (dist < best) {
+                best = dist;
+                closest = locale;
             }
         }
         return closest;
