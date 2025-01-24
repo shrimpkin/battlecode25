@@ -109,8 +109,10 @@ public class Unit extends Globals {
                     enemyTowerLocations.add(packedLocation);
                 }
             } else {
-                if (isPaintTower(type)) {
+                if (isPaintTower(type) || robot.getPaintAmount() > 0) {
                     paintTowerLocations.add(packedLocation);
+                } else { // removes once falls below 100 paint
+                    paintTowerLocations.remove(packedLocation);
                 }
             }
         }

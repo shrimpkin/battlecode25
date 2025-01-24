@@ -23,9 +23,23 @@ public class Tower extends Unit {
         spawn();
         attack();
         upgradeTower();
+        doDisintegration();
         debugDisplay();
 
         rc.setIndicatorString(indicator);
+    }
+
+    public static void doDisintegration() throws GameActionException {
+        if (rc.getType().getBaseType() != UnitType.LEVEL_ONE_MONEY_TOWER) return;
+        if (rc.getChips() < 50000) return;
+        if (rc.getPaint() > 400) return;
+        int numSoldiers = 0;
+        for (var ally : rc.senseNearbyRobots(-1, myTeam)) {
+            if (ally.getType() == UnitType.SOLDIER)
+                numSoldiers++;
+        }
+        if (numSoldiers == 0) return;
+        rc.disintegrate();
     }
 
     /// Propagates and processes incoming messages
@@ -138,7 +152,7 @@ public class Tower extends Unit {
         }
 
         //attempts to defend the tower if num enemies is in {1,2}, less moppers than enemies, and we have sufficient health
-        if(numEnemies >= 2 && numEnemies > 0 && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
+        if(numEnemies <= 2 && numEnemies > 0 && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
             buildRobotType(UnitType.MOPPER);
         }
 
@@ -284,8 +298,8 @@ public class Tower extends Unit {
     /// Upgrade tower at robot's location
     public static void upgradeTower() throws GameActionException {
         // immediately upgrade defense towers
-        if (rc.getType() == UnitType.LEVEL_ONE_DEFENSE_TOWER) {
-            if (rc.canUpgradeTower(rc.getLocation())) {
+        if (rc.getType().getBaseType() == UnitType.LEVEL_ONE_DEFENSE_TOWER) {
+            if (rc.canUpgradeTower(rc.getLocation()) && rc.getChips() >= rc.getType().getNextLevel().moneyCost + 200) {
                 rc.upgradeTower(rc.getLocation());
             }
             return;

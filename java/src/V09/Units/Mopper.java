@@ -15,6 +15,7 @@ public class Mopper extends Unit {
     static RobotInfo[] nearbyFriendlies, nearbyEnemies;
     static RobotInfo refillingTower = null;
     static MopperMicro micro = new MopperMicro();
+    private static int numActiveEnemies = 0;
     private static boolean wasWandering = false;
 
     public static void run() throws GameActionException {
@@ -64,8 +65,9 @@ public class Mopper extends Unit {
     }
 
     public static void move() throws GameActionException {
+//        i
         // refill if low on paint -- but don't overcrowd otherwise
-        if (rc.getPaint() < 35 && paintTowerLocations.size > 0 && refillingTower != null && nearbyFriendlies.length < 10) {
+        if (rc.getPaint() < 35 && paintTowerLocations.size > 0 && nearbyFriendlies.length < 10) {
             var target = getClosestLocation(paintTowerLocations);
             MapLocation best = target;
             int bestDistance = Integer.MAX_VALUE;
@@ -93,7 +95,7 @@ public class Mopper extends Unit {
         } else {
             // move to enemy paint using bugnav if there aren't any enemies nearby
             // do micro otherwise, and if that doesn't pan out -- try to move to nearby friendlies or wander
-            if (nearbyEnemies.length == 0 && enemyPaint.size > 0 && rc.isActionReady()) {
+            if (numActiveEnemies == 0 && enemyPaint.size > 0 && rc.isActionReady()) {
                 Navigator.moveTo(enemyPaint.pop(), rc.getPaint() < 60);
                 indicator += "{moving to enemy paint}";
                 wasWandering = false;
@@ -112,6 +114,8 @@ public class Mopper extends Unit {
                     wasWandering = false;
                     indicator += "{move to " + target + "}";
                 }
+            } else {
+                indicator += "{can't move}";
             }
         }
     }
@@ -242,6 +246,10 @@ public class Mopper extends Unit {
                 refillingTower = tower;
                 break;
             }
+        }
+        // check for non-paralyzed enemies;
+        for (var enemy : nearbyEnemies) {
+            if (enemy.getPaintAmount() > 0) numActiveEnemies++;
         }
     }
 

@@ -20,9 +20,20 @@ public class Splasher extends Unit {
     private static int NumRoundsSinceSplash = 0;
     private static MapLocation[] nearbyRuins;
     private static char[] scores = "\0".repeat(4096).toCharArray();
-    // whether the splasher is in refilling mode
+    private static Modes mode = Modes.NONE;
+
+    public void updateMode() {
+        if (rc.getPaint() <= 50) {
+            mode = Modes.REFILL;
+            indicator += "{refilling}";
+        } else {
+            mode = Modes.NONE;
+            indicator += "{normal}";
+        }
+    }
 
     public static void run() throws GameActionException {
+        indicator = "";
         updateTowerLocations();
         nearbyRuins = rc.senseNearbyRuins(-1);
 
@@ -31,8 +42,9 @@ public class Splasher extends Unit {
             TargetLoc = bestLoc;
         }
         move();
-        if (rc.getNumberTowers() > 4 && rc.getChips() > 1200) canCompletePattern();
+        canCompletePattern();
         refill();
+        rc.setIndicatorString(indicator);
     }
 
     public static void refill() throws GameActionException {
@@ -64,9 +76,9 @@ public class Splasher extends Unit {
     //     }
     // }
 
-    /// Splashes highest value location, if it's above min score value
+    /// Splashes highest value location, if it's above min score value -- also don't kill self
     public static MapLocation splash() throws GameActionException {
-        if (!rc.isActionReady()) return null;
+        if (!rc.isActionReady() || rc.getPaint() <= 50) return null;
         // avoid expensive repeat computation
         precomputeSplashTileScores();
         // find best tile in range to splash
@@ -84,7 +96,7 @@ public class Splasher extends Unit {
 
         // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
         if (best != null) {
-            if (mostUtil >= Math.max(2, Math.max(9, MinUtil - rc.getRoundNum()/50) - NumRoundsSinceSplash/3) && rc.canAttack(best)) {
+            if (mostUtil >= Math.max(2, Math.max(10, MinUtil - rc.getRoundNum()/50) - (NumRoundsSinceSplash-5)/10) && rc.canAttack(best)) {
                 rc.attack(best);
                 NumRoundsSinceSplash = 0;
                 return best;
@@ -94,21 +106,28 @@ public class Splasher extends Unit {
         return null;
     }
 
+    static boolean wasWandering = false;
     /// Movement and wandering logic
     public static void move() throws GameActionException {
+        if (mode == Modes.REFILL) {
+            TargetLoc = getClosestLocation(paintTowerLocations);
+        }
+
         if (TargetLoc != null) {
             boolean atLocation = TargetLoc.equals(rc.getLocation());
-            boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && !rc.senseMapInfo(TargetLoc).isPassable();
-            boolean isCloseToTarget = rc.getLocation().distanceSquaredTo(TargetLoc) < 2;
+            boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && rc.sensePassability(TargetLoc);
+            boolean isCloseToTarget = rc.getLocation().isWithinDistanceSquared(TargetLoc, 2);
 
             if (atLocation || (cannotReachTarget && isCloseToTarget)) {
                 TargetLoc = null;
                 recenter();
             } else {
-                Navigator.moveTo(TargetLoc);
+                Navigator.moveTo(TargetLoc, rc.getPaint() < 20);
             }
+            wasWandering = false;
         } else {
-            wander(true);
+            wander(wasWandering);
+            wasWandering = true;
         }
     }
 
@@ -161,7 +180,6 @@ public class Splasher extends Unit {
     private static void precomputeSplashTileScores() throws GameActionException {
         final int MAX_EFFECT_RADIUS_SQUARED = 10;
         scores = "\0".repeat(4096).toCharArray();
-//        scores[pack(rc.getLocation())] = (char)(getTileScore(rc.senseMapInfo(rc.getLocation())) + CHAR_POSITIVE_OFFSET);
         for (MapInfo info : rc.senseNearbyMapInfos(MAX_EFFECT_RADIUS_SQUARED)) {
             scores[pack(info.getMapLocation())] = (char)(getTileScore(info) + CHAR_POSITIVE_OFFSET);
         }
@@ -174,7 +192,6 @@ public class Splasher extends Unit {
         for (int i = locs.length; --i >= 0;) {
             util += (int)scores[pack(locs[i].getMapLocation())] - CHAR_POSITIVE_OFFSET;
         }
-        //System.out.println("splash score: " + util);
         return util;
     }
 }

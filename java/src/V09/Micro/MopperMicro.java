@@ -39,22 +39,19 @@ public class MopperMicro {
     public boolean doMicro() throws GameActionException {
         if (!rc.isMovementReady()) return false;
         shouldPlaySafe = false;
-//        needPaint = lowPaint();
-//        if (!needPaint && rc.getActionCooldownTurns() < 20) {
+
         var enemiesShort = rc.senseNearbyRobots(rangeExtended, rc.getTeam().opponent());
         if (enemiesShort.length == 0 && enemyPaint.length == 0) {
             return false;
         }
-//        }
         // when low on paint/ can't act, treat all enemies as dangerous
-        alwaysInRange = !rc.isActionReady() || lowPaint();
+        alwaysInRange = !rc.isActionReady();
 
         MicroInfo bestMicro = microInfo[8];
         for (int i = 8; --i >= 0;) {
             if (microInfo[i].isBetter(bestMicro)) bestMicro = microInfo[i];
         }
         if (bestMicro.dir == Direction.CENTER) return true;
-//        rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(bestMicro.dir), 255, 255, 255);
 
         if (rc.canMove(bestMicro.dir)) {
             rc.move(bestMicro.dir);
@@ -153,18 +150,20 @@ public class MopperMicro {
         int minDistanceToAllyPaint = INF;
         int enemiesInRange = 0;
         int enemiesInMoveRange = 0;
+        boolean hasMoppableEnemy = false;
         int moppersInRange = 0;
         int moppersInMoveRange = 0;
         int inTowerRange = 0;
         int alliesDist2 = 1;
         int alliesDist10 = 1;
         int paintPenalty = -1;
-        boolean canMove = true;
+        boolean canAct, canMove = true;
 
         public MicroInfo(Direction dir) throws GameActionException {
             this.dir = dir;
             this.location = rc.getLocation().add(dir);
             if (dir != Direction.CENTER && !rc.canMove(dir)) canMove = false;
+            canAct = rc.isActionReady();
             if (rc.canSenseLocation(location)) {
                 var paint = rc.senseMapInfo(location).getPaint();
                 if (paint == PaintType.EMPTY) {
@@ -191,8 +190,9 @@ public class MopperMicro {
             return 3; // no conditions
         }
 
-        int inRange() {
-            if(minDistanceToEnemy <= 8) return 2;
+        int inRange() throws GameActionException {
+            if(hasMoppableEnemy && canAct)   return 3;
+            if(minDistanceToEnemy <= 8)      return 2;
             if(minDistanceToEnemyPaint <= 2) return 1;
             return 0;
         }
@@ -220,7 +220,7 @@ public class MopperMicro {
             if (dist <= 5) ++alliesDist10;
         }
 
-        void updateEnemy(RobotInfo unit) {
+        void updateEnemy(RobotInfo unit) throws GameActionException{
             int dist = unit.getLocation().distanceSquaredTo(location);
             var type = unit.getType();
             if (type.isTowerType()) {
@@ -231,6 +231,7 @@ public class MopperMicro {
             } else {
                 // it's a sitting duck (err bunny)
                 if (unit.getPaintAmount() == 0) return;
+                hasMoppableEnemy =  hasMoppableEnemy || (dist <= 2 && rc.senseMapInfo(unit.getLocation()).getPaint().isEnemy());
                 if (dist < minDistanceToEnemy) minDistanceToEnemy = dist;
                 if (dist < 8) { // should be the extent of a mopper swing
                     ++enemiesInRange;
@@ -243,7 +244,7 @@ public class MopperMicro {
             }
         }
 
-        boolean isBetter(MicroInfo that) {
+        boolean isBetter(MicroInfo that) throws GameActionException{
             if (safe() > that.safe()) return true;
             if (safe() < that.safe()) return false;
 
@@ -298,7 +299,9 @@ public class MopperMicro {
 
         public String toString() {
             String rslt = location.toString() + ": ";
-            rslt += safe() + ", " + inRange() + ", ";
+            try {
+                rslt += safe() + ", " + inRange() + ", ";
+            } catch (GameActionException e) {}
             rslt += minDistanceToEnemy + ", " + minDistanceToEnemyPaint + ".";
     
             return rslt;

@@ -1,6 +1,7 @@
 package V09.Units;
 
 import V09.Comms;
+import V09.Tools.FastLocSet;
 import V09.Unit;
 import V09.Nav.Navigator;
 import V09.Tools.FastIntSet;
@@ -27,6 +28,10 @@ public class Soldier extends Unit {
 
     static FastIntSet possibleSRPLocations = new FastIntSet();
     static boolean hasGeneratedSRPLocations = false;
+    // to avoid ping ponging between towers once enemy paint goes out of range -- ignore for ROUND_COOLDOWN rounds
+    private static final char ROUND_COOLDOWN = 10;
+    private static char[] ignore = "\0".repeat(4096).toCharArray();
+
 
     public static void run() throws GameActionException {
         indicator = "";
@@ -66,6 +71,15 @@ public class Soldier extends Unit {
 
     /** Updates the buildTarget and bMode fields */
     public static void updateBuildTarget() throws GameActionException {
+        // see if we were refilling and need to go back
+        if (lastRuinTarget != null) {
+            buildTarget = lastRuinTarget;
+            if (rc.canSenseLocation(lastRuinTarget)) {
+                lastRuinTarget = null;
+            }
+            return;
+        }
+
         //first looks for nearby ruins to build towers on
         findValidTowerPosition();
         if(ruinTarget != null) {
@@ -99,6 +113,7 @@ public class Soldier extends Unit {
         MapLocation bestLocation = null;
         int distance = Integer.MAX_VALUE;
         for (MapLocation ruin : ruinLocations) {
+            if ((rc.getRoundNum()+ROUND_COOLDOWN) - ignore[pack(ruin)] < 10) continue;
             RobotInfo ruinRobot = rc.senseRobotAtLocation(ruin);    
             if (ruinRobot != null) continue;
 
@@ -127,7 +142,10 @@ public class Soldier extends Unit {
     /** Checks if the enemey has painted in our build target */
     public static boolean canStillComplete(MapLocation loc) throws GameActionException {
         for(MapInfo info : rc.senseNearbyMapInfos(loc, 8)) {
-            if(info.getPaint().isEnemy()) return false;
+            if(info.getPaint().isEnemy()) {
+                ignore[pack(loc)] = (char)(rc.getRoundNum() + ROUND_COOLDOWN);
+                return false;
+            }
         }
         return true;
     }
@@ -280,7 +298,7 @@ public class Soldier extends Unit {
         // rotate if adjacent to the build target
         if (rc.getLocation().isWithinDistanceSquared(buildTarget, 1)){
             var robots = rc.senseNearbyRobots(buildTarget, 1, myTeam);
-            if (robots.length > 0) {
+            if (robots.length > 0 && robots[0].getType() == UnitType.SOLDIER) {
                 var robot = robots[0];
                 var tdir = buildTarget.directionTo(robot.getLocation()).opposite();
                 return buildTarget.add(tdir);
@@ -298,7 +316,7 @@ public class Soldier extends Unit {
 
 
     static int []dx = {
-            -2, 2, 2,-2,  -1, 2, 1, -2,  1, 2, -1, -2, 0, 2, 0,-2,      1, 1, -1, -1,    1, 0,-1, 0, 0
+            -2, 2, 2,-2,  -1, 2, 1, -2,  1, 2, -1, -2,  0, 2, 0,-2,      1, 1, -1, -1,    1, 0,-1, 0, 0
     };
     static int []dy = {
             2, 2,-2,-2,   2, 1,-2,-1,     2,-1,-2, 1,    2, 0,-2, 0,   1,-1,-1, 1 , 0,-1, 0, 1, 0
@@ -313,6 +331,7 @@ public class Soldier extends Unit {
     public static void paintBuildTarget() throws GameActionException {
         //We have not decided on a build target so we can't paint it
         if(buildTarget == null || bMode == BuildMode.NONE) return;
+        if (!rc.canSenseLocation(buildTarget)) return;
         if (!rc.isActionReady()) return;
 
         //Determines what paint pattern we need to paint based on bMode and tower type
@@ -354,6 +373,7 @@ public class Soldier extends Unit {
     public static void completeBuiltTarget() throws GameActionException {
         //no build target to complete
         if(buildTarget == null || bMode == BuildMode.NONE) return;
+        if (!rc.canSenseLocation(buildTarget)) return;
         //haven't decided on tower type yet
         if(bMode == BuildMode.BUILD_TOWER && buildType == null) return;
         if (!rc.canSenseLocation(buildTarget)) return;
@@ -440,7 +460,12 @@ public class Soldier extends Unit {
         }
 
         if(bMode == BuildMode.BUILD_TOWER && buildTarget != null) {
-            mode = Modes.BOOM;
+            if (rc.getPaint() < 10 && paintTowerLocations.size != 0) {
+                mode = Modes.REFILL;
+                lastRuinTarget = buildTarget;
+            } else {
+                mode = Modes.BOOM;
+            }
             return;
         }
 
@@ -452,9 +477,9 @@ public class Soldier extends Unit {
 
         if(rc.getPaint() <= 40 && roundNum - lastRefillEnd > 10 && paintTowerLocations.size != 0) {
             mode = Modes.REFILL;
-            if (ruinTarget != null) {
-                lastRuinTarget = ruinTarget;
-                indicator += "last ruin target: " + ruinTarget;
+            if (buildTarget != null) {
+                lastRuinTarget = buildTarget;
+                indicator += "last build target: " + buildTarget;
             }
             return;
         }
@@ -648,7 +673,7 @@ public class Soldier extends Unit {
     /** Prints all debug info */
     public static void debug() {
         if (DEBUG == 0) return;
-
+        indicator += "[Mode:" + mode + "]";
         if(buildTarget != null) {
             indicator += bMode + " at: " + buildTarget.toString() +  " MT: " + moveTarget + "\n";
         } else if(attackTarget != null) {
