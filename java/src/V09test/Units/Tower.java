@@ -17,6 +17,7 @@ public class Tower extends Unit {
     static int numSpawned = 0;
 
     public static void run() throws GameActionException {
+        indicator = "";
         broadcastAndRead();
 
         spawn();
@@ -127,15 +128,23 @@ public class Tower extends Unit {
             if(robot.getType().equals(UnitType.MOPPER)) nearbyMoppers++;
         }
 
-        
+        int numEnemies = rc.senseNearbyRobots(9, opponentTeam).length;
+
+        if (rc.getHealth() <= 200 && numEnemies != 0) {
+            buildRobotType(UnitType.SOLDIER);
+            buildRobotType(UnitType.MOPPER);
+            buildRobotType(UnitType.SPLASHER);
+        }
+
+        //probably hopeless to stop rush with more than two
+        indicator+= numEnemies + ", ";
+        if(numEnemies != 0 && numEnemies <= 2 && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
+            buildRobotType(UnitType.MOPPER);
+        }
 
         //TODO: Evaluate
         if(rc.getMoney() < 1200) {
             return;
-        }
-
-        if(rc.senseNearbyRobots(-1, opponentTeam).length > 0 && nearbyMoppers <= 1 && rc.getHealth() >= 3000) {
-            buildRobotType(UnitType.MOPPER);
         }
 
         UnitType type = null;
@@ -257,15 +266,17 @@ public class Tower extends Unit {
         }
     }
 
-    /// Attacks nearest robot and then performs aoe attack
+    // Attacks nearest robot and then performs aoe attack
     public static void attack() throws GameActionException {
+        int minHealth = Integer.MAX_VALUE;
+        MapLocation bestLocation = null;
         for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
-            if (rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-                break;
+            if (rc.canAttack(robot.getLocation()) && robot.getHealth() < minHealth) {
+                minHealth = robot.getHealth();
+                bestLocation = robot.getLocation();
             }
         }
-        rc.attack(null);
+        if(bestLocation != null) rc.attack(bestLocation);
     }
 
     /// Upgrade tower at robot's location

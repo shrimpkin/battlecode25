@@ -174,7 +174,7 @@ public class Splasher extends Unit {
         for (int i = locs.length; --i >= 0;) {
             util += (int)scores[pack(locs[i].getMapLocation())] - CHAR_POSITIVE_OFFSET;
         }
-        System.out.println("splash score: " + util);
+        //System.out.println("splash score: " + util);
         return util;
     }
 }

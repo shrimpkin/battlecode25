@@ -21,6 +21,7 @@ public class Soldier extends Unit {
     static MapLocation SRPTarget;
     static MapLocation lastRuinTarget;
     static MapLocation attackTarget;
+    static MapLocation refillTarget;
     static int roundNum;
     static int DEBUG = 1;
 
@@ -37,6 +38,7 @@ public class Soldier extends Unit {
         updateBuildTarget();
         updateAttackTarget();
         updateCommTarget();
+        updateRefillTarget();
         updateMode();
         updateMoveTarget();
         markOneRuinTile();
@@ -383,6 +385,21 @@ public class Soldier extends Unit {
 
     /* End Build */
 
+    public static void updateRefillTarget() throws GameActionException {
+        MapLocation[] locations = rc.senseNearbyRuins(-1);
+        
+        for(MapLocation loc : locations) {
+            RobotInfo robotInfo = rc.senseRobotAtLocation(loc);
+            if(robotInfo == null) continue;
+            if(robotInfo.getTeam() != myTeam) continue;
+
+            if(robotInfo.getType().isTowerType() && robotInfo.getPaintAmount() > 0) {
+                refillTarget = robotInfo.getLocation();
+            }
+        }
+
+        refillTarget =  getClosestLocation(paintTowerLocations);
+    }
 
     public static void updateMoveTarget() throws GameActionException {
         switch(mode) {
@@ -390,7 +407,7 @@ public class Soldier extends Unit {
                 break;
             case BOOM: moveTarget = rotateAroundBuiltTarget();
                 break;
-            case REFILL: moveTarget = getClosestLocation(paintTowerLocations);
+            case REFILL: moveTarget = refillTarget;
                 break;
             default: moveTarget = null;
                 break;

@@ -1,5 +1,6 @@
 package V09test;
 
+import V04BOTweaked.FastLocSet;
 import V09test.Nav.Navigator;
 import V09test.Tools.FastIntSet;
 import V09test.Tools.LocMap;
@@ -20,6 +21,8 @@ public class Unit extends Globals {
     private static int lastWanderTargetTime = rc.getRoundNum();
     // last time location mapping was updated -- for staggering every 4 rounds
     private static int lastSeenUpdateTime = rc.getRoundNum();
+
+    private static FastLocSet initialExploreTargets = new FastLocSet();
 
     /**  Look nearby for a ruin */
     public static MapLocation findRuin() throws GameActionException {
@@ -45,7 +48,7 @@ public class Unit extends Globals {
         }
         if (wanderTarget == null) {
             //System.out.println("Update null wander target.");
-            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
+            wanderTarget = getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
 
@@ -59,6 +62,14 @@ public class Unit extends Globals {
         }
     }
 
+    static boolean hasInit = false;
+    public static void initExploreTargets() {
+        if(hasInit) return;
+        hasInit = true;
+
+        MapLocation middle = new MapLocation(mapWidth / 2, mapHeight / 2);
+        initialExploreTargets.add(middle);
+    }
     /**
      * Overloaded version: set paintless to true if you want to avoid stepping off paint
      */
@@ -234,6 +245,11 @@ public class Unit extends Globals {
 
     // get an exploration target
     public static MapLocation getExploreTarget() {
+        initExploreTargets();
+        if(initialExploreTargets.size > 0 && rc.getRoundNum() <= 100) {
+            return initialExploreTargets.pop();
+        }
+
         MapLocation ret = null;
         for (int i = 10; i-- > 0; ) {
             ret = new MapLocation(

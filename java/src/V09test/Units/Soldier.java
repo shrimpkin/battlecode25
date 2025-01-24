@@ -21,10 +21,12 @@ public class Soldier extends Unit {
     static MapLocation SRPTarget;
     static MapLocation lastRuinTarget;
     static MapLocation attackTarget;
+    static MapLocation rushTarget;
+
     static int roundNum;
     static int DEBUG = 1;
 
-    static FastIntSet possibleSRPLocations = new FastIntSet();
+    static FastIntSet symmetryLocations = new FastIntSet();
     static boolean hasGeneratedSRPLocations = false;
 
     public static void run() throws GameActionException {
@@ -37,11 +39,17 @@ public class Soldier extends Unit {
         updateBuildTarget();
         updateAttackTarget();
         updateCommTarget();
+        updateRushTarget();
         updateMode();
         updateMoveTarget();
-        markOneRuinTile();
 
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
+        
+        refill();
+        attack();
+        move();
+        attack();
+        markOneRuinTile();
 
         if (mode == Modes.BOOM) {
             paintBuildTarget(); 
@@ -49,15 +57,104 @@ public class Soldier extends Unit {
             completeBuiltTarget();
         }
         
-        refill();
-        attack();
-        move();
-        attack();
-        
-        tessellate(); 
+        paintSRPBelow();
         updateSeen();
         debug();
     }
+
+    static boolean addedPaintTowerSymmetryLocations = false;
+    /**
+     * Uses map symmetry and our tower positions to generate possible locations for enemy towers
+     */
+    public static void getRushTargetsBySymmetry() throws GameActionException {
+        if(addedPaintTowerSymmetryLocations) return;
+
+        RobotInfo[] robots = rc.senseNearbyRobots(-1, myTeam);
+
+        for(RobotInfo robot : robots) {
+
+            boolean isPaintTower = isPaintTower(robot.getType());
+            
+            //System.out.println("Is it a paint tower: " + isPaintTower);
+            if(!isPaintTower) continue;
+            //System.out.println("Adding rush target.");
+
+            int x = robot.getLocation().x;
+            int y = robot.getLocation().y;
+
+            MapLocation vert = new MapLocation(mapWidth - x - 1,y);
+            MapLocation hort = new MapLocation(x, mapHeight - y - 1);
+            MapLocation mirr = new MapLocation(mapWidth - x - 1, mapHeight - y - 1);
+
+            symmetryLocations.add(pack(vert));
+            symmetryLocations.add(pack(hort));
+            symmetryLocations.add(pack(mirr));
+
+            addedPaintTowerSymmetryLocations = true;
+        }        
+    }
+
+    /**
+     * Updates targets in symmetryLocations by removing them if we know they aren't towers
+     */
+    public static void updateSymmetryTargets() throws GameActionException {
+        if(mode != Modes.RUSH) return;
+
+        //System.out.println("Updating Symmetry Targets.");
+        getRushTargetsBySymmetry();
+
+        for (int i = 0; i < symmetryLocations.size; i++) {
+            MapLocation tower = unpack(symmetryLocations.keys.charAt(i));
+            
+            if(!rc.canSenseLocation(tower)) continue;
+            RobotInfo info = rc.senseRobotAtLocation(tower);
+
+            //there is no unit or the unit is not a paint or money tower
+            //hence the tower is not there and we should remove 
+            if(info == null || !(isPaintTower(info.getType()) || isMoneyTower(info.getType())) || info.getTeam().equals(myTeam)) {
+                symmetryLocations.remove(pack(tower));
+            }
+        }
+    }
+
+    /**
+     * @returns If possible a tower that have seen, otherwise the nearest possible location for a tower
+     */
+    public static void updateRushTarget() throws GameActionException {
+        getRushTargetsBySymmetry();
+        updateSymmetryTargets();
+
+        int minDistance = Integer.MAX_VALUE;
+        MapLocation bestLocation = null;
+        
+        if(enemyTowerLocations.size > 0) {
+            //System.out.println("Using enemy tower locations.");
+            rushTarget = unpack(enemyTowerLocations.keys.charAt(0));
+            return;
+        }
+
+        //System.out.println("Using symmetry locations.");
+        for (int i = 0; i < symmetryLocations.size; i++) {
+            MapLocation tower = unpack(symmetryLocations.keys.charAt(i));
+            int distanceToTower = tower.distanceSquaredTo(rc.getLocation());
+
+            if(distanceToTower < minDistance) {
+                minDistance = distanceToTower;
+                bestLocation = tower;
+                //System.out.println("Updating bestLocation to: " + bestLocation.toString());
+            }
+        }
+
+
+        rushTarget = bestLocation;
+        if(rushTarget == null) {
+            //System.out.println("Rush target is null");
+        } else {
+            //System.out.println("Rush target is: " + rushTarget.toString());
+        }
+
+    }
+
 
      /************************************************************************\
     |*                                 Build                                *|
@@ -142,7 +239,7 @@ public class Soldier extends Unit {
     /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP */
     public static void updateSRPTarget() throws GameActionException {
         //avoid build SRP patterns early game
-        //if(rc.getRoundNum() <= (mapHeight + mapWidth) / 2) return;
+        //if(rc.getRoundNum() <= (mapHeight + mapWidth)) return;
 
         //we have a valid SRP
         if(SRPTarget != null 
@@ -252,7 +349,7 @@ public class Soldier extends Unit {
             }
         }
 
-        if(shouldDefend && rc.getChips() >= 3500) {
+        if(shouldDefend && rc.getChips() >= 3500 || (rc.getMapHeight() + rc.getMapWidth() <= 59 && rc.getNumberTowers() == 2)) {
             towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
         } else if (rc.getNumberTowers() <= 3) {
             towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
@@ -472,10 +569,13 @@ public class Soldier extends Unit {
                 break;
             case REFILL: moveTarget = getClosestLocation(paintTowerLocations);
                 break;
+            case RUSH: moveTarget = rushTarget;
+                break;
             default: moveTarget = null;
                 break;
         }
     }
+    
 
     public static void updateCommTarget() throws GameActionException {
         Message[] msgs = rc.readMessages(-1);
@@ -496,7 +596,49 @@ public class Soldier extends Unit {
     }
     
     /** Changes mode based on criteria I haven't quite figured out yet @aidan */
+    static int spawnedByPaintTower = 0;
     public static void updateMode() throws GameActionException {
+        MapLocation nearTower = getClosestEnemyTowerLocation();
+
+        if(mapHeight + mapWidth <= 59 && (rc.getRoundNum() < 5 || mode == Modes.RUSH)) {
+            //System.out.println("Checking nearby towers.");
+            //now close enough to tower to fight
+            if(nearTower != null && rc.getLocation().distanceSquaredTo(nearTower) <= 9) {
+                mode = Modes.ATTACK;
+                //System.out.println("Switching from rush to attack.");
+                return;
+            }
+
+            //already have set the mode to be rush
+            if(mode == Modes.RUSH) {
+                //System.out.println("Maintaining rush.");
+                return;
+            }
+
+            //should we rush
+            if(spawnedByPaintTower == 0) {
+                MapLocation[] ruinLocations = rc.senseNearbyRuins(-1);
+                for(MapLocation loc : ruinLocations) {
+                    RobotInfo robot = rc.senseRobotAtLocation(loc);
+                    if(robot == null) continue;
+
+                    if(isMoneyTower(robot.getType()) && rc.getLocation().distanceSquaredTo(robot.getLocation()) <= 8) {
+                        spawnedByPaintTower = 1;
+                        return;
+                    }
+
+                    //early game paint towers go for rushing enemy paint towers
+                    if(isPaintTower(robot.getType()) && rc.getLocation().distanceSquaredTo(robot.getLocation()) <= 8) {
+                        //System.out.println("Found paint tower will now rush.");
+                        spawnedByPaintTower = 2;
+                        mode = Modes.RUSH;
+                        return;
+                    }
+                }
+            }
+            
+        }
+
         if (rc.getNumberTowers() == GameConstants.MAX_NUMBER_OF_TOWERS) {
             mode = Modes.ATTACK;
             return;
@@ -507,7 +649,6 @@ public class Soldier extends Unit {
             return;
         }
 
-        MapLocation nearTower = getClosestEnemyTowerLocation();
         if(nearTower != null && attackTarget.distanceSquaredTo(nearTower) <= 25) {
             mode = Modes.ATTACK;
             return;
@@ -656,6 +797,7 @@ public class Soldier extends Unit {
 
     /** Paints square below unit as SRP pattern*/
     public static void paintSRPBelow() throws GameActionException {
+        if(mode == Modes.RUSH) return;
         if(rc.getPaint() < 15) return; //conserve paint
         if(moveTarget != null && rc.getLocation().distanceSquaredTo(moveTarget) >= rc.getPaint() + 10) return; //conserve paint
 
@@ -695,33 +837,51 @@ public class Soldier extends Unit {
         }
     }
    
-    /**
-     * Handles all the ways we paint SRP patterns. In order of priority:
-     *      1. Marks one ruin tile with an SRP pattern
-     *      2. Paints the SRP pattern below the robot
-     */
-    public static void tessellate() throws GameActionException {
-        paintSRPBelow();
-    }
 
     /************************************************************************\
     |*                                DEBUG                                 *|
     \************************************************************************/
 
-    /** Prints all debug info */
-    public static void debug() {
-        if (DEBUG == 0) return;
+        /** Prints all debug info */
+        public static void debug() throws GameActionException {
+            if (DEBUG == 0) return;
+    
+            switch(mode) {
+                case ATTACK: indicator += "Attack, ";
+                    break;
+                case BOOM: indicator += "Boom, ";
+                    break;
+                case DEFEND:
+                    break;
+                case NONE:
+                    break;
+                case REFILL:
+                    break;
+                case RUSH: indicator += "Rush, " + symmetryLocations.size;
 
-        if(buildTarget != null) {
-            indicator += bMode + " at: " + buildTarget.toString() +  " MT: " + moveTarget + "\n";
-        } else if(attackTarget != null) {
-            indicator += "Attack at: " + attackTarget.toString() +  " MT: " + moveTarget + "\n";
-        } else {
-            indicator += "No build target: " + bMode + " MT: " + moveTarget + "\n";
+                    for(int i = 0; i < symmetryLocations.size; i++) {
+                        MapLocation loc = unpack(symmetryLocations.keys.charAt(i));
+                        rc.setIndicatorDot(loc , i, i, i);
+                    }
+                    break;
+                case SIT:
+                    break;
+                default:
+                    break;
+            }
+            
+            if(mode == Modes.RUSH) {
+                indicator += "Rush at: " + rushTarget + "," + moveTarget + "\n";
+            } else if(buildTarget != null) {
+                indicator += " at: " + buildTarget.toString() +  " MT: " + moveTarget + "\n";
+            } else if(attackTarget != null) {
+                indicator += " at: " + attackTarget.toString() +  " MT: " + moveTarget + "\n";
+            } else {
+                indicator += ", MT: " + moveTarget + "\n";
+            }
+    
+            rc.setIndicatorString(indicator);
         }
-
-        rc.setIndicatorString(indicator);
-    }
 
     public static class MicroInfo {
         Direction direction;
@@ -787,12 +947,13 @@ public class Soldier extends Unit {
             if(towersTargeting < m.towersTargeting) return true;
             if(towersTargeting > m.towersTargeting) return false;
 
+            if(friendlies > m.friendlies) return true;
+            if(friendlies < m.friendlies) return false;
+
             //go for lower health towers, prevents targetting switching
             if(towerHealth < m.towerHealth) return true;
             if(towerHealth > m.towerHealth) return false;
 
-            if(friendlies > m.friendlies) return true;
-            if(friendlies < m.friendlies) return false;
 
             //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
@@ -804,7 +965,7 @@ public class Soldier extends Unit {
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
 
             return true;
         }
@@ -816,6 +977,10 @@ public class Soldier extends Unit {
 
             //both squares are useless to us
             if(!canMove && !m.canMove) return true;
+
+            //this will cause them to kill towers even if they get killed
+            if(towerHealth <= 50 && m.towerHealth > 50 && actionReady) return true;
+            if(towerHealth > 50 && m.towerHealth < 50 && m.actionReady) return false;
 
             //wants to get out of range of any towers
             if(towersTargeting < m.towersTargeting) return true;
@@ -835,7 +1000,7 @@ public class Soldier extends Unit {
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
 
             return true;
         }
@@ -847,6 +1012,10 @@ public class Soldier extends Unit {
 
             //both squares are useless to us
             if(!canMove && !m.canMove) return true;
+
+            //this will cause them to kill towers even if they get killed
+            if(towerHealth <= 50 && m.towerHealth > 50 && actionReady) return true;
+            if(towerHealth > 50 && m.towerHealth < 50 && m.actionReady) return false;
 
             //wants to get out of range of any towers
             if(towersTargeting < m.towersTargeting) return true;

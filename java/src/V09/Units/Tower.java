@@ -17,6 +17,7 @@ public class Tower extends Unit {
     static int numSpawned = 0;
 
     public static void run() throws GameActionException {
+        indicator = "";
         broadcastAndRead();
 
         spawn();
@@ -117,7 +118,8 @@ public class Tower extends Unit {
 
     /// Handles spawning logic
     public static void spawn() throws GameActionException {
-        if (rc.getRoundNum() <= 2) { // the first two towers will always build 2 soldiers each
+        // the first two towers will always build 2 soldiers each
+        if (rc.getRoundNum() <= 2) { 
             buildRobotType(UnitType.SOLDIER);
             return;
         }
@@ -127,19 +129,21 @@ public class Tower extends Unit {
             if(robot.getType().equals(UnitType.MOPPER)) nearbyMoppers++;
         }
 
-        if (rc.getHealth() <= 100) {
-            buildRobotType(UnitType.SPLASHER);
+        int numEnemies = rc.senseNearbyRobots(-1, opponentTeam).length;
+        //don't want to continue spamming units if no enemies are nearby
+        if (rc.getHealth() <= 200 && numEnemies != 0) {
             buildRobotType(UnitType.SOLDIER);
             buildRobotType(UnitType.MOPPER);
+            buildRobotType(UnitType.SPLASHER);
         }
 
-        //TODO: Evaluate
+        //attempts to defend the tower if num enemies is in {1,2}, less moppers than enemies, and we have sufficient health
+        if(numEnemies >= 2 && numEnemies > 0 && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
+            buildRobotType(UnitType.MOPPER);
+        }
+
         if(rc.getMoney() < 1200) {
             return;
-        }
-
-        if(rc.senseNearbyRobots(-1, opponentTeam).length > 0 && nearbyMoppers <= 1 && rc.getHealth() >= 3000) {
-            buildRobotType(UnitType.MOPPER);
         }
 
         UnitType type = null;
@@ -261,14 +265,19 @@ public class Tower extends Unit {
         }
     }
 
-    /// Attacks nearest robot and then performs aoe attack
+    // Attacks nearest robot and then performs aoe attack
     public static void attack() throws GameActionException {
+        int minHealth = Integer.MAX_VALUE;
+        MapLocation bestLocation = null;
         for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
-            if (rc.canAttack(robot.getLocation())) {
-                rc.attack(robot.getLocation());
-                break;
+            //looks for a robot with the 
+            if (rc.canAttack(robot.getLocation()) && robot.getHealth() < minHealth && robot.getPaintAmount() >= 5) {
+                minHealth = robot.getHealth();
+                bestLocation = robot.getLocation();
             }
         }
+        if(bestLocation != null) rc.attack(bestLocation);
+
         rc.attack(null);
     }
 

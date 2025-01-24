@@ -51,6 +51,7 @@ public class Unit extends Globals {
         }
 
         if(rc.onTheMap(wanderTarget)) rc.setIndicatorDot(wanderTarget, 255, 0, 255);
+        if(!rc.onTheMap(wanderTarget)) System.out.println("Robot at " + rc.getLocation() + "has a wander target of" + wanderTarget.toString());
         //System.out.println("Moving to wander target.");
         Navigator.moveTo(wanderTarget);
 
@@ -272,6 +273,7 @@ public class Unit extends Globals {
             if (!rc.onTheMap(ret)) continue;
             if (!rc.canSenseLocation(ret) && vis.get(ret) == 0) return ret;
         }
+        if(!rc.onTheMap(ret)) return getExploreTarget();
         return ret;
     }
 
