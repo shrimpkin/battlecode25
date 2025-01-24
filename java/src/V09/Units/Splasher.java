@@ -13,7 +13,7 @@ public class Splasher extends Unit {
     // arbitrary, but large enough int that tile_util + CHAR_POSITIVE_OFFSET >= 0, so avoid bad int->char->int conv.
     private static final int CHAR_POSITIVE_OFFSET = 90;
     // minimum utility at which the splasher will splash -- maybe make vary with round # / current paint amt
-    private static final int MinUtil = 10;
+    private static final int MinUtil = 25; // starts off large -- decreases over rounds
     // thresholds for refilling (currently 300/6 = 50, 300/4 = 75), susceptible to change)
     private static final int RefillStart = PaintLimit / 6, RefillEnd = PaintLimit / 4;
     private static MapLocation TargetLoc;
@@ -84,12 +84,13 @@ public class Splasher extends Unit {
 
         // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
         if (best != null) {
-            if (mostUtil >= Math.max(2, MinUtil - NumRoundsSinceSplash/3) && rc.canAttack(best)) {
+            if (mostUtil >= Math.max(2, Math.max(9, MinUtil - rc.getRoundNum()/50) - NumRoundsSinceSplash/3) && rc.canAttack(best)) {
                 rc.attack(best);
                 NumRoundsSinceSplash = 0;
                 return best;
             }
         }
+        NumRoundsSinceSplash++;
         return null;
     }
 
@@ -160,7 +161,7 @@ public class Splasher extends Unit {
     private static void precomputeSplashTileScores() throws GameActionException {
         final int MAX_EFFECT_RADIUS_SQUARED = 10;
         scores = "\0".repeat(4096).toCharArray();
-        scores[pack(rc.getLocation())] = (char)(getTileScore(rc.senseMapInfo(rc.getLocation())) + CHAR_POSITIVE_OFFSET);
+//        scores[pack(rc.getLocation())] = (char)(getTileScore(rc.senseMapInfo(rc.getLocation())) + CHAR_POSITIVE_OFFSET);
         for (MapInfo info : rc.senseNearbyMapInfos(MAX_EFFECT_RADIUS_SQUARED)) {
             scores[pack(info.getMapLocation())] = (char)(getTileScore(info) + CHAR_POSITIVE_OFFSET);
         }
@@ -168,11 +169,12 @@ public class Splasher extends Unit {
 
     /// Calculates the value obtained from a splash
     public static int getSplashScore(MapLocation center) throws GameActionException {
-        int util = (int)scores[pack(center)] - CHAR_POSITIVE_OFFSET;
+        int util = 0;
         var locs = rc.senseNearbyMapInfos(center, GameConstants.SPLASHER_ATTACK_ENEMY_PAINT_RADIUS_SQUARED);
         for (int i = locs.length; --i >= 0;) {
             util += (int)scores[pack(locs[i].getMapLocation())] - CHAR_POSITIVE_OFFSET;
         }
+        System.out.println("splash score: " + util);
         return util;
     }
 }
