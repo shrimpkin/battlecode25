@@ -65,7 +65,7 @@ public class Mopper extends Unit {
 
     public static void move() throws GameActionException {
         // refill if low on paint -- but don't overcrowd otherwise
-        if (rc.getPaint() < 35 && paintTowerLocations.size > 0 && refillingTower == null && nearbyFriendlies.length < 10) {
+        if (rc.getPaint() < 35 && paintTowerLocations.size > 0 && refillingTower != null && nearbyFriendlies.length < 10) {
             var target = getClosestLocation(paintTowerLocations);
             MapLocation best = target;
             int bestDistance = Integer.MAX_VALUE;
