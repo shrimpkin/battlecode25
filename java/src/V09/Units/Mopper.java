@@ -94,21 +94,21 @@ public class Mopper extends Unit {
             // move to enemy paint using bugnav if there aren't any enemies nearby
             // do micro otherwise, and if that doesn't pan out -- try to move to nearby friendlies or wander
             if (nearbyEnemies.length == 0 && enemyPaint.size > 0 && rc.isActionReady()) {
-                Navigator.moveTo(enemyPaint.pop(), rc.getPaint() > 60);
+                Navigator.moveTo(enemyPaint.pop(), rc.getPaint() < 60);
                 indicator += "{moving to enemy paint}";
                 wasWandering = false;
             } else if (micro.doMicro()) {
                 indicator += "{did micro}";
                 wasWandering = false;
             } else if (rc.isMovementReady()) {
-                // move to an ally soldier when there arent too many robots doing so -- or failing that, wander around
+                // move to an allied soldier when there aren't too many robots doing so -- or failing that, wander around
                 MapLocation target;
                 if (nearbyFriendlies.length >= 5 || (target = getFriendlyTarget()) == null) {
                     wander(wasWandering);
                     wasWandering = true;
                     indicator += "{wandering boi}";
                 } else {
-                    Navigator.moveTo(target, rc.getPaint() > 50);
+                    Navigator.moveTo(target, rc.getPaint() < 50);
                     wasWandering = false;
                     indicator += "{move to " + target + "}";
                 }
