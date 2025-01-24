@@ -39,6 +39,7 @@ public class Soldier extends Unit {
         updateCommTarget();
         updateMode();
         updateMoveTarget();
+        markOneRuinTile();
 
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
@@ -620,7 +621,6 @@ public class Soldier extends Unit {
      *      2. Paints the SRP pattern below the robot
      */
     public static void tessellate() throws GameActionException {
-        markOneRuinTile();
         paintSRPBelow();
     }
 

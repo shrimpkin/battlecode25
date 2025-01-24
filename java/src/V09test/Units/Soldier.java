@@ -39,6 +39,7 @@ public class Soldier extends Unit {
         updateCommTarget();
         updateMode();
         updateMoveTarget();
+        markOneRuinTile();
 
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
@@ -100,11 +101,19 @@ public class Soldier extends Unit {
             RobotInfo ruinRobot = rc.senseRobotAtLocation(ruin);    
             if (ruinRobot != null) continue;
 
+            boolean isDone = false;
+            if(rc.canSenseLocation(ruin.add(Direction.SOUTH)) && 
+                rc.senseMapInfo(ruin.add(Direction.SOUTH)).getMark().equals(PaintType.ALLY_PRIMARY)) {
+                    isDone = true;
+            } 
+
             int numNearbySoliders = 0;
             for(RobotInfo robot : rc.senseNearbyRobots(ruin, 8, myTeam)) {
                 if(robot.getType().equals(UnitType.SOLDIER)) numNearbySoliders++;
             }
-            if(numNearbySoliders >= 2) continue;
+            if(numNearbySoliders > 0 && isDone) continue;
+
+            
 
             if(!canStillComplete(ruin)) continue;
 
@@ -312,6 +321,8 @@ public class Soldier extends Unit {
     }
 
     public static void updateMarks() throws GameActionException {
+        removeMarks();
+
         if(buildTarget == null) return;
         if(buildType == null) return;
 
@@ -322,24 +333,36 @@ public class Soldier extends Unit {
             rc.mark(south, false);
         } 
 
-        removeMarks();
     }
 
     public static void removeMarks() throws GameActionException {
-        System.out.println("Removing marks.");
+        //System.out.println("Removing marks.");
         for(MapLocation ruin : rc.senseNearbyRuins(-1)) {
             if(rc.senseRobotAtLocation(ruin) == null) continue;
 
-            System.out.println("Robot is at mark at: " + ruin.toString());
+            //System.out.println("Robot is at mark at: " + ruin.toString());
             MapLocation north = ruin.add(Direction.NORTH);
             MapLocation east = ruin.add(Direction.EAST);
             MapLocation west = ruin.add(Direction.WEST);
             MapLocation south = ruin.add(Direction.SOUTH);
 
-            if(rc.canRemoveMark(north)) rc.removeMark(north);
-            if(rc.canRemoveMark(east)) rc.removeMark(east);
-            if(rc.canRemoveMark(west)) rc.removeMark(west);
-            if(rc.canRemoveMark(south)) rc.removeMark(south);
+            if(rc.canRemoveMark(north)) {
+                System.out.println("Removed mark");
+                rc.removeMark(north);
+            }
+            if(rc.canRemoveMark(east)) {
+                rc.removeMark(east);
+                System.out.println("Removed mark");
+            }
+            if(rc.canRemoveMark(west)) {
+                rc.removeMark(west);
+                System.out.println("Removed mark");
+            }
+
+            if(rc.canRemoveMark(south)) {
+                rc.removeMark(south);
+                System.out.println("Removed mark");
+            }
         }
     }
 
@@ -647,6 +670,7 @@ public class Soldier extends Unit {
         for (MapLocation ruinLocation : ruins) {
             RobotInfo robot = rc.senseRobotAtLocation(ruinLocation);
             if(robot != null) continue; 
+            System.out.println("Checking or paint at location: " + ruinLocation.toString() + "from" + rc.getLocation());
 
             MapInfo[] squaresToMark = rc.senseNearbyMapInfos(ruinLocation, 8);
             for (MapInfo info : squaresToMark) {
@@ -677,7 +701,6 @@ public class Soldier extends Unit {
      *      2. Paints the SRP pattern below the robot
      */
     public static void tessellate() throws GameActionException {
-        markOneRuinTile();
         paintSRPBelow();
     }
 
