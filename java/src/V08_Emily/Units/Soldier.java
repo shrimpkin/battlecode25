@@ -205,7 +205,7 @@ public class Soldier extends Unit {
             wasWandering = false;
 
         } else if(possibleSRPLocations.size != 0) {
-            System.out.println("Using SRP locations.");
+//            System.out.println("Using SRP locations.");
             MapLocation loc = unpack(possibleSRPLocations.keys.charAt(0));
             rc.setIndicatorDot(loc, 50, mapWidth, mapHeight);
 

@@ -1,9 +1,9 @@
-package V09;
+package V09test;
 
-import V09.Tools.FastLocSet;
-import V09.Nav.Navigator;
-import V09.Tools.FastIntSet;
-import V09.Tools.LocMap;
+import V04BOTweaked.FastLocSet;
+import V09test.Nav.Navigator;
+import V09test.Tools.FastIntSet;
+import V09test.Tools.LocMap;
 import battlecode.common.*;
 
 public class Unit extends Globals {
@@ -21,6 +21,8 @@ public class Unit extends Globals {
     private static int lastWanderTargetTime = rc.getRoundNum();
     // last time location mapping was updated -- for staggering every 4 rounds
     private static int lastSeenUpdateTime = rc.getRoundNum();
+
+    private static FastLocSet initialExploreTargets = new FastLocSet();
 
     /**  Look nearby for a ruin */
     public static MapLocation findRuin() throws GameActionException {
@@ -46,12 +48,11 @@ public class Unit extends Globals {
         }
         if (wanderTarget == null) {
             //System.out.println("Update null wander target.");
-            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
+            wanderTarget = getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
 
         if(rc.onTheMap(wanderTarget)) rc.setIndicatorDot(wanderTarget, 255, 0, 255);
-        if(!rc.onTheMap(wanderTarget)) System.out.println("Robot at " + rc.getLocation() + "has a wander target of" + wanderTarget.toString());
         //System.out.println("Moving to wander target.");
         Navigator.moveTo(wanderTarget);
 
@@ -61,6 +62,14 @@ public class Unit extends Globals {
         }
     }
 
+    static boolean hasInit = false;
+    public static void initExploreTargets() {
+        if(hasInit) return;
+        hasInit = true;
+
+        MapLocation middle = new MapLocation(mapWidth / 2, mapHeight / 2);
+        initialExploreTargets.add(middle);
+    }
     /**
      * Overloaded version: set paintless to true if you want to avoid stepping off paint
      */
@@ -129,22 +138,6 @@ public class Unit extends Globals {
             if (dist < best) {
                 best = dist;
                 closest = tower;
-            }
-        }
-        return closest;
-    }
-
-
-    public static MapLocation getClosestLocation(FastLocSet locType) throws GameActionException {
-        MapLocation closest = null;
-        MapLocation loc = rc.getLocation();
-        int best = Integer.MAX_VALUE;
-
-        for (var locale : locType.getKeys()) {
-            int dist = locale.distanceSquaredTo(loc);
-            if (dist < best) {
-                best = dist;
-                closest = locale;
             }
         }
         return closest;
@@ -252,6 +245,11 @@ public class Unit extends Globals {
 
     // get an exploration target
     public static MapLocation getExploreTarget() {
+        initExploreTargets();
+        if(initialExploreTargets.size > 0 && rc.getRoundNum() <= 100) {
+            return initialExploreTargets.pop();
+        }
+
         MapLocation ret = null;
         for (int i = 10; i-- > 0; ) {
             ret = new MapLocation(
@@ -273,7 +271,6 @@ public class Unit extends Globals {
             if (!rc.onTheMap(ret)) continue;
             if (!rc.canSenseLocation(ret) && vis.get(ret) == 0) return ret;
         }
-        if(!rc.onTheMap(ret)) return getExploreTarget();
         return ret;
     }
 

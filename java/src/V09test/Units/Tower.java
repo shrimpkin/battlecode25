@@ -1,9 +1,9 @@
-package V09.Units;
+package V09test.Units;
 
-import V09.Comms;
-import V09.Unit;
-import V09.Tools.CommType;
-import V09.Tools.FastLocSet;
+import V09test.Comms;
+import V09test.Unit;
+import V09test.Tools.CommType;
+import V09test.Tools.FastLocSet;
 import battlecode.common.*;
 
 public class Tower extends Unit {
@@ -118,8 +118,7 @@ public class Tower extends Unit {
 
     /// Handles spawning logic
     public static void spawn() throws GameActionException {
-        // the first two towers will always build 2 soldiers each
-        if (rc.getRoundNum() <= 2) { 
+        if (rc.getRoundNum() <= 2) { // the first two towers will always build 2 soldiers each
             buildRobotType(UnitType.SOLDIER);
             return;
         }
@@ -129,19 +128,21 @@ public class Tower extends Unit {
             if(robot.getType().equals(UnitType.MOPPER)) nearbyMoppers++;
         }
 
-        int numEnemies = rc.senseNearbyRobots(-1, opponentTeam).length;
-        //don't want to continue spamming units if no enemies are nearby
+        int numEnemies = rc.senseNearbyRobots(9, opponentTeam).length;
+
         if (rc.getHealth() <= 200 && numEnemies != 0) {
             buildRobotType(UnitType.SOLDIER);
             buildRobotType(UnitType.MOPPER);
             buildRobotType(UnitType.SPLASHER);
         }
 
-        //attempts to defend the tower if num enemies is in {1,2}, less moppers than enemies, and we have sufficient health
-        if(numEnemies >= 2 && numEnemies > 0 && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
+        //probably hopeless to stop rush with more than two
+        indicator+= numEnemies + ", ";
+        if(numEnemies != 0 && numEnemies <= 2 && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
             buildRobotType(UnitType.MOPPER);
         }
 
+        //TODO: Evaluate
         if(rc.getMoney() < 1200) {
             return;
         }
@@ -270,15 +271,12 @@ public class Tower extends Unit {
         int minHealth = Integer.MAX_VALUE;
         MapLocation bestLocation = null;
         for (RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
-            //looks for a robot with the 
-            if (rc.canAttack(robot.getLocation()) && robot.getHealth() < minHealth && robot.getPaintAmount() >= 5) {
+            if (rc.canAttack(robot.getLocation()) && robot.getHealth() < minHealth) {
                 minHealth = robot.getHealth();
                 bestLocation = robot.getLocation();
             }
         }
         if(bestLocation != null) rc.attack(bestLocation);
-
-        rc.attack(null);
     }
 
     /// Upgrade tower at robot's location

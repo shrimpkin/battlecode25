@@ -1,6 +1,6 @@
-package V09.Nav;
+package V09test.Nav;
 
-import V09.Globals;
+import V09test.Globals;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 
@@ -11,15 +11,11 @@ public class Navigator extends Globals {
     public static void moveTo(MapLocation target) throws GameActionException {
         path.moveTo(target);
     }
-
-    public static void moveTo(MapLocation target, boolean allyOnly) throws GameActionException {
-        path.moveTo(target, allyOnly);
-    }
 }
 
-// package V09.Nav;
+// package V09test.Nav;
 
-// import V09.Globals;
+// import V09test.Globals;
 // import battlecode.common.Direction;
 // import battlecode.common.GameActionException;
 // import battlecode.common.MapLocation;
