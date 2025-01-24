@@ -1,8 +1,8 @@
-package V09.Micro;
+package V09test.Micro;
 
-import V09.Globals;
-import V09.Tools.FastIntSet;
-import V09.Tools.FastLocSet;
+import V09test.Globals;
+import V09test.Tools.FastIntSet;
+import V09test.Tools.FastLocSet;
 import battlecode.common.*;
 
 public class MopperMicro {
