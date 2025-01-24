@@ -19,7 +19,7 @@ public class BugPath extends Globals {
     MapLocation prevTarget = null; //previous target
     Direction[] dirs = Direction.values();
 
-    int DEBUG_BUGPATH = 1;
+    int DEBUG_BUGPATH = 0;
     //HashSet<Integer> states = new HashSet<>();
 
     int[][] states = new int[mapWidth][mapHeight];

@@ -49,7 +49,18 @@ public class BugPath extends Globals {
         }
     }
 
-    public void moveTo(MapLocation target){
+    private boolean canMoveConditional(Direction dir, boolean onlyAlly) throws GameActionException {
+        if (!rc.canMove(dir)) return false;
+        var newloc = myLoc.add(dir);
+        if (onlyAlly && rc.senseMapInfo(myLoc.add(dir)).getPaint().isEnemy()) return false;
+        return true;
+    }
+
+    public void moveTo(MapLocation target) {
+        moveTo(target, false);
+    }
+
+    public void moveTo(MapLocation target, boolean onlyAlly) {
         //No target? ==> bye!
         if (!rc.isMovementReady()) return;
         if (target == null) target = rc.getLocation();
@@ -115,7 +126,7 @@ public class BugPath extends Globals {
         //If there's an obstacle I try to go around it [until I'm free] instead of going to the target directly
         Direction dir = myLoc.directionTo(target);
         if (lastObstacleFound == null){
-            if (tryGreedyMove()){
+            if (tryGreedyMove(onlyAlly)) {
                 if (DEBUG_BUGPATH == 1) System.out.println("No obstacle and could move greedily :)");
                 resetPathfinding();
                 return;
@@ -130,7 +141,7 @@ public class BugPath extends Globals {
 
         try {
 
-            if (rc.canMove(dir)){
+            if (canMoveConditional(dir, onlyAlly)) {
                 rc.move(dir);
                 if (lastObstacleFound != null) {
                     if (DEBUG_BUGPATH == 1) System.out.println("Could move to obstacle?!");
@@ -155,7 +166,7 @@ public class BugPath extends Globals {
             //Note that we have to try at most 16 times since we can switch orientation in the middle of the loop. (It can be done more efficiently)
             int i = 16;
             while (i-- > 0) {
-                if (rc.canMove(dir)) {
+                if (canMoveConditional(dir, onlyAlly)) {
                     rc.move(dir);
                     return;
                 }
@@ -167,7 +178,7 @@ public class BugPath extends Globals {
                 else dir = dir.rotateLeft();
             }
 
-            if  (rc.canMove(dir)){
+            if  (canMoveConditional(dir, onlyAlly)) {
                 rc.move(dir);
                 return;
             }
@@ -176,7 +187,7 @@ public class BugPath extends Globals {
         }
     }
 
-    boolean tryGreedyMove(){
+    boolean tryGreedyMove(boolean onlyAlly){
         try {
             //if (rotateRightAux != null) return false;
             MapLocation myLoc = rc.getLocation();
@@ -189,10 +200,10 @@ public class BugPath extends Globals {
             int dist1 = Integer.MAX_VALUE, dist2 = Integer.MAX_VALUE;
             Direction dir1 = dir.rotateRight();
             MapLocation newLoc = myLoc.add(dir1);
-            if (rc.canMove(dir1)) dist1 = newLoc.distanceSquaredTo(prevTarget);
+            if (canMoveConditional(dir1, onlyAlly)) dist1 = newLoc.distanceSquaredTo(prevTarget);
             Direction dir2 = dir.rotateLeft();
             newLoc = myLoc.add(dir2);
-            if (rc.canMove(dir2)) dist2 = newLoc.distanceSquaredTo(prevTarget);
+            if (canMoveConditional(dir2, onlyAlly)) dist2 = newLoc.distanceSquaredTo(prevTarget);
             if (dist1 < dist && dist1 < dist2) {
                 //rotateRightAux = true;
                 rc.move(dir1);

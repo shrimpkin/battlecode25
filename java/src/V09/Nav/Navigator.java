@@ -11,6 +11,10 @@ public class Navigator extends Globals {
     public static void moveTo(MapLocation target) throws GameActionException {
         path.moveTo(target);
     }
+
+    public static void moveTo(MapLocation target, boolean allyOnly) throws GameActionException {
+        path.moveTo(target, allyOnly);
+    }
 }
 
 // package V09.Nav;

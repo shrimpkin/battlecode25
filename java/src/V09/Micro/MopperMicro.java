@@ -19,7 +19,7 @@ public class MopperMicro {
     int epaintCount = 0, apaintCount = 0;
     boolean shouldPlaySafe = false;
     boolean alwaysInRange = false;
-    boolean needPaint = false;
+//    boolean needPaint = false;
     RobotController rc;
     int rangeExtended = 10;
     MicroInfo[] microInfo;
@@ -39,13 +39,13 @@ public class MopperMicro {
     public boolean doMicro() throws GameActionException {
         if (!rc.isMovementReady()) return false;
         shouldPlaySafe = false;
-        needPaint = lowPaint();
-        if (!needPaint && rc.getActionCooldownTurns() < 20) {
-            var enemiesShort = rc.senseNearbyRobots(rangeExtended, rc.getTeam().opponent());
-            if (enemiesShort.length == 0 && enemyPaint.length == 0) {
-                return false;
-            }
+//        needPaint = lowPaint();
+//        if (!needPaint && rc.getActionCooldownTurns() < 20) {
+        var enemiesShort = rc.senseNearbyRobots(rangeExtended, rc.getTeam().opponent());
+        if (enemiesShort.length == 0 && enemyPaint.length == 0) {
+            return false;
         }
+//        }
         // when low on paint/ can't act, treat all enemies as dangerous
         alwaysInRange = !rc.isActionReady() || lowPaint();
 
@@ -192,7 +192,7 @@ public class MopperMicro {
         }
 
         int inRange() {
-            if(minDistanceToEnemy <= myRange) return 2;
+            if(minDistanceToEnemy <= 8) return 2;
             if(minDistanceToEnemyPaint <= 2) return 1;
             return 0;
         }

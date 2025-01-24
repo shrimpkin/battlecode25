@@ -12,6 +12,7 @@ public class Mopper extends Unit {
     static final Direction[] cardinal = Direction.cardinalDirections();
     static FastLocSet enemyPaint = new FastLocSet(), allyPaint = new FastLocSet();
     static FastLocSet enemyMarks = new FastLocSet();
+    static RobotInfo[] nearbyFriendlies, nearbyEnemies;
     static RobotInfo refillingTower = null;
     static MopperMicro micro = new MopperMicro();
     private static boolean wasWandering = false;
@@ -63,7 +64,8 @@ public class Mopper extends Unit {
     }
 
     public static void move() throws GameActionException {
-        if (rc.getPaint() < 20 && paintTowerLocations.size > 0 && refillingTower == null) {
+        // refill if low on paint -- but don't overcrowd otherwise
+        if (rc.getPaint() < 35 && paintTowerLocations.size > 0 && refillingTower != null && nearbyFriendlies.length < 10) {
             var target = getClosestLocation(paintTowerLocations);
             MapLocation best = target;
             int bestDistance = Integer.MAX_VALUE;
@@ -86,14 +88,56 @@ public class Mopper extends Unit {
                 }
             }
             Navigator.moveTo(best);
+            indicator += "{need a refill}";
             wasWandering = false;
-        } else if (micro.doMicro()) {
-            indicator += "{did micro}";
-            wasWandering = false;
-        } else if (rc.isMovementReady()) {
-            wander(wasWandering);
-            wasWandering = true;
+        } else {
+            // move to enemy paint using bugnav if there aren't any enemies nearby
+            // do micro otherwise, and if that doesn't pan out -- try to move to nearby friendlies or wander
+            if (nearbyEnemies.length == 0 && enemyPaint.size > 0 && rc.isActionReady()) {
+                Navigator.moveTo(enemyPaint.pop(), rc.getPaint() < 60);
+                indicator += "{moving to enemy paint}";
+                wasWandering = false;
+            } else if (micro.doMicro()) {
+                indicator += "{did micro}";
+                wasWandering = false;
+            } else if (rc.isMovementReady()) {
+                // move to an allied soldier when there aren't too many robots doing so -- or failing that, wander around
+                MapLocation target;
+                if (nearbyFriendlies.length >= 5 || (target = getFriendlyTarget()) == null) {
+                    wander(wasWandering);
+                    wasWandering = true;
+                    indicator += "{wandering boi}";
+                } else {
+                    Navigator.moveTo(target, rc.getPaint() < 50);
+                    wasWandering = false;
+                    indicator += "{move to " + target + "}";
+                }
+            }
         }
+    }
+
+    ///  whether its first argument is better to follow than its second
+    private static boolean better(RobotInfo a, RobotInfo b) {
+        if (b == null) return true;
+        if (a == null) return false;
+
+        if (a.getType() == UnitType.SOLDIER && b.getType() != UnitType.SOLDIER) return true;
+        if (a.getType() != UnitType.SOLDIER && b.getType() == UnitType.SOLDIER) return false;
+
+        if (a.getPaintAmount() > b.getPaintAmount()) return true;
+        if (a.getPaintAmount() < b.getPaintAmount()) return false;
+
+        return true;
+    }
+
+    private static MapLocation getFriendlyTarget() {
+        RobotInfo bestAlly = null;
+        for (var ally : nearbyFriendlies) {
+            if (ally.getType().isTowerType() || ally.getType() == UnitType.MOPPER) continue; // non-mopper robots only
+            if (ally.getLocation().isWithinDistanceSquared(rc.getLocation(), 8)) continue; // too close
+            if (better(ally, bestAlly)) bestAlly = ally;
+        }
+        return bestAlly == null ? null : bestAlly.getLocation();
     }
 
     public static void doAction() throws GameActionException {
@@ -156,15 +200,22 @@ public class Mopper extends Unit {
             // can't mop any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
             var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
             var amount = rc.getPaint() - 51;
+            boolean transferred = false;
             for (var robot : allies) {
                 if (!robot.getType().isRobotType()) continue;
                 var loc = robot.getLocation();
                 if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(loc, amount)) {
                     rc.transferPaint(loc, amount);
                     indicator += "transferred paint]";
+                    transferred = true;
                     break;
                 }
             }
+            if (!transferred) {
+                indicator += " nothing]";
+            }
+        }  else {
+            indicator += " nothing]";
         }
     }
 
@@ -173,6 +224,8 @@ public class Mopper extends Unit {
         refillingTower = null;
         enemyPaint.clear();
         allyPaint.clear();
+        nearbyEnemies = rc.senseNearbyRobots(-1, opponentTeam);
+        nearbyFriendlies = rc.senseNearbyRobots(-1, myTeam);
         // update surrounding radius
         for (var tile : rc.senseNearbyMapInfos(12)) {
             var loc = tile.getMapLocation();

@@ -127,7 +127,11 @@ public class Tower extends Unit {
             if(robot.getType().equals(UnitType.MOPPER)) nearbyMoppers++;
         }
 
-        
+        if (rc.getHealth() <= 100) {
+            buildRobotType(UnitType.SPLASHER);
+            buildRobotType(UnitType.SOLDIER);
+            buildRobotType(UnitType.MOPPER);
+        }
 
         //TODO: Evaluate
         if(rc.getMoney() < 1200) {

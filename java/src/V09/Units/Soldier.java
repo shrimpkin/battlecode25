@@ -293,6 +293,19 @@ public class Soldier extends Unit {
         }
     }
 
+
+    static int []dx = {
+            -2, 2, 2,-2,  -1, 2, 1, -2,  1, 2, -1, -2, 0, 2, 0,-2,      1, 1, -1, -1,    1, 0,-1, 0, 0
+    };
+    static int []dy = {
+            2, 2,-2,-2,   2, 1,-2,-1,     2,-1,-2, 1,    2, 0,-2, 0,   1,-1,-1, 1 , 0,-1, 0, 1, 0
+    };
+    // ok the below layout isn't accurate anymore -- it was tweaked to avoid looking like contemporary iconography
+    // 01 05 09 13 02
+    // 16 20 24 17 06
+    // 12 23    21 10
+    // 08 19 22 18 14
+    // 04 15 11 07 03
     /** Paints incorrectly painted tiles around our build target */
     public static void paintBuildTarget() throws GameActionException {
         //We have not decided on a build target so we can't paint it
@@ -319,14 +332,14 @@ public class Soldier extends Unit {
         }
 
         //Iterates through locations, paints it if it had the incorrect paint
-        for(MapInfo info : rc.senseNearbyMapInfos(buildTarget, 8)) {
-            MapLocation loc = info.getMapLocation();
+        for (int i = 0; i < 25; i ++) {
+            MapLocation loc = buildTarget.translate(dx[i], dy[i]);
             if(!rc.canAttack(loc)) continue;
+            var info = rc.senseMapInfo(loc);
             if(!info.isPassable()) continue;
-            //converting the location in the offsets we need use paint pattern
             int x = buildTarget.x - loc.x + 2;
             int y = buildTarget.y - loc.y + 2;
-             if(info.getPaint().equals(PaintType.EMPTY) || info.getPaint().isSecondary() != paintPattern[x][y]) {
+            if(info.getPaint().equals(PaintType.EMPTY) || info.getPaint().isSecondary() != paintPattern[x][y]) {
                 //correcting paint, returning because we can only attack once a turn
                 rc.attack(loc, paintPattern[x][y]);
                 return;
