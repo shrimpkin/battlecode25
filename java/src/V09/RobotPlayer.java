@@ -13,7 +13,6 @@ public class RobotPlayer {
 
     public static void run(RobotController rc) throws GameActionException {
         while (true) {
-            // if (rc.getRoundNum() > 1000) rc.resign();
             turnCount += 1;
             if (turnCount == 1) init(rc);
             try {

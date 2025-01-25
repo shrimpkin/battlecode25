@@ -12,6 +12,7 @@ public class Unit extends Globals {
     public static FastIntSet paintTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     public static FastIntSet unusedRuinLocations = new FastIntSet();
+    public static FastLocSet exploreTargets = new FastLocSet(); 
     static FastIntSet possibleSRPLocations = new FastIntSet();
 
     public static String indicator;
@@ -30,6 +31,17 @@ public class Unit extends Globals {
                 return tile;
         }
         return null;
+    }
+
+    static boolean hasInited = false;
+    public static void initExploreTargets(){
+        if (hasInited) return;
+        hasInited = true;
+        exploreTargets.add(mapWidth/2, mapHeight/2);
+        var loc = rc.getLocation();
+        exploreTargets.add(mapWidth-loc.x, mapHeight-loc.y);
+        exploreTargets.add(mapWidth-loc.x, loc.y);
+        exploreTargets.add(loc.x, mapHeight-loc.y);
     }
 
     public static void wander(boolean wasWandering) throws GameActionException {
@@ -255,6 +267,22 @@ public class Unit extends Globals {
     // get an exploration target
     public static MapLocation getExploreTarget() {
         MapLocation ret = null;
+
+        MapLocation best = null;
+        int bestDist = Integer.MAX_VALUE;
+        for (var target : exploreTargets.getKeys()) {
+            var dist = target.distanceSquaredTo(rc.getLocation());
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = target;
+            }
+        }
+
+        if (best != null) {
+            exploreTargets.remove(best);
+            return best;
+        }
+
         for (int i = 10; i-- > 0; ) {
             ret = new MapLocation(
                     (int) (nextDouble() * rc.getMapWidth()), (int) (nextDouble() * rc.getMapHeight())
