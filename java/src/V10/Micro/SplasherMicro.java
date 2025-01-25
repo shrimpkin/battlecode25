@@ -1,14 +1,7 @@
 package V10.Micro;
 
 import V10.Globals;
-import V10.Tools.FastIntSet;
-import V10.Tools.FastLocSet;
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.PaintType;
-import battlecode.common.RobotInfo;
-import battlecode.common.UnitType;
+import battlecode.common.*;
 
 public class SplasherMicro extends Globals {
     Direction[] dirs = Direction.values();
@@ -28,7 +21,7 @@ public class SplasherMicro extends Globals {
                 new MicroInfo(dirs[7]),
                 new MicroInfo(dirs[8])
         };
-
+        
         microInfo[0].update(splashTarget);
         microInfo[1].update(splashTarget);
         microInfo[2].update(splashTarget);

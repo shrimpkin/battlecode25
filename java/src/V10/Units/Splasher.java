@@ -1,5 +1,6 @@
 package V10.Units;
 
+import V10.Micro.SplasherMicro;
 import V10.Unit;
 import V10.Nav.Navigator;
 import battlecode.common.*;
@@ -19,6 +20,8 @@ public class Splasher extends Unit {
     private static MapLocation[] nearbyRuins;
     private static char[] scores = "\0".repeat(4096).toCharArray();
     private static Modes mode = Modes.NONE;
+
+    static SplasherMicro micro = new SplasherMicro();
 
     public static void updateMode() {
         if (rc.getPaint() <= 50) {
@@ -96,6 +99,20 @@ public class Splasher extends Unit {
             TargetLoc = getClosestLocation(paintTowerLocations);
         }
 
+        boolean seesEnemyTower = false;
+        var ruins = rc.senseNearbyRuins(-1);
+        for (var ruin : ruins) {
+            if (!rc.canSenseRobotAtLocation(ruin)) continue;
+            var robot = rc.senseRobotAtLocation(ruin);
+            if (robot.getTeam() != opponentTeam) continue;
+            seesEnemyTower = true;
+            break;
+        }
+        if (seesEnemyTower) {
+            micro.computeMicroArray(TargetLoc);
+            if (micro.doMicro()) return;
+        }
+
         if (TargetLoc != null) {
             boolean atLocation = TargetLoc.equals(rc.getLocation());
             boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && rc.sensePassability(TargetLoc);
@@ -153,7 +170,7 @@ public class Splasher extends Unit {
             if (info.getPaint() == PaintType.EMPTY) {
                 util += GameConstants.PENALTY_NEUTRAL_TERRITORY;
             } else if (info.getPaint().isEnemy()){
-                util +=  GameConstants.PENALTY_ENEMY_TERRITORY;
+                util += GameConstants.PENALTY_ENEMY_TERRITORY;
             }
         }
         return util;

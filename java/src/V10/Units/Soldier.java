@@ -1,5 +1,6 @@
 package V10.Units;
 
+import V09.Micro.SplasherMicro;
 import V10.Comms;
 import V10.Unit;
 import V10.Nav.Navigator;
@@ -27,6 +28,7 @@ public class Soldier extends Unit {
 
     static FastIntSet possibleSRPLocations = new FastIntSet();
     static boolean hasGeneratedSRPLocations = false;
+
     // to avoid ping ponging between towers once enemy paint goes out of range -- ignore for ROUND_COOLDOWN rounds
     private static final char ROUND_COOLDOWN = 10;
     private static char[] ignore = "\0".repeat(4096).toCharArray();
@@ -45,8 +47,17 @@ public class Soldier extends Unit {
         updateRefillTarget();
         updateMode();
         updateMoveTarget();
+
+        // throwing
+        refill();
+        attack();
+        move();
+        attack();
+
+        // marking
         markOneRuinTile();
 
+        // keeping track
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
         if (mode == Modes.BOOM) {
@@ -54,12 +65,8 @@ public class Soldier extends Unit {
             completeBuiltTarget();
         }
         
-        refill();
-        attack();
-        move();
-        attack();
-        
-        tessellate(); 
+        // painting
+        paintSRPBelow();
         updateSeen();
         debug();
     }
@@ -662,7 +669,7 @@ public class Soldier extends Unit {
      *      2. Paints the SRP pattern below the robot
      */
     public static void tessellate() throws GameActionException {
-        paintSRPBelow();
+        
     }
 
     /************************************************************************\
