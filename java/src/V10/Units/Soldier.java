@@ -345,8 +345,10 @@ public class Soldier extends Unit {
         if(bMode == BuildMode.BUILD_SRP) {
             paintPattern = rc.getResourcePattern();
         } else {
-            //needs to choose what tower it wants to paint
             buildType = getTowerMark();
+            if(rc.getChips() >= 50000) buildType = UnitType.LEVEL_ONE_PAINT_TOWER;
+
+            //needs to choose what tower it wants to paint
             if(buildType == null) return;
             paintPattern = rc.getTowerPattern(buildType);
         } 

@@ -32,7 +32,7 @@ public class Tower extends Unit {
     /// Kills self
     public static void doDisintegration() throws GameActionException {
         if (rc.getType().getBaseType() != UnitType.LEVEL_ONE_MONEY_TOWER) return;
-        if (rc.getChips() < 50000) return;
+        if (rc.getChips() < 10000) return;
         if (rc.getPaint() > 400) return;
         int numSoldiers = 0;
         for (var ally : rc.senseNearbyRobots(-1, myTeam)) {
@@ -40,6 +40,9 @@ public class Tower extends Unit {
                 numSoldiers++;
         }
         if (numSoldiers == 0) return;
+
+        if(rc.senseNearbyRobots(-1, opponentTeam).length > 0) return;
+
         rc.disintegrate();
     }
 

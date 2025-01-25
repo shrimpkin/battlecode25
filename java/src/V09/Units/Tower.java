@@ -39,6 +39,8 @@ public class Tower extends Unit {
                 numSoldiers++;
         }
         if (numSoldiers == 0) return;
+        if(nextDouble() < .95) return;
+
         rc.disintegrate();
     }
 
