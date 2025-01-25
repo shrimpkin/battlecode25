@@ -309,17 +309,9 @@ public class Tower extends Unit {
 
     /// Upgrade tower at robot's location
     public static void upgradeTower() throws GameActionException {
-        // immediately upgrade defense towers
-        if (rc.getType().getBaseType() == UnitType.LEVEL_ONE_DEFENSE_TOWER) {
-            if (rc.canUpgradeTower(rc.getLocation()) && rc.getChips() >= rc.getType().getNextLevel().moneyCost + 200) {
-                rc.upgradeTower(rc.getLocation());
-            }
-            return;
-        }
-
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 2000)
+        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 5000)
             return; // prioritize paint tower upgrades
 
         rc.upgradeTower(rc.getLocation());
