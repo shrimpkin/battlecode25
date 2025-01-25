@@ -163,6 +163,8 @@ public class Soldier extends Unit {
 
         SRPTarget = null;
 
+        if (rc.getRoundNum() < 10) return;
+
         for(MapInfo info : rc.senseNearbyMapInfos()) {
             MapLocation loc = info.getMapLocation();
             if (loc.x % 4 != 2 || loc.y % 4 != 2) continue; // not a center location

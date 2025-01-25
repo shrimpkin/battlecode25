@@ -99,23 +99,21 @@ public class Splasher extends Unit {
             TargetLoc = getClosestLocation(paintTowerLocations);
         }
 
-        boolean seesEnemyTower = false;
-        var ruins = rc.senseNearbyRuins(-1);
-        for (var ruin : ruins) {
-            if (!rc.canSenseRobotAtLocation(ruin)) continue;
-            var robot = rc.senseRobotAtLocation(ruin);
-            if (robot.getTeam() != opponentTeam) continue;
-            seesEnemyTower = true;
+        boolean seesEnemyBad = false;
+        for (var enemy : rc.senseNearbyRobots(-1, opponentTeam)) {
+            var type = enemy.getType();
+            if (!type.isTowerType() && type != UnitType.MOPPER) continue;
+            seesEnemyBad = true;
             break;
         }
-        if (seesEnemyTower) {
+        if (seesEnemyBad) {
             micro.computeMicroArray(TargetLoc);
             if (micro.doMicro()) return;
         }
 
         if (TargetLoc != null) {
             boolean atLocation = TargetLoc.equals(rc.getLocation());
-            boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && rc.sensePassability(TargetLoc);
+            boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && !rc.sensePassability(TargetLoc);
             boolean isCloseToTarget = rc.getLocation().isWithinDistanceSquared(TargetLoc, 2);
 
             if (atLocation || (cannotReachTarget && isCloseToTarget)) {

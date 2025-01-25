@@ -46,7 +46,7 @@ public class Unit extends Globals {
         }
         if (wanderTarget == null) {
             //System.out.println("Update null wander target.");
-            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
+            wanderTarget = (rc.getRoundNum() < 50) ? getExploreTargetClose() : getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
 

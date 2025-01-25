@@ -23,7 +23,7 @@ public class Tower extends Unit {
         spawn();
         attack();
         upgradeTower();
-        doDisintegration();
+        // doDisintegration();
         debugDisplay();
 
         rc.setIndicatorString(indicator);
@@ -145,7 +145,16 @@ public class Tower extends Unit {
             if(robot.getType().equals(UnitType.MOPPER)) nearbyMoppers++;
         }
 
-        int numEnemies = rc.senseNearbyRobots(-1, opponentTeam).length;
+        RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
+        int numEnemies = enemies.length;    
+        boolean isEnemySoldier = false;
+        for (RobotInfo enemy : enemies) {
+            if (enemy.type == UnitType.SOLDIER) {
+                isEnemySoldier = true;
+                break;
+            }
+        }
+
         //don't want to continue spamming units if no enemies are nearby
         if (rc.getHealth() <= 200 && numEnemies != 0) {
             buildRobotType(UnitType.SOLDIER);
@@ -154,7 +163,7 @@ public class Tower extends Unit {
         }
 
         //attempts to defend the tower if num enemies is in {1,2}, less moppers than enemies, and we have sufficient health
-        if(numEnemies <= 2 && numEnemies > 0 && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
+        if(isEnemySoldier && nearbyMoppers < numEnemies && rc.getHealth() >= 500 * numEnemies) {
             buildRobotType(UnitType.MOPPER);
         }
 

@@ -1,6 +1,6 @@
 package V09.Micro;
 
-import V01.Globals;
+import V09.Globals;
 import V09.Tools.FastIntSet;
 import V09.Tools.FastLocSet;
 import battlecode.common.Direction;
