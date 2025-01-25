@@ -22,7 +22,7 @@ public class Splasher extends Unit {
     private static char[] scores = "\0".repeat(4096).toCharArray();
     private static Modes mode = Modes.NONE;
 
-    public void updateMode() {
+    public static void updateMode() {
         if (rc.getPaint() <= 50) {
             mode = Modes.REFILL;
             indicator += "{refilling}";
@@ -34,6 +34,7 @@ public class Splasher extends Unit {
 
     public static void run() throws GameActionException {
         indicator = "";
+        updateMode();
         updateTowerLocations();
         nearbyRuins = rc.senseNearbyRuins(-1);
 

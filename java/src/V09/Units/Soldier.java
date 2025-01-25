@@ -46,8 +46,17 @@ public class Soldier extends Unit {
         updateRefillTarget();
         updateMode();
         updateMoveTarget();
+
+        // throwing
+        refill();
+        attack();
+        move();
+        attack();
+
+        // marking
         markOneRuinTile();
 
+        // keeping track
         if (prev == Modes.REFILL && mode != Modes.REFILL) lastRefillEnd = roundNum;
 
         if (mode == Modes.BOOM) {
@@ -55,12 +64,8 @@ public class Soldier extends Unit {
             completeBuiltTarget();
         }
         
-        refill();
-        attack();
-        move();
-        attack();
-        
-        tessellate(); 
+        // painting
+        paintSRPBelow();
         updateSeen();
         debug();
     }

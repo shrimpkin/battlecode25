@@ -23,7 +23,7 @@ public class Tower extends Unit {
         spawn();
         attack();
         upgradeTower();
-        // doDisintegration();
+        doDisintegration();
         debugDisplay();
 
         rc.setIndicatorString(indicator);
@@ -235,7 +235,7 @@ public class Tower extends Unit {
         }
         
         // consistently spawn soldiers for a few rounds
-        if (rc.getNumberTowers() <= 4 || numSoldiersSpawned <= (8 * mapHeight * mapWidth / 3600.)) {
+        if (rc.getNumberTowers() <= 4 || numSoldiersSpawned <= (8 * mapHeight * mapWidth / 3200.)) {
             buildRobotType(UnitType.SOLDIER);
             return;
         }
@@ -318,7 +318,7 @@ public class Tower extends Unit {
 
         if (!rc.canUpgradeTower(rc.getLocation()))
             return; // can't upgrade
-        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 200)
+        if (!isPaintTower(rc.getType()) && rc.getChips() < rc.getType().getNextLevel().moneyCost + 2000)
             return; // prioritize paint tower upgrades
 
         rc.upgradeTower(rc.getLocation());

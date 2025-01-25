@@ -25,6 +25,9 @@ public class Mopper extends Unit {
         micro.computeMicroArray(true, paintTowerLocations, enemyPaint, allyPaint);
         read();
 
+        move();
+        doAction();
+
         for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
             if (robot.type == UnitType.SOLDIER || robot.type == UnitType.SPLASHER) {
                 if (rc.getPaint() > 51)
@@ -39,8 +42,6 @@ public class Mopper extends Unit {
             }
         }
 
-        move();
-        doAction();
         refill();
         debug();
     }
@@ -144,7 +145,7 @@ public class Mopper extends Unit {
     }
 
     public static void doAction() throws GameActionException {
-        if (!rc.isActionReady() || rc.getPaint() < 40 && refillingTower != null) return;
+        if (!rc.isActionReady() || rc.getPaint() < 10 && refillingTower != null) return;
         indicator += "[doing action: ";
         // get best direction to swing
         var swingDir = getBestMopSwingDir();
@@ -163,6 +164,7 @@ public class Mopper extends Unit {
                 if (importance < 6 && robot.getTeam() == opponentTeam) {
                     paintTile = loc;
                     importance = 6;
+                    break;
                 }
                 // save ourselves and our team from enemy penalty
                 if (importance < 5 && (loc == rc.getLocation() || robot.getTeam() == myTeam)) {
@@ -282,7 +284,7 @@ public class Mopper extends Unit {
         int bestDir = 0;
         int bestDirIdx = -1;
         for (int i = 0; i < 4; i++) {
-            if (numEnemies[i] >= bestDir) {
+            if (numEnemies[i] > bestDir) {
                 bestDir = numEnemies[i];
                 bestDirIdx = i;
             }
