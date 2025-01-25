@@ -65,7 +65,6 @@ public class Mopper extends Unit {
     }
 
     public static void move() throws GameActionException {
-//        i
         // refill if low on paint -- but don't overcrowd otherwise
         if (rc.getPaint() < 35 && paintTowerLocations.size > 0 && nearbyFriendlies.length < 10) {
             var target = getClosestLocation(paintTowerLocations);
@@ -110,7 +109,7 @@ public class Mopper extends Unit {
                     wasWandering = true;
                     indicator += "{wandering boi}";
                 } else {
-                    Navigator.moveTo(target, rc.getPaint() < 50);
+                    Navigator.moveTo(target, true);
                     wasWandering = false;
                     indicator += "{move to " + target + "}";
                 }
@@ -226,6 +225,7 @@ public class Mopper extends Unit {
     // update positions of nearby paint -- tracking the average position of allied/enemy paint
     public static void updateSurroundings() throws GameActionException {
         refillingTower = null;
+        numActiveEnemies = 0;
         enemyPaint.clear();
         allyPaint.clear();
         nearbyEnemies = rc.senseNearbyRobots(-1, opponentTeam);
@@ -249,7 +249,8 @@ public class Mopper extends Unit {
         }
         // check for non-paralyzed enemies;
         for (var enemy : nearbyEnemies) {
-            if (enemy.getPaintAmount() > 0) numActiveEnemies++;
+            if (enemy.getType().isRobotType() && enemy.getPaintAmount() > 0) 
+                numActiveEnemies++;
         }
     }
 

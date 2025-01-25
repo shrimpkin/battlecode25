@@ -21,7 +21,7 @@ public class SplasherMicro extends Globals {
                 new MicroInfo(dirs[7]),
                 new MicroInfo(dirs[8])
         };
-        
+
         microInfo[0].update(splashTarget);
         microInfo[1].update(splashTarget);
         microInfo[2].update(splashTarget);
@@ -107,8 +107,7 @@ public class SplasherMicro extends Globals {
         public boolean betterPaintSplash(MicroInfo m) throws GameActionException {
             if(canSplash && !m.canSplash) return true;
             if(!canSplash && m.canSplash) return false;
-
-            return betterRunaway(null);
+            return betterRunaway(m);
         }
 
         public boolean betterRunaway(MicroInfo m) throws GameActionException {
