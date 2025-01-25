@@ -168,7 +168,7 @@ public class Soldier extends Unit {
 
         SRPTarget = null;
 
-        if (rc.getRoundNum() < 10) return;
+        // if (rc.getNumberTowers() < 5 && rc.getRoundNum() <= 150) return;
 
         for(MapInfo info : rc.senseNearbyMapInfos()) {
             MapLocation loc = info.getMapLocation();
