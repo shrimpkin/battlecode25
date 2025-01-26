@@ -232,72 +232,6 @@ public class Soldier extends Unit {
         return true;
     }
 
-    //east corresponds to paint tower
-    //west corresponds to money tower
-    //north corresponds to a clock tower
-    public static UnitType getTowerMark() throws GameActionException {
-        if(ruinTarget == null) return null;
-        
-        MapLocation east = ruinTarget.add(Direction.EAST);
-        MapLocation west = ruinTarget.add(Direction.WEST);
-        MapLocation north = ruinTarget.add(Direction.NORTH);
-
-        if(!rc.canSenseLocation(west)) return null;
-        if(!rc.canSenseLocation(east)) return null;
-        if(!rc.canSenseLocation(north)) return null;
-
-        MapInfo eastInfo = rc.senseMapInfo(east);
-        MapInfo westInfo = rc.senseMapInfo(west);
-        MapInfo northInfo = rc.senseMapInfo(north);
-
-        if(eastInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_PAINT_TOWER;
-        if(westInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_MONEY_TOWER;
-        if(northInfo.getMark().isAlly()) return UnitType.LEVEL_ONE_DEFENSE_TOWER;
-
-        UnitType towerType;
-
-        boolean shouldDefend = false;
-        RobotInfo[] enemies = rc.senseNearbyRobots(-1, opponentTeam);
-        
-        if(enemies.length > 5) shouldDefend = true;
-        for(RobotInfo enemy : enemies) {
-            if(isPaintTower(enemy.getType()) || isMoneyTower(enemy.getType())) {
-                shouldDefend = true;
-            }
-        }
-
-        if(shouldDefend && rc.getChips() >= 3500) {
-            towerType = UnitType.LEVEL_ONE_DEFENSE_TOWER;
-        } else if (rc.getNumberTowers() <= 3) {
-            towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
-        } else if (rc.getNumberTowers() == 4) {
-            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
-        } else if (nextDouble() <= 0.8 && rc.getNumberTowers() <= 20) {
-            towerType = UnitType.LEVEL_ONE_MONEY_TOWER;
-        } else {
-            towerType = UnitType.LEVEL_ONE_PAINT_TOWER;
-        }   
-
-        if(isPaintTower(towerType)) {
-            if(rc.canMark(east)) {
-                rc.mark(east, false);
-                return UnitType.LEVEL_ONE_PAINT_TOWER;
-            }
-        } else if(isMoneyTower(towerType)) {
-            if(rc.canMark(west)) {
-                rc.mark(west, false);
-                return UnitType.LEVEL_ONE_MONEY_TOWER;
-            }
-        } else {
-            if(rc.canMark(north)) {
-                rc.mark(north, false);
-                return UnitType.LEVEL_ONE_DEFENSE_TOWER;
-            }
-        }
-
-        return null;
-    }
-
     /** @return MapLocations that rotate around the build target */
     public static MapLocation rotateAroundBuiltTarget() throws GameActionException {
         if(buildTarget == null) return null;
@@ -327,6 +261,7 @@ public class Soldier extends Unit {
     static int []dy = {
             2, 2,-2,-2,   2, 1,-2,-1,     2,-1,-2, 1,    2, 0,-2, 0,   1,-1,-1, 1 , 0,-1, 0, 1, 0
     };
+    
     // ok the below layout isn't accurate anymore -- it was tweaked to avoid looking like contemporary iconography
     // 01 05 09 13 02
     // 16 20 24 17 06
@@ -345,11 +280,7 @@ public class Soldier extends Unit {
         if(bMode == BuildMode.BUILD_SRP) {
             paintPattern = rc.getResourcePattern();
         } else {
-            buildType = getTowerMark();
-            if(rc.getChips() >= 50000) buildType = UnitType.LEVEL_ONE_PAINT_TOWER;
-
-            //needs to choose what tower it wants to paint
-            if(buildType == null) return;
+            buildType = rc.getChips() > 3000 ? UnitType.LEVEL_ONE_PAINT_TOWER : UnitType.LEVEL_ONE_MONEY_TOWER;
             paintPattern = rc.getTowerPattern(buildType);
         } 
         // paint move target when rotating around the tower to avoid empty tile penalty
