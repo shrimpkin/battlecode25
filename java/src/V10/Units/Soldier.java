@@ -261,7 +261,7 @@ public class Soldier extends Unit {
     static int []dy = {
             2, 2,-2,-2,   2, 1,-2,-1,     2,-1,-2, 1,    2, 0,-2, 0,   1,-1,-1, 1 , 0,-1, 0, 1, 0
     };
-    
+
     // ok the below layout isn't accurate anymore -- it was tweaked to avoid looking like contemporary iconography
     // 01 05 09 13 02
     // 16 20 24 17 06
@@ -280,7 +280,7 @@ public class Soldier extends Unit {
         if(bMode == BuildMode.BUILD_SRP) {
             paintPattern = rc.getResourcePattern();
         } else {
-            buildType = rc.getChips() > 3000 ? UnitType.LEVEL_ONE_PAINT_TOWER : UnitType.LEVEL_ONE_MONEY_TOWER;
+            buildType = rc.getChips() > 10000 ? UnitType.LEVEL_ONE_PAINT_TOWER : UnitType.LEVEL_ONE_MONEY_TOWER;
             paintPattern = rc.getTowerPattern(buildType);
         } 
         // paint move target when rotating around the tower to avoid empty tile penalty
