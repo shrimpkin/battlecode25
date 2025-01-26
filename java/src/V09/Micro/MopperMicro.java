@@ -166,7 +166,7 @@ public class MopperMicro {
             canAct = rc.isActionReady();
             if (rc.canSenseLocation(location)) {
                 var paint = rc.senseMapInfo(location).getPaint();
-                if (paint == PaintType.EMPTY) {
+                if (paint == PaintType.EMPTY) { // make it more amenable to empty/enemy terrain when it has high paint
                     if (rc.getPaint() > 50) {
                         paintPenalty = 1;
                     } else {
@@ -231,7 +231,7 @@ public class MopperMicro {
             } else {
                 // it's a sitting duck (err bunny)
                 if (unit.getPaintAmount() == 0) return;
-                hasMoppableEnemy =  hasMoppableEnemy || (dist <= 2 && rc.senseMapInfo(unit.getLocation()).getPaint().isEnemy());
+                hasMoppableEnemy =  hasMoppableEnemy || dist <= 2;
                 if (dist < minDistanceToEnemy) minDistanceToEnemy = dist;
                 if (dist < 8) { // should be the extent of a mopper swing
                     ++enemiesInRange;
