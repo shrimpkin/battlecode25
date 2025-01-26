@@ -1,11 +1,6 @@
 package V09;
 
-import battlecode.common.MapLocation;
-import battlecode.common.RobotController;
-import battlecode.common.Team;
-import battlecode.common.UnitType;
-
-import java.util.Random;
+import battlecode.common.*;
 
 /** Contains methods and fields that everything should have access to */
 public class Globals {
@@ -16,7 +11,6 @@ public class Globals {
     public static int mapWidth;
     public static int mapHeight;
     public static boolean in_debug = true;
-    public static final Random rng = new Random(6147);
     // stealing an LCG cause nextInt is a bytecode hog
     private static long seed = -1;
 

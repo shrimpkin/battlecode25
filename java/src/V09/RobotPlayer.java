@@ -1,12 +1,7 @@
 package V09;
 
-import V09.Units.Mopper;
-import V09.Units.Soldier;
-import V09.Units.Splasher;
-import V09.Units.Tower;
-import battlecode.common.Clock;
-import battlecode.common.GameActionException;
-import battlecode.common.RobotController;
+import V09.Units.*;
+import battlecode.common.*;
 
 public class RobotPlayer {
     static int turnCount = 0;

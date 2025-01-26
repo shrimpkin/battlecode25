@@ -215,13 +215,13 @@ public class Tower extends Unit {
     /// Core logic sequence for money towers
     public static void spawnMoneyTower() throws GameActionException {
         spawnPaintTower();
-        System.out.println("MONEY TOWER SPAWN NOT IMPL");
+        // System.out.println("MONEY TOWER SPAWN NOT IMPL");
     }
     
     /// Core logic sequence for defense towers
     public static void spawnDefenseTower() throws GameActionException {
         spawnPaintTower();
-        System.out.println("DEFENSE TOWER SPAWN NOT IMPL");
+        // System.out.println("DEFENSE TOWER SPAWN NOT IMPL");
     }
 
     /// Attempt to build robot of specified type on first available square

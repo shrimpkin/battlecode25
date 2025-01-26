@@ -4,8 +4,7 @@ import V09.Comms;
 import V09.Unit;
 import V09.Micro.MopperMicro;
 import V09.Nav.Navigator;
-import V09.Tools.CommType;
-import V09.Tools.FastLocSet;
+import V09.Tools.*;
 import battlecode.common.*;
 
 public class Mopper extends Unit {

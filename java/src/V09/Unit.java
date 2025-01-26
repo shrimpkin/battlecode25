@@ -1,15 +1,12 @@
 package V09;
 
-import V09.Tools.CommType;
-import V09.Tools.FastLocSet;
 import V09.Nav.Navigator;
-import V09.Tools.FastIntSet;
-import V09.Tools.LocMap;
+import V09.Tools.*;
 import battlecode.common.*;
 
 public class Unit extends Globals {
     public static Modes mode = Modes.NONE;
-    public static MapLocation wanderTarget; // TODO: emily
+    public static MapLocation wanderTarget;
     public static FastIntSet paintTowerLocations = new FastIntSet();
     public static FastIntSet enemyTowerLocations = new FastIntSet();
     public static FastIntSet unusedRuinLocations = new FastIntSet();

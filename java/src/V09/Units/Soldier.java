@@ -1,11 +1,9 @@
 package V09.Units;
 
 import V09.Comms;
-import V09.Tools.CommType;
-import V09.Tools.FastLocSet;
 import V09.Unit;
 import V09.Nav.Navigator;
-import V09.Tools.FastIntSet;
+import V09.Tools.*;
 import battlecode.common.*;
 
 public class Soldier extends Unit {

@@ -1,8 +1,7 @@
 package V09;
 
 import V09.Tools.CommType;
-import battlecode.common.MapLocation;
-import battlecode.common.UnitType;
+import battlecode.common.*;
 
 public class Comms extends Globals {
 

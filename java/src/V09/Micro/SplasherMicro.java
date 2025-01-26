@@ -1,14 +1,7 @@
 package V09.Micro;
 
 import V09.Globals;
-import V09.Tools.FastIntSet;
-import V09.Tools.FastLocSet;
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.PaintType;
-import battlecode.common.RobotInfo;
-import battlecode.common.UnitType;
+import battlecode.common.*;
 
 public class SplasherMicro extends Globals {
     Direction[] dirs = Direction.values();
