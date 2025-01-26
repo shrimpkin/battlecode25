@@ -1,10 +1,11 @@
-package V09.Units;
+package V09GoneWhalin.Units;
 
-import V09.Comms;
-import V09.Unit;
-import V09.Micro.SoldierMicro;
-import V09.Nav.Navigator;
-import V09.Tools.*;
+import V09GoneWhalin.Comms;
+import V09GoneWhalin.Unit;
+import V09GoneWhalin.Nav.Navigator;
+import V09GoneWhalin.Tools.CommType;
+import V09GoneWhalin.Tools.FastIntSet;
+import V09GoneWhalin.Tools.FastLocSet;
 import battlecode.common.*;
 
 public class Soldier extends Unit {
@@ -23,7 +24,6 @@ public class Soldier extends Unit {
     static MapLocation lastRuinTarget;
     static MapLocation attackTarget;
     static MapLocation refillTarget;
-    static MapLocation enemyTower;
     static int roundNum;
     static int DEBUG = 1;
 
@@ -32,7 +32,7 @@ public class Soldier extends Unit {
     // to avoid ping ponging between towers once enemy paint goes out of range -- ignore for ROUND_COOLDOWN rounds
     private static final char ROUND_COOLDOWN = 10;
     private static char[] ignore = "\0".repeat(4096).toCharArray();
-    SoldierMicro micro = new SoldierMicro();
+
 
     public static void run() throws GameActionException {
         indicator = "";
@@ -42,7 +42,6 @@ public class Soldier extends Unit {
         //doing all the updates
         updateTowerLocations();
         updateBuildTarget();
-        enemyTower = getClosestEnemyTowerLocation();
         updateAttackTarget();
         updateCommTarget();
         updateRefillTarget();
@@ -160,6 +159,7 @@ public class Soldier extends Unit {
 
     /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP */
     public static void updateSRPTarget() throws GameActionException {
+        if(rc.getNumberTowers() <= 7) return;
         //we have a valid SRP
         if(SRPTarget != null 
             && rc.canSenseLocation(SRPTarget)
@@ -348,14 +348,8 @@ public class Soldier extends Unit {
         boolean[][] paintPattern;
         if(bMode == BuildMode.BUILD_SRP) {
             paintPattern = rc.getResourcePattern();
-        } else {
-            //needs to choose what tower it wants to paint
-            if(rc.getChips() >= 10000) {
-                buildType = UnitType.LEVEL_ONE_PAINT_TOWER;
-            } else {
-                buildType = getTowerMark();
-            }
-            if(buildType == null) return;
+        } else {            
+            buildType = rc.getChips() > 10000 ? UnitType.LEVEL_ONE_DEFENSE_TOWER : UnitType.LEVEL_ONE_MONEY_TOWER;
             paintPattern = rc.getTowerPattern(buildType);
         } 
         // paint move target when rotating around the tower to avoid empty tile penalty
@@ -487,7 +481,8 @@ public class Soldier extends Unit {
             return;
         }
 
-        if(enemyTower != null && rc.getLocation().distanceSquaredTo(enemyTower) <= 25) {
+        MapLocation nearTower = getClosestEnemyTowerLocation();
+        if(nearTower != null && attackTarget.distanceSquaredTo(nearTower) <= 25) {
             mode = Modes.ATTACK;
             return;
         }
@@ -527,15 +522,47 @@ public class Soldier extends Unit {
     }
 
     public static void updateAttackTarget() throws GameActionException {
-        if(enemyTower == null) {
+        MapLocation loc = getClosestEnemyTowerLocation();
+        if(loc == null) {
+            indicator += "Attack Target: is null,";
             attackTarget = null;
             return;
-        } else if(enemyTower.distanceSquaredTo(rc.getLocation()) > 16) {
-            attackTarget = enemyTower;
+        } else if(loc.distanceSquaredTo(rc.getLocation()) > 16) {
+            attackTarget = loc;
+            indicator += "Attack Target:" + attackTarget.toString() + ", ";
             return;
-        } else {
-            SoldierMicro.doMicro(enemyTower);
         }
+
+        //System.out.println("MicroInfo for robot at: " + rc.getLocation());
+        MicroInfo[] microInfo = new MicroInfo[9];
+        for (int i = 0; i < 9; i++) {
+            microInfo[i] = new MicroInfo(Direction.values()[i]);
+            microInfo[i].updateEnemiesTargeting();
+            //System.out.println(microInfo[i].toString());
+        }
+        //System.out.println();
+
+        MicroInfo best = microInfo[8];  
+        boolean shouldRunaway = rc.getHealth() <= 30;
+        indicator += "Should run" + shouldRunaway + " ";
+        boolean shouldAttack = (rc.getRoundNum() % 2 == 0) && (rc.getActionCooldownTurns() < GameConstants.COOLDOWN_LIMIT);
+        for (int i = 0; i < 8; i++) {
+            //if(microInfo[i].location != null)
+            //    rc.setIndicatorDot(microInfo[i].location, i, i, i);
+            if(shouldRunaway && microInfo[i].isBetterRunaway(best)) {
+                best = microInfo[i];
+            } else if (shouldAttack && microInfo[i].isBetterAttack(best)) {
+                best = microInfo[i];
+            } else if (!shouldAttack && microInfo[i].isBetterRetreat(best)) {
+                best = microInfo[i];
+            }
+        }
+
+        attackTarget = best.location;
+
+        if(attackTarget != null)
+            indicator += "Attack Target: " + attackTarget.toString() + ", " + shouldAttack + ", ";
+
     }
 
     /** Moves to target location, if no target wanders */
@@ -604,6 +631,8 @@ public class Soldier extends Unit {
 
     /** Paints square below unit as SRP pattern*/
     public static void paintSRPBelow() throws GameActionException {
+        if(rc.senseMapInfo(rc.getLocation()).getPaint().isAlly()) return;
+        if(rc.getRoundNum() < 100) return;
         if(rc.getPaint() < 15) return; //conserve paint
         if(moveTarget != null && rc.getLocation().distanceSquaredTo(moveTarget) >= rc.getPaint() + 10) return; //conserve paint
 
