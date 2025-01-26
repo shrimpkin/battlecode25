@@ -158,6 +158,9 @@ public class Soldier extends Unit {
 
     /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP */
     public static void updateSRPTarget() throws GameActionException {
+        boolean x = true;
+        if(x) return;
+
         //we have a valid SRP
         if(SRPTarget != null 
             && rc.canSenseLocation(SRPTarget)
