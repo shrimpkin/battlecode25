@@ -10,14 +10,25 @@ public class Tower extends Unit {
     // all the paint towers this tower knows of:
     static FastLocSet knownPaintTowers = new FastLocSet();
     static MapLocation closestPaintTower = null;
-
-    static UnitType towerType = rc.getType();
+    static MapLocation nearestEnemyPaint, knownFrontline;
+    static int lastFrontline;
     static int numSoldiersSpawned = 0;
     static int numMoppersSpawned = 0;
     static int numSpawned = 0;
+    static int numTowers = 0;
+    static int roundsSinceLastDecrease = 0;
 
     public static void run() throws GameActionException {
         indicator = "";
+
+        if (rc.getNumberTowers() < numTowers) {
+            roundsSinceLastDecrease = 0;
+        } else {
+            roundsSinceLastDecrease++;
+        }
+        numTowers = rc.getNumberTowers();
+
+        updateSurroundings();
         broadcastAndRead();
 
         spawn();
@@ -29,18 +40,37 @@ public class Tower extends Unit {
         rc.setIndicatorString(indicator);
     }
 
+    public static void updateSurroundings() throws GameActionException {
+        nearestEnemyPaint = null;
+        int bestDist = Integer.MAX_VALUE;
+        for (var tile : rc.senseNearbyMapInfos(-1)) {
+            if (!tile.getPaint().isEnemy()) continue;
+            var loc = tile.getMapLocation();
+            var dist = rc.getLocation().distanceSquaredTo(loc);
+            if (dist < bestDist) {
+                bestDist = dist;
+                nearestEnemyPaint = loc;
+            }
+        }
+        if (nearestEnemyPaint != null) {
+            knownFrontline = nearestEnemyPaint;
+            lastFrontline = rc.getRoundNum();
+        }
+    }
+
     public static void doDisintegration() throws GameActionException {  
-        if (rc.senseNearbyRobots(-1, opponentTeam).length > 0) return;
-        if (rc.getType().getBaseType() != UnitType.LEVEL_ONE_MONEY_TOWER) return;
-        if (rc.getChips() < 30000) return;
-        if (rc.getPaint() > 400) return;
+        if (rc.senseNearbyRobots(-1, opponentTeam).length > 0) return; // frontline tower, don't destroy
+        if (rc.getType().getBaseType() != UnitType.LEVEL_ONE_MONEY_TOWER) return; // dont destroy paint towers?
+        if (rc.getType().getNextLevel() == null && rc.getChips() < 10000) return; // might be a waste of chips
+        if (nearestEnemyPaint != null  && nearestEnemyPaint.distanceSquaredTo(rc.getLocation()) <= 8) return; // obstructed
+        if (roundsSinceLastDecrease <= 175) return;
+//        System.out.println("rounds since last decrease: " + roundsSinceLastDecrease);
         int numSoldiers = 0;
         for (var ally : rc.senseNearbyRobots(-1, myTeam)) {
             if (ally.getType() == UnitType.SOLDIER)
                 numSoldiers++;
         }
         if (numSoldiers == 0) return;
-        if(nextDouble() < .95) return;
 
         rc.disintegrate();
     }
@@ -111,6 +141,19 @@ public class Tower extends Unit {
                     }
                     spawnAndTell(UnitType.SOLDIER, Comms.encodeMessage(CommType.RebuildTower, towerLoc));
                 }
+                case ReinforceFront -> {
+                    if (rc.getRoundNum() - msg.getRound() > 1) continue; // not from this round
+                    var loc = Comms.getLocation(code);
+                    var round = Comms.getOriginalRound(code);
+                    if (
+                            knownFrontline == null
+                        || (rc.getRoundNum() - lastFrontline > 5 && rc.getRoundNum() - round <= 5)
+                        || (rc.getLocation().distanceSquaredTo(loc) < rc.getLocation().distanceSquaredTo(knownFrontline))
+                    ) {
+                        knownFrontline = loc;
+                        lastFrontline = round;
+                    }
+                }
                 // TODO: reinforceFront messaging
                 default -> System.out.println("Tower should not be getting message with comm code: " + code);
             }
@@ -120,6 +163,21 @@ public class Tower extends Unit {
             if (rc.canSendMessage(robot.getLocation()) && closestPaintTower != null) {
                 rc.sendMessage(robot.getLocation(), Comms.encodeMessage(CommType.NearbyPaintTower, closestPaintTower));
             }
+        }
+
+        if (knownFrontline != null) {
+            if (rc.canSenseLocation(knownFrontline) && !rc.senseMapInfo(knownFrontline).getPaint().isEnemy())
+                knownFrontline = null;
+            if (rc.getRoundNum() - lastFrontline > 5)
+                knownFrontline = null;
+        }
+        if (knownFrontline != null) {
+            if (rc.canBroadcastMessage())
+                rc.broadcastMessage(Comms.encodeMessage(
+                        CommType.ReinforceFront,
+                        knownFrontline,
+                        lastFrontline
+                ));
         }
 
         // inform other towers of current tower's type -- as well as of known paint tower locations
@@ -400,7 +458,7 @@ public class Tower extends Unit {
             if (rc.canBuildRobot(type, neighborSquare.getMapLocation())) {
                 rc.buildRobot(type, neighborSquare.getMapLocation());
                 if (rc.canSendMessage(neighborSquare.getMapLocation()) && closestPaintTower != null) {
-                    rc.sendMessage(neighborSquare.getMapLocation(), Comms.encodeMessage(CommType.NearbyPaintTower, closestPaintTower));
+//                    rc.sendMessage(neighborSquare.getMapLocation(), Comms.encodeMessage(CommType.NearbyPaintTower, closestPaintTower));
                 }
 
                 if (type == UnitType.SOLDIER) {
@@ -424,8 +482,10 @@ public class Tower extends Unit {
     }
 
     public static void debugDisplay() throws GameActionException {
-        for (var loc : knownPaintTowers.getKeys()) {
-            rc.setIndicatorDot(loc, 255, 165, 255);
-        }
+//        for (var loc : knownPaintTowers.getKeys()) {
+//            rc.setIndicatorDot(loc, 255, 165, 255);
+//        }
+        if (knownFrontline != null)
+            rc.setIndicatorLine(rc.getLocation(), knownFrontline, 100, 50, 100);
     }
 }

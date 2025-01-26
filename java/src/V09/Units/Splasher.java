@@ -1,5 +1,7 @@
 package V09.Units;
 
+import V09.Comms;
+import V09.Tools.CommType;
 import V09.Unit;
 import V09.Nav.Navigator;
 import battlecode.common.*;
@@ -36,15 +38,14 @@ public class Splasher extends Unit {
         indicator = "";
         updateMode();
         updateTowerLocations();
+        read();
         nearbyRuins = rc.senseNearbyRuins(-1);
 
-        MapLocation bestLoc = splash();
-        if (bestLoc != null && TargetLoc == null) {
-            TargetLoc = bestLoc;
-        }
+        splash();
         move();
         canCompletePattern();
         refill();
+        roundendComms();
         rc.setIndicatorString(indicator);
     }
 
@@ -62,20 +63,19 @@ public class Splasher extends Unit {
      ********************/
 
     /// reads msgs to target enemy
-    // public static void read() throws GameActionException {
-    //     Message[] msgs = rc.readMessages(rc.getRoundNum());
-    //     for (Message msg : msgs) {
-    //         if (Comms.getType(msg.getBytes()) == CommType.TargetEnemy) {
-    //             MapLocation enemyLoc = Comms.getLocation(msg.getBytes());
-    //             rc.setIndicatorDot(enemyLoc, 200, 100, 200);
-    //             if (rc.getLocation().distanceSquaredTo(enemyLoc) <= rc.getType().actionRadiusSquared && rc.canAttack(enemyLoc)) {
-    //                 if (getSplashScore(enemyLoc) >= MinUtil) {
-    //                     rc.attack(enemyLoc);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+     public static void read() throws GameActionException {
+         Message[] msgs = rc.readMessages(rc.getRoundNum());
+         var loc = rc.getLocation();
+         for (Message msg : msgs) {
+             if (Comms.getType(msg.getBytes()) == CommType.TargetEnemy) {
+                 MapLocation enemyLoc = Comms.getLocation(msg.getBytes());
+                 var dist = loc.distanceSquaredTo(enemyLoc);
+                 if (TargetLoc == null || dist < loc.distanceSquaredTo(TargetLoc)) {
+                     TargetLoc = enemyLoc;
+                 }
+             }
+         }
+     }
 
     /// Splashes highest value location, if it's above min score value -- also don't kill self
     public static MapLocation splash() throws GameActionException {
@@ -97,7 +97,7 @@ public class Splasher extends Unit {
 
         // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
         if (best != null) {
-            if (mostUtil >= Math.max(2, Math.max(10, MinUtil - rc.getRoundNum()/50) - (NumRoundsSinceSplash-5)/10) && rc.canAttack(best)) {
+            if (mostUtil >= Math.max(2, Math.max(10, MinUtil - rc.getRoundNum()/100) - (NumRoundsSinceSplash-5)/10) && rc.canAttack(best)) {
                 rc.attack(best);
                 NumRoundsSinceSplash = 0;
                 return best;
@@ -116,7 +116,7 @@ public class Splasher extends Unit {
 
         if (TargetLoc != null) {
             boolean atLocation = TargetLoc.equals(rc.getLocation());
-            boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && rc.sensePassability(TargetLoc);
+            boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && !rc.sensePassability(TargetLoc);
             boolean isCloseToTarget = rc.getLocation().isWithinDistanceSquared(TargetLoc, 2);
 
             if (atLocation || (cannotReachTarget && isCloseToTarget)) {

@@ -27,12 +27,7 @@ public class LocMap {
 
     /** Marks location */
     public void mark(MapLocation loc) throws GameActionException {
-        char v = SEEN_BIT;
-        var mapinfo = rc.senseMapInfo(loc);
-        if (mapinfo.hasRuin()) v |= RUIN_BIT;
-        if (mapinfo.isWall()) v |= WALL_BIT;
-
-        marked[loc.x * rc.getMapHeight() + loc.y] = v;
+        marked[loc.x * rc.getMapHeight() + loc.y] = SEEN_BIT;
     }
 
     /** Removes all marks */

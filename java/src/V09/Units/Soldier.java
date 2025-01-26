@@ -1,6 +1,7 @@
 package V09.Units;
 
 import V09.Comms;
+import V09.Tools.CommType;
 import V09.Tools.FastLocSet;
 import V09.Unit;
 import V09.Nav.Navigator;
@@ -67,6 +68,7 @@ public class Soldier extends Unit {
         // painting
         paintSRPBelow();
         updateSeen();
+        roundendComms();
         debug();
     }
 
@@ -445,11 +447,15 @@ public class Soldier extends Unit {
         }
     }
 
-    public static void updateCommTarget() throws GameActionException {
-        Message[] msgs = rc.readMessages(-1);
-        if (msgs.length > 0) {
-            if (commTarget == null) {
-                commTarget = Comms.getLocation(msgs[0].getBytes());
+    public static void updateCommTarget() {
+        for (var msg : rc.readMessages(rc.getRoundNum())) {
+            var code = msg.getBytes();
+            if (Comms.getType(code) != CommType.TargetEnemy) continue;
+            var loc = rc.getLocation();
+            var enemyLoc = Comms.getLocation(code);
+            var dist = loc.distanceSquaredTo(enemyLoc);
+            if (commTarget == null || dist < loc.distanceSquaredTo(commTarget)) {
+                commTarget = loc;
             }
         }
     }
@@ -666,15 +672,6 @@ public class Soldier extends Unit {
             rc.setIndicatorDot(locationToMark, 255, 0, 0);
             rc.attack(locationToMark);
         }
-    }
-   
-    /**
-     * Handles all the ways we paint SRP patterns. In order of priority:
-     *      1. Marks one ruin tile with an SRP pattern
-     *      2. Paints the SRP pattern below the robot
-     */
-    public static void tessellate() throws GameActionException {
-        paintSRPBelow();
     }
 
     /************************************************************************\

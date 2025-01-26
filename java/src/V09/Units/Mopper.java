@@ -15,8 +15,10 @@ public class Mopper extends Unit {
     static RobotInfo[] nearbyFriendlies, nearbyEnemies;
     static RobotInfo refillingTower = null;
     static MopperMicro micro = new MopperMicro();
+    static boolean hasReachableEnemyPaint = false;
     private static int numActiveEnemies = 0;
     private static boolean wasWandering = false;
+    private static MapLocation towerTarget = null;
 
     public static void run() throws GameActionException {
         indicator = "";
@@ -28,21 +30,22 @@ public class Mopper extends Unit {
         move();
         doAction();
 
-        for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
-            if (robot.type == UnitType.SOLDIER || robot.type == UnitType.SPLASHER) {
-                if (rc.getPaint() > 51)
-                    break; // doesn't need to transfer paint yet
-
-                var amount = rc.getPaint() - 51;
-                if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(robot.location, -amount)) {
-                    rc.transferPaint(robot.location, -amount);
-                    indicator += "transferred paint]";
-                    break;
-                }
-            }
-        }
+//        for (RobotInfo robot : rc.senseNearbyRobots(-1, myTeam)) {
+//            if (robot.type == UnitType.SOLDIER || robot.type == UnitType.SPLASHER) {
+//                if (rc.getPaint() > 51)
+//                    break; // doesn't need to transfer paint yet
+//
+//                var amount = rc.getPaint() - 51;
+//                if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(robot.location, -amount)) {
+//                    rc.transferPaint(robot.location, -amount);
+//                    indicator += "transferred paint]";
+//                    break;
+//                }
+//            }
+//        }
 
         refill();
+        roundendComms();
         debug();
     }
 
@@ -51,17 +54,12 @@ public class Mopper extends Unit {
         Message[] msgs = rc.readMessages(rc.getRoundNum());
         for (Message msg : msgs) {
             if (Comms.getType(msg.getBytes()) == CommType.TargetEnemy) {
-                MapLocation enemyLoc = Comms.getLocation(msg.getBytes());
-                rc.setIndicatorDot(enemyLoc, 200, 100, 200);
-                if (rc.getLocation().distanceSquaredTo(enemyLoc) <= rc.getType().actionRadiusSquared && rc.canMopSwing(rc.getLocation().directionTo(enemyLoc))) {
-                    // System.out.println("MOPPER attacking based off msg");
-                    rc.mopSwing(rc.getLocation().directionTo(enemyLoc));
-                } else {
-
-                }
-            } else if (Comms.getType(msg.getBytes()) == CommType.RebuildTower) {
-                // TODO: focus on mopping up paint
+                towerTarget = Comms.getLocation(msg.getBytes());
+                break;
             }
+        }
+        if (towerTarget != null && rc.canSenseLocation(towerTarget) && !rc.senseMapInfo(towerTarget).getPaint().isEnemy()) {
+            towerTarget = null;
         }
     }
 
@@ -93,9 +91,9 @@ public class Mopper extends Unit {
             indicator += "{need a refill}";
             wasWandering = false;
         } else {
-            // move to enemy paint using bugnav if there aren't any enemies nearby
+            // move to enemy paint using bugnav if there aren't any enemies nearby (and it cant reach nearby paint)
             // do micro otherwise, and if that doesn't pan out -- try to move to nearby friendlies or wander
-            if (numActiveEnemies == 0 && enemyPaint.size > 0 && rc.isActionReady()) {
+            if (rc.isActionReady() && numActiveEnemies == 0 && enemyPaint.size > 0 && !hasReachableEnemyPaint) {
                 Navigator.moveTo(enemyPaint.pop(), rc.getPaint() < 60);
                 indicator += "{moving to enemy paint}";
                 wasWandering = false;
@@ -106,9 +104,14 @@ public class Mopper extends Unit {
                 // move to an allied soldier when there aren't too many robots doing so -- or failing that, wander around
                 MapLocation target;
                 if (nearbyFriendlies.length >= 5 || (target = getFriendlyTarget()) == null) {
-                    wander(wasWandering);
-                    wasWandering = true;
-                    indicator += "{wandering boi}";
+                    if (enemyPaint.size == 0 && towerTarget != null){
+                        Navigator.moveTo(towerTarget);
+                        indicator += "{wandering (enemy))}";
+                    } else {
+                        wander(wasWandering);
+                        wasWandering = true;
+                        indicator += "{wandering boi}";
+                    }
                 } else {
                     Navigator.moveTo(target, true);
                     wasWandering = false;
@@ -239,6 +242,7 @@ public class Mopper extends Unit {
                 allyPaint.add(loc);
             } else if (tile.getPaint().isEnemy()) {
                 enemyPaint.add(loc);
+                hasReachableEnemyPaint = hasReachableEnemyPaint || loc.isWithinDistanceSquared(rc.getLocation(), 2);
             }
             if (tile.getMark().isEnemy()) enemyMarks.add(loc);
         }
@@ -254,6 +258,7 @@ public class Mopper extends Unit {
             if (enemy.getType().isRobotType() && enemy.getPaintAmount() > 0) 
                 numActiveEnemies++;
         }
+        indicator += "[num active: " + numActiveEnemies + "]";
     }
 
     /// refill at nearby paint towers -- but

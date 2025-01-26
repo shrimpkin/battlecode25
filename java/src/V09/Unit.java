@@ -1,5 +1,6 @@
 package V09;
 
+import V09.Tools.CommType;
 import V09.Tools.FastLocSet;
 import V09.Nav.Navigator;
 import V09.Tools.FastIntSet;
@@ -53,52 +54,22 @@ public class Unit extends Globals {
                 || wanderTarget != null && wanderTarget.isWithinDistanceSquared(rc.getLocation(), 9)
                 || ((rc.getRoundNum() - lastWanderTargetTime) > 20)
         ) {
-            //System.out.println("Reset wander target.");
             wanderTarget = null;
         }
         if (wanderTarget == null) {
-            //System.out.println("Update null wander target.");
-            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
+            wanderTarget = (rc.getRoundNum() < 50) ? getExploreTargetClose() : getExploreTarget();
             lastWanderTargetTime = rc.getRoundNum();
         }
 
-        if(rc.onTheMap(wanderTarget)) rc.setIndicatorDot(wanderTarget, 255, 0, 255);
-        if(!rc.onTheMap(wanderTarget)) System.out.println("Robot at " + rc.getLocation() + "has a wander target of" + wanderTarget.toString());
-        //System.out.println("Moving to wander target.");
-        Navigator.moveTo(wanderTarget);
+        Navigator.moveTo(wanderTarget, rc.getPaint() < 10);
 
-        if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
+        // relies on soldiers calling updateSeen (which they currently do)
+        if (Clock.getBytecodesLeft() > 6000 && rc.getType() != UnitType.SOLDIER) {
             updateSeen();
             lastSeenUpdateTime = rc.getRoundNum();
         }
     }
 
-    /**
-     * Overloaded version: set paintless to true if you want to avoid stepping off paint
-     */
-    public static void wander(boolean wasWandering, boolean paintless) throws GameActionException {
-        if (!rc.isMovementReady())
-            return; // cannot move yet
-
-        // pick a new place to go if we don't have one -- or tried to go somewhere for too long
-        if (!wasWandering
-                || wanderTarget != null && wanderTarget.isWithinDistanceSquared(rc.getLocation(), 9)
-                || (rc.getRoundNum() - lastWanderTargetTime > 20)
-        ) {
-            wanderTarget = null;
-        }
-        if (wanderTarget == null) {
-            wanderTarget = (rc.getRoundNum() - spawnRound < 50) ? getExploreTargetClose() : getExploreTarget();
-            lastWanderTargetTime = rc.getRoundNum();
-        }
-        // rc.setIndicatorDot(wanderTarget, 255, 0, 255);
-        Navigator.moveTo(wanderTarget);
-
-        if ((rc.getRoundNum()- lastSeenUpdateTime) >= 5 && Clock.getBytecodesLeft() > 8000) {
-            updateSeen();
-            lastSeenUpdateTime = rc.getRoundNum();
-        }
-    }
 
     /** Maintains correctness of tower sets */
     public static void updateTowerLocations() throws GameActionException {
@@ -123,7 +94,7 @@ public class Unit extends Globals {
             } else {
                 if (isPaintTower(type) || robot.getPaintAmount() > 0) {
                     paintTowerLocations.add(packedLocation);
-                } else { // removes once falls below 100 paint
+                } else {
                     paintTowerLocations.remove(packedLocation);
                 }
             }
@@ -323,6 +294,42 @@ public class Unit extends Globals {
             if (rc.canCompleteResourcePattern(loc)) {
                 rc.completeResourcePattern(loc);
                 return; // complete 1st available pattern and return
+            }
+        }
+    }
+
+    /// read in surrounding information about possible targets and pass it onto the nearest tower (if it can)
+    public static void roundendComms() throws GameActionException {
+        if (Clock.getBytecodesLeft() < 4000) return;
+        MapLocation possibleTarget = null;
+        // get a target for attack
+        var ruins = rc.senseNearbyRuins(-1);
+        for (var ruin : ruins) {
+            if (!rc.canSenseRobotAtLocation(ruin)) {
+                possibleTarget = ruin;
+                break;
+            }
+        }
+        if (possibleTarget == null) {
+            for (var info : rc.senseNearbyMapInfos()) {
+                if (info.getPaint().isEnemy()) {
+                    possibleTarget = info.getMapLocation();
+                    break;
+                }
+            }
+        }
+        if (possibleTarget == null) return;
+        // communicate to any nearby tower about our attack goal
+        for (var ruin : ruins) {
+            if (!rc.canSenseRobotAtLocation(ruin)) continue;
+            var robot = rc.senseRobotAtLocation(ruin);
+            if (robot.getTeam() != myTeam) continue;
+            if (rc.canSendMessage(ruin)) {
+                rc.sendMessage(ruin, Comms.encodeMessage(
+                        CommType.ReinforceFront,
+                        possibleTarget,
+                        rc.getRoundNum()
+                ));
             }
         }
     }
