@@ -18,8 +18,8 @@ public class SoldierMicro extends Globals{
         boolean shouldRunaway = rc.getHealth() <= 30;
         boolean shouldAttack = (rc.getRoundNum() % 2 == 0) && (rc.isActionReady());
 
-        if(shouldRunaway) System.out.println("Run at " + rc.getLocation().toString());
-        if(shouldAttack) System.out.println("Attack at " + rc.getLocation().toString());
+        //if(shouldRunaway) System.out.println("Run at " + rc.getLocation().toString());
+        //if(shouldAttack) System.out.println("Attack at " + rc.getLocation().toString());
         for (int i = 0; i < 8; i++) {
 
             if(shouldRunaway) {
