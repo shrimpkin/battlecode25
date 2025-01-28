@@ -114,7 +114,7 @@ public class SplasherMicro extends Globals {
             if(canSplash && !m.canSplash) return true;
             if(!canSplash && m.canSplash) return false;
 
-            return betterRunaway(null);
+            return betterRunaway(m);
         }
 
         public boolean betterRunaway(MicroInfo m) throws GameActionException {

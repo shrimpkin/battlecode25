@@ -1,6 +1,7 @@
 package V09Markless.Units;
 
 import V09Markless.Tools.*;
+import V09Markless.Micro.SplasherMicro;
 import V09Markless.Comms;
 import V09Markless.Unit;
 import V09Markless.Nav.Navigator;
@@ -26,6 +27,8 @@ public class Splasher extends Unit {
 
     private static MapLocation splashTarget;
     private static int splashUtil;
+    private static SplasherMicro micro = new SplasherMicro();
+
 
     public static void updateMode() {
         if (rc.getPaint() <= 50) {
@@ -86,7 +89,7 @@ public class Splasher extends Unit {
     public static MapLocation updateSplash() throws GameActionException {
         splashTarget = null;
         splashUtil = 0;
-        
+
         if (!rc.isActionReady() || rc.getPaint() <= 50) return null;
         // avoid expensive repeat computation
         precomputeSplashTileScores();
@@ -123,6 +126,15 @@ public class Splasher extends Unit {
     public static void move() throws GameActionException {
         if (mode == Modes.REFILL) {
             TargetLoc = getClosestLocation(paintTowerLocations);
+        }
+
+        boolean canSeeTower = false;
+        for(RobotInfo robot : rc.senseNearbyRobots(-1, opponentTeam)) {
+            if(robot.getType().isTowerType()) canSeeTower = true;
+        }
+        if(canSeeTower) {
+            micro.computeMicroArray(splashTarget);
+            micro.doMicro();
         }
 
         if (TargetLoc != null) {
