@@ -24,6 +24,9 @@ public class Splasher extends Unit {
     private static char[] scores = "\0".repeat(4096).toCharArray();
     private static Modes mode = Modes.NONE;
 
+    private static MapLocation splashTarget;
+    private static int splashUtil;
+
     public static void updateMode() {
         if (rc.getPaint() <= 50) {
             mode = Modes.REFILL;
@@ -41,7 +44,9 @@ public class Splasher extends Unit {
         read();
         nearbyRuins = rc.senseNearbyRuins(-1);
 
+        updateSplash();
         splash();
+
         move();
         canCompletePattern();
         refill();
@@ -78,33 +83,39 @@ public class Splasher extends Unit {
      }
 
     /// Splashes highest value location, if it's above min score value -- also don't kill self
-    public static MapLocation splash() throws GameActionException {
+    public static MapLocation updateSplash() throws GameActionException {
+        splashTarget = null;
+        splashUtil = 0;
+        
         if (!rc.isActionReady() || rc.getPaint() <= 50) return null;
         // avoid expensive repeat computation
         precomputeSplashTileScores();
+
         // find best tile in range to splash
-        MapLocation best = rc.getLocation();
         int mostUtil = getSplashScore(rc.getLocation());
         for (var tile : rc.senseNearbyMapInfos(UnitType.SPLASHER.actionRadiusSquared)) {
             var loc = tile.getMapLocation();
             if (!rc.canAttack(loc)) continue;
             int score = getSplashScore(loc);
             if (score > mostUtil) {
-                best = loc;
-                mostUtil = score;
+                splashTarget = loc;
+                splashUtil = score;
             }
         }
 
+        return null;
+    }
+
+    public static void splash() throws GameActionException {
         // maybe: make it less picky over time -- perhaps (minutil - roundNum/N) for some N > 200
-        if (best != null) {
-            if (mostUtil >= Math.max(2, Math.max(10, MinUtil - rc.getRoundNum()/100) - (NumRoundsSinceSplash-5)/10) && rc.canAttack(best)) {
-                rc.attack(best);
+        if (splashTarget != null) {
+            if (splashUtil >= Math.max(2, Math.max(10, MinUtil - rc.getRoundNum()/100) - (NumRoundsSinceSplash-5)/10) && rc.canAttack(splashTarget)) {
+                rc.attack(splashTarget);
                 NumRoundsSinceSplash = 0;
-                return best;
+                return;
             }
         }
         NumRoundsSinceSplash++;
-        return null;
     }
 
     static boolean wasWandering = false;

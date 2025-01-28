@@ -66,6 +66,8 @@ public class SplasherMicro extends Globals {
         PaintType paint; 
         MapLocation bestSplash;
         boolean canSplash;
+        int damageTaken = 0;
+        boolean willDie = false;
 
         public MicroInfo(Direction dir) throws GameActionException {
             direction = dir;
@@ -86,13 +88,17 @@ public class SplasherMicro extends Globals {
                 if(isTower) {
                     if(location.isWithinDistanceSquared(robot.getLocation(), robot.getType().actionRadiusSquared)) {
                         towersTargeting++;
+                        damageTaken += robot.getType().aoeAttackStrength + robot.getType().attackStrength;
                     }
                 }
+
+                if(damageTaken > rc.getHealth()) willDie = true;
 
                 if(robot.getType().equals(UnitType.MOPPER) && location.isWithinDistanceSquared(robot.getLocation(), 10)) {
                     moppersTargeting++;
                 }
             }
+
 
             if(bestSplash != null) {
                 canSplash = bestSplash.isWithinDistanceSquared(location, UnitType.SPLASHER.actionRadiusSquared);
@@ -112,9 +118,8 @@ public class SplasherMicro extends Globals {
         }
 
         public boolean betterRunaway(MicroInfo m) throws GameActionException {
-
-            if(towersTargeting < m.towersTargeting) return true;
-            if(towersTargeting > m.towersTargeting) return false;
+            if(!willDie && m.willDie) return true;
+            if(willDie && !m.willDie) return false;
 
             if(moppersTargeting < m.moppersTargeting) return true;
             if(moppersTargeting > m.moppersTargeting) return false;
