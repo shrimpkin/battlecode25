@@ -515,7 +515,7 @@ public class Soldier extends Unit {
         if(enemyTower == null) {
             attackTarget = null;
             return;
-        } else if(enemyTower.distanceSquaredTo(rc.getLocation()) > 16) {
+        } else if(enemyTower.distanceSquaredTo(rc.getLocation()) > UnitType.LEVEL_ONE_MONEY_TOWER.actionRadiusSquared) {
             attackTarget = enemyTower;
             return;
         } else {

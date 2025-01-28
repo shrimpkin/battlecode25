@@ -1,25 +1,34 @@
 package V09Markless.Micro;
 
+import V09Markless.Globals;
 import V09Markless.*;
 import battlecode.common.*;
 
 public class SoldierMicro extends Globals{
     
+    static int DEBUG = 1;
     public static boolean doMicro(MapLocation tower) throws GameActionException {
         if(tower == null) return false;
         
         MicroInfo[] microInfo = new MicroInfo[9];
+        if(DEBUG == 1) System.out.println("MicroInfo for: " + rc.getLocation().toString());
         for (int i = 0; i < 9; i++) {
             microInfo[i] = new MicroInfo(Direction.values()[i]);
             microInfo[i].updateEnemiesTargeting();
+
+            if(DEBUG == 1 && microInfo[i] != null) {
+                System.out.println(microInfo[i].toString());
+            }
         }
 
         MicroInfo best = microInfo[8];  
         boolean shouldRunaway = rc.getHealth() <= 30;
         boolean shouldAttack = (rc.getRoundNum() % 2 == 0) && (rc.isActionReady());
 
-        //if(shouldRunaway) System.out.println("Run at " + rc.getLocation().toString());
-        //if(shouldAttack) System.out.println("Attack at " + rc.getLocation().toString());
+        if(shouldRunaway && DEBUG == 1) System.out.println("Run at " + rc.getLocation().toString());
+        if(shouldAttack && DEBUG == 1) System.out.println("Attack at " + rc.getLocation().toString());
+        if(DEBUG == 1) System.out.println("\n");
+
         for (int i = 0; i < 8; i++) {
 
             if(shouldRunaway) {
@@ -60,13 +69,48 @@ public class SoldierMicro extends Globals{
         int friendlies = 0;
         int distanceToTower = Integer.MAX_VALUE;
         boolean toClose = false;
+        MapLocation towerTarget;
+
+        double paintLoss = 0; 
+        double healthLoss = 0;
+
+        static int[][] attackPositionValues = {
+            {0,0,0,0,0,0,0,0,0},
+            {0,0,0,0,5,0,0,0,0},
+            {0,0,5,2,1,2,5,0,0},
+            {0,0,2,0,0,0,2,0,0},
+            {0,5,2,0,0,0,2,5,0},
+            {0,0,2,0,0,0,2,0,0},
+            {0,0,5,2,1,2,5,0,0},
+            {0,0,5,2,1,2,5,0,0},
+            {0,0,0,0,0,0,0,0,0},
+        };
+
+        static int[][] retreatPositionValues = {
+            {0,0,0,1,1,1,0,0,0},
+            {0,1,2,4,0,4,2,1,0},
+            {0,4,0,0,0,0,0,4,0},
+            {1,4,0,0,0,0,0,4,1},
+            {1,0,0,0,0,0,0,0,1},
+            {1,4,0,0,0,0,0,4,1},
+            {0,4,0,0,0,0,0,4,0},
+            {0,1,2,4,0,4,2,1,0},
+            {0,0,0,1,1,1,0,0,0},
+        };
+
+        int attackPositionScore;
+        int retreatPositionScore;
 
         public MicroInfo(Direction dir) throws GameActionException {
             direction = dir;
             location = rc.getLocation().add(dir);
 
             if (!dir.equals(Direction.CENTER) && !rc.canMove(dir)) canMove = false;
-            if(rc.canSenseLocation(location)) paint = rc.senseMapInfo(location).getPaint();
+            if(rc.canSenseLocation(location)) {
+                paint = rc.senseMapInfo(location).getPaint();
+                paintLoss += paint.isEnemy() ? 2 : 0;
+                paintLoss += paint.equals(PaintType.EMPTY) ? 1 : 0;
+            }
 
             actionReady = rc.isActionReady();
         }
@@ -76,125 +120,88 @@ public class SoldierMicro extends Globals{
             for(RobotInfo robot : robots) {
                 boolean isTower = robot.getType().isTowerType();
                 if(isTower) {
-                    if(location.isWithinDistanceSquared(robot.getLocation(), 16)) {
-                        towersOneMoveAway++;
-                    }
                     if(location.isWithinDistanceSquared(robot.getLocation(), robot.getType().actionRadiusSquared)) {
-                        towersTargeting++;
-                        towerHealth = towerHealth < robot.getHealth() ? towerHealth : robot.getHealth();
+                        healthLoss += robot.getType().aoeAttackStrength + robot.getType().attackStrength;
                         friendlies += rc.senseNearbyRobots(robot.getLocation(), 16, myTeam).length;
                     }
-                    if(location.isWithinDistanceSquared(robot.getLocation(), 2)) {
-                        toClose = true;
+
+                    if(towerHealth > robot.getHealth()) {
+                        towerHealth = robot.getHealth();
+                        towerTarget = robot.getLocation();
                     }
-                    
-                    distanceToTower = Math.min(distanceToTower, location.distanceSquaredTo(robot.getLocation()));
                 }
 
+                //mopper will attack so we would lose paint
                 if(robot.getType().equals(UnitType.MOPPER) && location.isWithinDistanceSquared(robot.getLocation(), 10)) {
-                    moppersTargeting++;
+                    paintLoss += (10 / 3);
                 }
+            }
+
+            if(towerTarget != null) {
+                int x = location.x - towerTarget.x + 4;
+                int y = location.y - towerTarget.y + 4;
+
+                attackPositionScore = attackPositionValues[x][y];
+                retreatPositionScore = retreatPositionValues[x][y];
             }
         }
 
         public boolean isBetterAttack(MicroInfo m) {
-            //if we can't move there ain't no point in the rest
             if(canMove && !m.canMove) return true;
             if(!canMove && m.canMove) return false;
 
-            //both squares are useless to us
-            if(!canMove && !m.canMove) return true;
-
-            //wants to be within range of exactly one tower
             if(towersTargeting == 1 && m.towersTargeting != 1) return true;
             if(towersTargeting != 1 && m.towersTargeting == 1) return false;
 
-            //avoids walking into two towers at the same time
-            if(towersTargeting < m.towersTargeting) return true;
-            if(towersTargeting > m.towersTargeting) return false;
+            if(Double.compare(healthLoss, m.healthLoss) > 0) return true;
+            if(Double.compare(healthLoss, m.healthLoss) < 0) return false;
 
-            if(!toClose && m.toClose) return true;
-            if(toClose && !m.toClose) return false;
-
-            //go for lower health towers, prevents targetting switching
             if(towerHealth < m.towerHealth) return true;
             if(towerHealth > m.towerHealth) return false;
+            
+            if(attackPositionScore > m.attackPositionScore) return true;
+            if(attackPositionScore < m.attackPositionScore) return false;
+
+            if(Double.compare(paintLoss, m.paintLoss) < 0) return true; 
+            if(Double.compare(paintLoss, m.paintLoss) > 0) return false;
 
             if(friendlies > m.friendlies) return true;
             if(friendlies < m.friendlies) return false;
-
-            //avoids moppers 
-            if(moppersTargeting < m.moppersTargeting) return true;
-            if(moppersTargeting > m.moppersTargeting) return false;
-
-            //steps into ally paint if possible
-            if(paint.isAlly() && !m.paint.isAlly()) return true;
-            if(!paint.isAlly() && m.paint.isAlly()) return false;
-
-            //now tries to step into empty paint
-            if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
 
             return true;
         }
 
         public boolean isBetterRetreat(MicroInfo m) {
-            //if we can't move there ain't no point in the rest
             if(canMove && !m.canMove) return true;
             if(!canMove && m.canMove) return false;
 
-            //both squares are useless to us
-            if(!canMove && !m.canMove) return true;
+            if(Double.compare(healthLoss, m.healthLoss) < 0) return true;
+            if(Double.compare(healthLoss, m.healthLoss) > 0) return false;
 
-            //wants to get out of range of any towers
-            if(towersTargeting < m.towersTargeting) return true;
-            if(towersTargeting > m.towersTargeting) return false;
-
-            //tries to maintain the ability to attack towers soon
-            if(towersOneMoveAway > m.towersOneMoveAway) return true;
-            if(towersOneMoveAway < m.towersOneMoveAway) return false;
-
-            //avoids moppers 
-            if(moppersTargeting < m.moppersTargeting) return true;
-            if(moppersTargeting > m.moppersTargeting) return false;
+            if(retreatPositionScore > m.retreatPositionScore) return true;
+            if(retreatPositionScore < m.retreatPositionScore) return false;
             
-            //steps into ally paint if possible
-            if(paint.isAlly() && !m.paint.isAlly()) return true;
-            if(!paint.isAlly() && m.paint.isAlly()) return false;
-
-            //now tries to step into empty paint
-            if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
-
+            if(Double.compare(paintLoss, m.paintLoss) < 0) return true; 
+            if(Double.compare(paintLoss, m.paintLoss) > 0) return false;
+            
             return true;
         }
 
         public boolean isBetterRunaway(MicroInfo m) {
-            //if we can't move there ain't no point in the rest
             if(canMove && !m.canMove) return true;
             if(!canMove && m.canMove) return false;
 
-            //both squares are useless to us
-            if(!canMove && !m.canMove) return true;
-
-            //wants to get out of range of any towers
-            if(towersTargeting < m.towersTargeting) return true;
-            if(towersTargeting > m.towersTargeting) return false;
+            if(Double.compare(healthLoss, m.healthLoss) > 0) return true;
+            if(Double.compare(healthLoss, m.healthLoss) < 0) return false;
 
             if(distanceToTower > m.distanceToTower) return true;
             if(distanceToTower < m.distanceToTower) return false;
 
-            //avoids moppers 
             if(moppersTargeting < m.moppersTargeting) return true;
             if(moppersTargeting > m.moppersTargeting) return false;
             
-            //steps into ally paint if possible
-            if(paint.isAlly() && !m.paint.isAlly()) return true;
-            if(!paint.isAlly() && m.paint.isAlly()) return false;
-
-            //now tries to step into empty paint
-            if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(Double.compare(paintLoss, m.paintLoss) > 0) return true; 
+            if(Double.compare(paintLoss, m.paintLoss) < 0) return false;
 
             return true;
         }
@@ -202,9 +209,9 @@ public class SoldierMicro extends Globals{
         public String toString() {
             String rslt = "";
             rslt += location.toString() + ": ";
-            rslt += canMove + ", " + towersTargeting + ", ";
-            rslt += towersOneMoveAway + ", " + towerHealth + ", ";
-            rslt += friendlies + ".";
+            rslt += canMove + ", " + healthLoss + ", ";
+            rslt += paintLoss + ", " + attackPositionScore + ", ";
+            rslt += retreatPositionScore + ".";
             return rslt;
         }
     }

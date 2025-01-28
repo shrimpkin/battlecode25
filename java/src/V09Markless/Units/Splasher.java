@@ -137,7 +137,13 @@ public class Splasher extends Unit {
             micro.doMicro();
         }
 
+        if(splashTarget != null && splashUtil > MinUtil) {
+            indicator += splashTarget.toString();
+            TargetLoc = splashTarget;
+        }
+
         if (TargetLoc != null) {
+            indicator += TargetLoc.toString();
             boolean atLocation = TargetLoc.equals(rc.getLocation());
             boolean cannotReachTarget = rc.canSenseLocation(TargetLoc) && !rc.sensePassability(TargetLoc);
             boolean isCloseToTarget = rc.getLocation().isWithinDistanceSquared(TargetLoc, 2);
@@ -145,8 +151,10 @@ public class Splasher extends Unit {
             if (atLocation || (cannotReachTarget && isCloseToTarget)) {
                 TargetLoc = null;
                 recenter();
+                indicator += "{recenter}";
             } else {
                 Navigator.moveTo(TargetLoc, rc.getPaint() < 20);
+                indicator += "{moveTo}";
             }
             wasWandering = false;
         } else {
