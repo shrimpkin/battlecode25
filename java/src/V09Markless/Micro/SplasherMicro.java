@@ -111,6 +111,9 @@ public class SplasherMicro extends Globals {
         }
 
         public boolean betterPaintSplash(MicroInfo m) throws GameActionException {
+            if(canMove && !m.canMove) return true;
+            if(!canMove && m.canMove) return false; 
+            
             if(canSplash && !m.canSplash) return true;
             if(!canSplash && m.canSplash) return false;
 
@@ -118,6 +121,9 @@ public class SplasherMicro extends Globals {
         }
 
         public boolean betterRunaway(MicroInfo m) throws GameActionException {
+            if(canMove && !m.canMove) return true;
+            if(!canMove && m.canMove) return false; 
+
             if(!willDie && m.willDie) return true;
             if(willDie && !m.willDie) return false;
 
