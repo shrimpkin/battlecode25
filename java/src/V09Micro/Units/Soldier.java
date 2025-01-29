@@ -219,7 +219,16 @@ public class Soldier extends Unit {
             return false;
         }
 
+       
+
         for(MapInfo info : infos) {
+            MapLocation[] ruins = rc.senseNearbyRuins(-1);
+            for(MapLocation ruin : ruins) {
+                if(ruin.distanceSquaredTo(info.getMapLocation()) < 2) {
+                    return false;
+                }
+            }
+
             //isPassable determines if there is a wall or ruin on this square
             //if there is a wall or ruin we can't paint it, hence don't paint there
             if(!info.isPassable()) {
