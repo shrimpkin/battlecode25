@@ -155,7 +155,6 @@ public class Mopper extends Unit {
                 if (robot.getPaintAmount() < robot.getType().paintCapacity / 4 && rc.canTransferPaint(loc, amount)) {
                     rc.transferPaint(loc, amount);
                     indicator += "transferred paint]";
-                    System.out.println("transfered!!");
                     transferred = true;
                     break;
                 }
