@@ -121,7 +121,11 @@ public class Soldier extends Unit {
         MapLocation bestLocation = null;
         int distance = Integer.MAX_VALUE;
         for (MapLocation ruin : ruinLocations) {
-            if ((rc.getRoundNum()+ROUND_COOLDOWN) - ignore[pack(ruin)] < 10) continue;
+            boolean canSenseMopper = false;
+            for(RobotInfo robot : rc.senseNearbyRobots(20, myTeam)) {
+                if(robot.getType().equals(UnitType.MOPPER)) canSenseMopper = true;
+            }
+            if ((rc.getRoundNum()+ROUND_COOLDOWN) - ignore[pack(ruin)] < 10 && !canSenseMopper) continue;
             RobotInfo ruinRobot = rc.senseRobotAtLocation(ruin);    
             if (ruinRobot != null) continue;
 
@@ -149,6 +153,11 @@ public class Soldier extends Unit {
 
     /** Checks if the enemey has painted in our build target */
     public static boolean canStillComplete(MapLocation loc) throws GameActionException {
+        //we have a friendly mopper near by so we can complete the paint target
+        for(RobotInfo info : rc.senseNearbyRobots(20, myTeam)) {
+            if(info.getType().equals(UnitType.MOPPER)) return true;
+        }
+
         for(MapInfo info : rc.senseNearbyMapInfos(loc, 8)) {
             if(info.getPaint().isEnemy()) {
                 ignore[pack(loc)] = (char)(rc.getRoundNum() + ROUND_COOLDOWN);
@@ -375,6 +384,7 @@ public class Soldier extends Unit {
             if(!info.isPassable()) continue;
             int x = buildTarget.x - loc.x + 2;
             int y = buildTarget.y - loc.y + 2;
+            if(info.getPaint().isEnemy()) continue;
             if(info.getPaint().equals(PaintType.EMPTY) || info.getPaint().isSecondary() != paintPattern[x][y]) {
                 //correcting paint, returning because we can only attack once a turn
                 rc.attack(loc, paintPattern[x][y]);
