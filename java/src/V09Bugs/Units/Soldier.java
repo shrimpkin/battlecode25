@@ -169,6 +169,8 @@ public class Soldier extends Unit {
 
     /** Updates SRPTarget field. Sets it to be the nearest valid location for building an SRP */
     public static void updateSRPTarget() throws GameActionException {
+        //if(rc.getRoundNum() < (mapHeight + mapWidth) / 2 && rc.getNumberTowers() < 5) return;
+
         //we have a valid SRP
         if(SRPTarget != null 
             && rc.canSenseLocation(SRPTarget)
@@ -179,8 +181,6 @@ public class Soldier extends Unit {
         }
 
         SRPTarget = null;
-
-        // if (rc.getNumberTowers() < 5 && rc.getRoundNum() <= 150) return;
 
         for(MapInfo info : rc.senseNearbyMapInfos()) {
             MapLocation loc = info.getMapLocation();
@@ -359,7 +359,12 @@ public class Soldier extends Unit {
             paintPattern = rc.getResourcePattern();
         } else {
             //needs to choose what tower it wants to paint
-            if(rc.getChips() >= 10000) {
+            //okay so we upgrade to level 2 clock towers at 7500 chips
+            //if we are doing that is prolly better to build a paint tower instead
+            //but if we put this super close to 7500 then it will just upgrade and lose all chips
+            //so we want to put it 7500 - cost of upgrading, so it will still priotize and not switch even after
+            if(rc.getChips() >= 5000) {
+                System.out.println("Override paint tower.");
                 buildType = UnitType.LEVEL_ONE_PAINT_TOWER;
             } else {
                 buildType = getTowerMark();
