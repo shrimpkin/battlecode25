@@ -144,17 +144,18 @@ public class Mopper extends Unit {
             rc.mopSwing(cardinal[swingInfo.index]);
         } else if (paintInfo.loc != null && rc.canAttack(paintInfo.loc)) { // all other forms of mopping
             rc.attack(paintInfo.loc);
-        } else if (rc.getPaint() > 51) {
+        } else if (rc.getPaint() > 60) {
             // can't mop any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
             var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
-            var amount = rc.getPaint() - 51;
+            var amount = rc.getPaint() - 55;
             boolean transferred = false;
             for (var robot : allies) {
                 if (!robot.getType().isRobotType()) continue;
                 var loc = robot.getLocation();
-                if (robot.getPaintAmount() < robot.getType().paintCapacity / 3 && rc.canTransferPaint(loc, amount)) {
+                if (robot.getPaintAmount() < robot.getType().paintCapacity / 4 && rc.canTransferPaint(loc, amount)) {
                     rc.transferPaint(loc, amount);
                     indicator += "transferred paint]";
+                    System.out.println("transfered!!");
                     transferred = true;
                     break;
                 }
@@ -211,6 +212,7 @@ public class Mopper extends Unit {
     // update positions of nearby paint -- tracking the average position of allied/enemy paint
     public static void updateSurroundings() throws GameActionException {
         refillingTower = null;
+        hasReachableEnemyPaint = false;
         numActiveEnemies = 0;
         enemyPaint.clear();
         allyPaint.clear();
@@ -229,7 +231,11 @@ public class Mopper extends Unit {
         }
         // check for valid towers to refill up to full
         for (var tower : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
-            if (tower.getType().isTowerType() && (tower.getPaintAmount() >= 100 - rc.getPaint() || rc.getPaint() <= 10)) {
+            if (!tower.getType().isTowerType()) continue;
+            if (tower.getPaintAmount() >= 100 - rc.getPaint()
+                    || isMoneyTower(tower.getType())
+                    || rc.getPaint() <= 10
+            ) {
                 refillingTower = tower;
                 break;
             }

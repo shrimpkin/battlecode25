@@ -28,6 +28,7 @@ public class Mopper extends Unit {
         move();
         doAction();
         refill();
+        conditionalSelfSacrifice();
         roundendComms();
         debug();
     }
@@ -76,6 +77,7 @@ public class Mopper extends Unit {
         } else {
             // move to enemy paint using bugnav if there aren't any enemies nearby (and it cant reach nearby paint)
             // do micro otherwise, and if that doesn't pan out -- try to move to nearby friendlies or wander
+            indicator += String.format("[num paint: %d, reachable: %b]",enemyPaint.size, hasReachableEnemyPaint);
             if (rc.isActionReady() && numActiveEnemies == 0 && enemyPaint.size > 0 && !hasReachableEnemyPaint) {
                 Navigator.moveTo(enemyPaint.pop(), rc.getPaint() < 60);
                 indicator += "{moving to enemy paint}";
@@ -144,10 +146,10 @@ public class Mopper extends Unit {
             rc.mopSwing(cardinal[swingInfo.index]);
         } else if (paintInfo.loc != null && rc.canAttack(paintInfo.loc)) { // all other forms of mopping
             rc.attack(paintInfo.loc);
-        } else if (rc.getPaint() > 51) {
+        } else if (rc.getPaint() > 60) {
             // can't mop any tile -- try to transfer paint (maybe? idk if this is good in current scheme?)
             var allies = rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, rc.getTeam());
-            var amount = rc.getPaint() - 51;
+            var amount = rc.getPaint() - 60;
             boolean transferred = false;
             for (var robot : allies) {
                 if (!robot.getType().isRobotType()) continue;
@@ -211,6 +213,7 @@ public class Mopper extends Unit {
     // update positions of nearby paint -- tracking the average position of allied/enemy paint
     public static void updateSurroundings() throws GameActionException {
         refillingTower = null;
+        hasReachableEnemyPaint = false;
         numActiveEnemies = 0;
         enemyPaint.clear();
         allyPaint.clear();
@@ -229,7 +232,11 @@ public class Mopper extends Unit {
         }
         // check for valid towers to refill up to full
         for (var tower : rc.senseNearbyRobots(GameConstants.PAINT_TRANSFER_RADIUS_SQUARED, myTeam)) {
-            if (tower.getType().isTowerType() && (tower.getPaintAmount() >= 100 - rc.getPaint() || rc.getPaint() <= 10)) {
+            if (!tower.getType().isTowerType()) continue;
+            if (tower.getPaintAmount() >= 100 - rc.getPaint()
+                    || isMoneyTower(tower.getType())
+                    || rc.getPaint() <= 10
+            ) {
                 refillingTower = tower;
                 break;
             }
@@ -277,6 +284,47 @@ public class Mopper extends Unit {
         }
         if (bestDirScore == 0) return new SwingInfo(-1, 0); // no hit-able enemies in any direction
         return new SwingInfo(bestDirIdx, bestDirScore);
+    }
+
+    /// checks whether a robot is a better last-transfer target than another
+    static boolean isBetterInheritor(RobotInfo a, RobotInfo b) {
+        if (b == null) return true;
+        if (a == null) return false;
+
+        if (a.getPaintAmount() < a.getType().paintCapacity/2 && b.getPaintAmount() > b.getType().paintCapacity/2)
+            return true;
+        if (a.getPaintAmount() > a.getType().paintCapacity/2 && b.getPaintAmount() < b.getType().paintCapacity/2)
+            return false;
+
+        if (a.getType() == UnitType.MOPPER && b.getType() != UnitType.MOPPER) return true;
+        if (a.getType() != UnitType.MOPPER && b.getType() == UnitType.MOPPER) return false;
+
+        if (a.getPaintAmount() < b.getPaintAmount()) return true;
+        if (b.getPaintAmount() < a.getPaintAmount()) return false;
+
+        if (a.getHealth() < b.getHealth()) return true;
+        if (a.getHealth() > b.getHealth()) return false;
+
+        return true;
+    }
+
+    /// if robot is low paint, we have surrounding robots, and can't reasonably make it to a paint tower
+    public static void conditionalSelfSacrifice() throws GameActionException {
+        if (!rc.isActionReady() || rc.getPaint() >= 15 || refillingTower != null) return;
+        var allies = rc.senseNearbyRobots(2, myTeam);
+        if (allies.length < 3) return; // don't kill self without allies to tranfer to
+        // transfer paint to ally with the lowest paint and disintegrate:
+        RobotInfo best = null;
+        for (var ally : allies) {
+            if (ally.getType().isTowerType()) continue;
+            if (isBetterInheritor(ally, best))
+                best = ally;
+        }
+        // might be better to keep it around if it sacrifices doesn't do anything good
+        if (best == null || best.getPaintAmount() > best.getType().paintCapacity / 2) return;
+        rc.transferPaint(best.getLocation(), rc.getPaint());
+        System.out.println("dies");
+        rc.disintegrate();
     }
 
     public static void debug() throws GameActionException {

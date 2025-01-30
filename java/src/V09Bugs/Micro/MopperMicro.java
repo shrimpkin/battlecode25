@@ -154,8 +154,8 @@ public class MopperMicro {
         int moppersInRange = 0;
         int moppersInMoveRange = 0;
         int inTowerRange = 0;
-        int alliesDist2 = 0;
-        int alliesDist10 = 0;
+        int otherAlliesDist2 = 0; // not including self -- for paint loss calculation
+        int alliesDist10 = 1; // including self
         int paintPenalty = 0;
         boolean canAct, canMove = true;
 
@@ -186,13 +186,13 @@ public class MopperMicro {
             if (!canMove) return -INF; // can't move there
             if (inTowerRange > 0) return -inTowerRange; // moppers are very squishy to towers
             if (moppersInRange > alliesDist10) return 1; // outnumbered by enemy moppers
-            if (rc.getPaint() < 20 && (paintPenalty + alliesDist2 > 0) && !rc.isActionReady()) return 2; // no paint and actively dying
+            if (paintPenalty + otherAlliesDist2 > 0) return 2; // no paint and actively dying
             return 3; // no conditions
         }
 
         int inRange() throws GameActionException {
             if(hasMoppableEnemy && canAct)   return 3;
-            if(minDistanceToEnemy <= 8)      return 2;
+            if(minDistanceToEnemy < 8)       return 2;
             if(minDistanceToEnemyPaint <= 2) return 1;
             return 0;
         }
@@ -216,7 +216,7 @@ public class MopperMicro {
 
         void updateAlly(RobotInfo unit) {
             int dist = unit.getLocation().distanceSquaredTo(location);
-            if (dist <= 2) ++alliesDist2;
+            if (dist <= 2) ++otherAlliesDist2;
             if (dist <= 5) ++alliesDist10;
         }
 
@@ -231,7 +231,7 @@ public class MopperMicro {
             } else {
                 // it's a sitting duck (err bunny)
                 if (unit.getPaintAmount() == 0) return;
-                hasMoppableEnemy =  hasMoppableEnemy || dist <= 2;
+                hasMoppableEnemy = hasMoppableEnemy || dist <= 2;
                 if (dist < minDistanceToEnemy) minDistanceToEnemy = dist;
                 if (dist < 8) { // should be the extent of a mopper swing
                     ++enemiesInRange;
@@ -268,8 +268,8 @@ public class MopperMicro {
             if (moppersInRange > that.moppersInRange) return false;
 
             // to take less paint terrain penalties
-            if (paintPenalty + alliesDist2 < that.paintPenalty + that.alliesDist2) return true;
-            if (paintPenalty + alliesDist2 > that.paintPenalty + that.alliesDist2) return false;
+            if (paintPenalty + otherAlliesDist2 < that.paintPenalty + that.otherAlliesDist2) return true;
+            if (paintPenalty + otherAlliesDist2 > that.paintPenalty + that.otherAlliesDist2) return false;
 
             // allow for counting sqrt(1) and sqrt(2) as the same
             if (that.minDistanceToEnemyPaint - minDistanceToEnemyPaint > 1) return true;
@@ -284,8 +284,8 @@ public class MopperMicro {
             if (minDistanceToEnemy > that.minDistanceToEnemy) return false;
 
             // to reduce overcrowding
-            if (alliesDist2 < that.alliesDist2) return true;
-            if (alliesDist2 > that.alliesDist2) return false;
+            if (otherAlliesDist2 < that.otherAlliesDist2) return true;
+            if (otherAlliesDist2 > that.otherAlliesDist2) return false;
 
             // secondary distance heuristic as tiebreaker if all else is equal
             if (minDistanceToAllyPaint < that.minDistanceToAllyPaint) return true;

@@ -192,7 +192,7 @@ public class MopperMicro {
 
         int inRange() throws GameActionException {
             if(hasMoppableEnemy && canAct)   return 3;
-            if(minDistanceToEnemy <= 8)      return 2;
+            if(minDistanceToEnemy < 8)      return 2;
             if(minDistanceToEnemyPaint <= 2) return 1;
             return 0;
         }
