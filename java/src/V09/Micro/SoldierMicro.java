@@ -4,22 +4,26 @@ import V09.*;
 import battlecode.common.*;
 
 public class SoldierMicro extends Globals{
-    
+    static int DEBUG = 0;
     public static boolean doMicro(MapLocation tower) throws GameActionException {
         if(tower == null) return false;
         
+        if(DEBUG == 1) System.out.println("Micro Info for robot at: " + rc.getLocation());
         MicroInfo[] microInfo = new MicroInfo[9];
         for (int i = 0; i < 9; i++) {
             microInfo[i] = new MicroInfo(Direction.values()[i]);
             microInfo[i].updateEnemiesTargeting();
+            if(DEBUG == 1) System.out.println(microInfo[i].toString());
         }
+        
 
         MicroInfo best = microInfo[8];  
         boolean shouldRunaway = rc.getHealth() <= 30;
         boolean shouldAttack = (rc.getRoundNum() % 2 == 0) && (rc.isActionReady());
 
-        //if(shouldRunaway) System.out.println("Run at " + rc.getLocation().toString());
-        //if(shouldAttack) System.out.println("Attack at " + rc.getLocation().toString());
+        if(shouldRunaway && DEBUG == 1) System.out.println("Run at " + rc.getLocation().toString());
+        if(shouldAttack && DEBUG == 1) System.out.println("Attack at " + rc.getLocation().toString());
+        if(DEBUG == 1) System.out.println("\n");
         for (int i = 0; i < 8; i++) {
 
             if(shouldRunaway) {
@@ -102,9 +106,6 @@ public class SoldierMicro extends Globals{
             if(canMove && !m.canMove) return true;
             if(!canMove && m.canMove) return false;
 
-            //both squares are useless to us
-            if(!canMove && !m.canMove) return true;
-
             //wants to be within range of exactly one tower
             if(towersTargeting == 1 && m.towersTargeting != 1) return true;
             if(towersTargeting != 1 && m.towersTargeting == 1) return false;
@@ -143,8 +144,6 @@ public class SoldierMicro extends Globals{
             if(canMove && !m.canMove) return true;
             if(!canMove && m.canMove) return false;
 
-            //both squares are useless to us
-            if(!canMove && !m.canMove) return true;
 
             //wants to get out of range of any towers
             if(towersTargeting < m.towersTargeting) return true;
