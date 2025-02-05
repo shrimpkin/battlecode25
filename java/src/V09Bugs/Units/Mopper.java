@@ -268,7 +268,6 @@ public class Mopper extends Unit {
             for (int i = 0; i < 6; i++) { // check each impact square in this direction
                 if (enemies.contains(currLoc.translate(dxMop[dir][i], dyMop[dir][i]))) {
                     numEnemies[dir]++;
-                    break;
                 }
             }
         }

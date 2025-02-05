@@ -133,7 +133,7 @@ public class SoldierMicro extends Globals{
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
 
             return true;
         }
@@ -164,7 +164,7 @@ public class SoldierMicro extends Globals{
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
 
             return true;
         }
@@ -194,7 +194,7 @@ public class SoldierMicro extends Globals{
 
             //now tries to step into empty paint
             if(paint.equals(PaintType.EMPTY) && !m.paint.equals(PaintType.EMPTY)) return true;
-            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return true;
+            if(!paint.equals(PaintType.EMPTY) && m.paint.equals(PaintType.EMPTY)) return false;
 
             return true;
         }
